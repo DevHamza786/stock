@@ -59,14 +59,28 @@
                             <!-- Machine Name -->
                             <div>
                                 <x-input-label for="machine_name" :value="__('Machine Name')" />
-                                <x-text-input id="machine_name" name="machine_name" type="text" class="mt-1 block w-full" :value="old('machine_name', $stockIssued->machine_name)" placeholder="Enter machine name..." />
+                                <select id="machine_name" name="machine_name" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                    <option value="">Select machine...</option>
+                                    @foreach($machines as $machine)
+                                        <option value="{{ $machine->name }}" {{ old('machine_name', $stockIssued->machine_name) == $machine->name ? 'selected' : '' }}>
+                                            {{ $machine->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 <x-input-error :messages="$errors->get('machine_name')" class="mt-2" />
                             </div>
 
                             <!-- Operator Name -->
                             <div>
                                 <x-input-label for="operator_name" :value="__('Operator Name')" />
-                                <x-text-input id="operator_name" name="operator_name" type="text" class="mt-1 block w-full" :value="old('operator_name', $stockIssued->operator_name)" placeholder="Enter operator name..." />
+                                <select id="operator_name" name="operator_name" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                    <option value="">Select operator...</option>
+                                    @foreach($operators as $operator)
+                                        <option value="{{ $operator->name }}" {{ old('operator_name', $stockIssued->operator_name) == $operator->name ? 'selected' : '' }}>
+                                            {{ $operator->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 <x-input-error :messages="$errors->get('operator_name')" class="mt-2" />
                             </div>
 

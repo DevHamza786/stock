@@ -79,6 +79,8 @@
                                             <a href="{{ route('stock-management.products.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Products</a>
                                             <a href="{{ route('stock-management.mine-vendors.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Mine Vendors</a>
                                             <a href="{{ route('stock-management.condition-statuses.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Condition Statuses</a>
+                                            <a href="{{ route('master-data.machines.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Machines</a>
+                                            <a href="{{ route('master-data.operators.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Operators</a>
                                         </div>
                                     </div>
                                 </div>

@@ -8,6 +8,8 @@ use App\Models\StockIssued;
 use App\Models\JournalEntry;
 use App\Models\AccountTransaction;
 use App\Models\ChartOfAccount;
+use App\Models\Machine;
+use App\Models\Operator;
 use Illuminate\Http\Request;
 
 class DailyProductionController extends Controller
@@ -162,7 +164,11 @@ class DailyProductionController extends Controller
             ->filter()
             ->values();
 
-        return view('stock-management.daily-production.create', compact('stockIssued', 'availableStockIssued', 'recentMachines', 'recentOperators'));
+        // Get active machines and operators for dropdowns
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+
+        return view('stock-management.daily-production.create', compact('stockIssued', 'availableStockIssued', 'recentMachines', 'recentOperators', 'machines', 'operators'));
     }
 
     /**

@@ -91,7 +91,14 @@
                             <!-- Machine Name -->
                             <div>
                                 <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
-                                <input type="text" id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" value="{{ old('machine_name') }}" placeholder="Enter machine name...">
+                                <select id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('machine_name') border-red-500 @enderror">
+                                    <option value="">Select machine...</option>
+                                    @foreach($machines as $machine)
+                                        <option value="{{ $machine->name }}" {{ old('machine_name') == $machine->name ? 'selected' : '' }}>
+                                            {{ $machine->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('machine_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -100,7 +107,14 @@
                             <!-- Operator Name -->
                             <div>
                                 <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
-                                <input type="text" id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" value="{{ old('operator_name') }}" placeholder="Enter operator name...">
+                                <select id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('operator_name') border-red-500 @enderror">
+                                    <option value="">Select operator...</option>
+                                    @foreach($operators as $operator)
+                                        <option value="{{ $operator->name }}" {{ old('operator_name') == $operator->name ? 'selected' : '' }}>
+                                            {{ $operator->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('operator_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror

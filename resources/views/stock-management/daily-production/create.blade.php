@@ -53,14 +53,14 @@
                             <!-- Machine Name -->
                             <div>
                                 <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
-                                <input type="text" id="machine_name" name="machine_name" list="machine-suggestions" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" value="{{ old('machine_name') }}" required>
-                                <datalist id="machine-suggestions">
-                                    @if(isset($recentMachines))
-                                        @foreach($recentMachines as $machine)
-                                            <option value="{{ $machine }}">
-                                        @endforeach
-                                    @endif
-                                </datalist>
+                                <select id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" required>
+                                    <option value="">Select machine...</option>
+                                    @foreach($machines as $machine)
+                                        <option value="{{ $machine->name }}" {{ old('machine_name') == $machine->name ? 'selected' : '' }}>
+                                            {{ $machine->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('machine_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -69,14 +69,14 @@
                             <!-- Operator Name -->
                             <div>
                                 <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
-                                <input type="text" id="operator_name" name="operator_name" list="operator-suggestions" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" value="{{ old('operator_name') }}" required>
-                                <datalist id="operator-suggestions">
-                                    @if(isset($recentOperators))
-                                        @foreach($recentOperators as $operator)
-                                            <option value="{{ $operator }}">
-                                        @endforeach
-                                    @endif
-                                </datalist>
+                                <select id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" required>
+                                    <option value="">Select operator...</option>
+                                    @foreach($operators as $operator)
+                                        <option value="{{ $operator->name }}" {{ old('operator_name') == $operator->name ? 'selected' : '' }}>
+                                            {{ $operator->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                                 @error('operator_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -227,15 +227,29 @@
                     }
 
                     // Auto-fill machine name and operator name from stock issued if available
-                    const machineInput = document.getElementById('machine_name');
-                    const operatorInput = document.getElementById('operator_name');
+                    const machineSelect = document.getElementById('machine_name');
+                    const operatorSelect = document.getElementById('operator_name');
 
-                    if (stockIssued.machine_name && !machineInput.value) {
-                        machineInput.value = stockIssued.machine_name;
+                    if (stockIssued.machine_name && !machineSelect.value) {
+                        // Find and select the machine option
+                        const machineOptions = machineSelect.querySelectorAll('option');
+                        for (let option of machineOptions) {
+                            if (option.value === stockIssued.machine_name) {
+                                machineSelect.value = stockIssued.machine_name;
+                                break;
+                            }
+                        }
                     }
 
-                    if (stockIssued.operator_name && !operatorInput.value) {
-                        operatorInput.value = stockIssued.operator_name;
+                    if (stockIssued.operator_name && !operatorSelect.value) {
+                        // Find and select the operator option
+                        const operatorOptions = operatorSelect.querySelectorAll('option');
+                        for (let option of operatorOptions) {
+                            if (option.value === stockIssued.operator_name) {
+                                operatorSelect.value = stockIssued.operator_name;
+                                break;
+                            }
+                        }
                     }
 
                     // Set max values for inputs based on issued stock

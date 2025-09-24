@@ -7,6 +7,8 @@ use App\Models\StockAddition;
 use App\Models\JournalEntry;
 use App\Models\AccountTransaction;
 use App\Models\ChartOfAccount;
+use App\Models\Machine;
+use App\Models\Operator;
 use Illuminate\Http\Request;
 
 class StockIssuedController extends Controller
@@ -149,7 +151,10 @@ class StockIssuedController extends Controller
             ->orderBy('date', 'asc')
             ->get();
 
-        return view('stock-management.stock-issued.create', compact('availableStock', 'stockAdditions'));
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+
+        return view('stock-management.stock-issued.create', compact('availableStock', 'stockAdditions', 'machines', 'operators'));
     }
 
     /**
@@ -216,7 +221,10 @@ class StockIssuedController extends Controller
             ->orderBy('date', 'asc')
             ->get();
 
-        return view('stock-management.stock-issued.edit', compact('stockIssued', 'availableStockAdditions'));
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+
+        return view('stock-management.stock-issued.edit', compact('stockIssued', 'availableStockAdditions', 'machines', 'operators'));
     }
 
     /**

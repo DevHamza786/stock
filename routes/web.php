@@ -12,6 +12,8 @@ use App\Http\Controllers\GatePassController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\MachineController;
+use App\Http\Controllers\OperatorController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -66,6 +68,15 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     Route::resource('gate-pass', GatePassController::class);
     Route::get('gate-pass/{gatePass}/print', [GatePassController::class, 'print'])->name('gate-pass.print');
     Route::get('gate-pass/remaining-quantity/{stockIssued}', [GatePassController::class, 'getRemainingQuantity'])->name('gate-pass.remaining-quantity');
+});
+
+// Master Data Routes
+Route::middleware(['auth', 'verified'])->prefix('master-data')->name('master-data.')->group(function () {
+    // Machines
+    Route::resource('machines', MachineController::class);
+
+    // Operators
+    Route::resource('operators', OperatorController::class);
 });
 
 // Accounting Routes

@@ -7,6 +7,8 @@ use App\Models\ChartOfAccount;
 use App\Models\GatePass;
 use App\Models\JournalEntry;
 use App\Models\StockIssued;
+use App\Models\Machine;
+use App\Models\Operator;
 use Illuminate\Http\Request;
 
 class GatePassController extends Controller
@@ -158,7 +160,11 @@ class GatePassController extends Controller
             ->orderBy('date', 'desc')
             ->get();
 
-        return view('stock-management.gate-pass.create', compact('selectedStockIssued', 'stockIssued'));
+        // Get active machines and operators for dropdowns
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+
+        return view('stock-management.gate-pass.create', compact('selectedStockIssued', 'stockIssued', 'machines', 'operators'));
     }
 
     /**
