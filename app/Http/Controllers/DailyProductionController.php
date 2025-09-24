@@ -200,7 +200,11 @@ class DailyProductionController extends Controller
                 ->with('error', 'Requested production quantity exceeds issued stock.');
         }
 
-        $dailyProduction = DailyProduction::create($request->all());
+        // Prepare data for daily production creation
+        $data = $request->all();
+        $data['stock_addition_id'] = $stockIssued->stock_addition_id; // Set stock_addition_id from stock_issued
+
+        $dailyProduction = DailyProduction::create($data);
 
         // Generate accounting journal entry
         $this->generateAccountingEntry($dailyProduction);

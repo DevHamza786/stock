@@ -43,7 +43,7 @@ class DailyProduction extends Model
      */
     public function stockIssued(): BelongsTo
     {
-        return $this->belongsTo(StockIssued::class);
+        return $this->belongsTo(StockIssued::class, 'stock_issued_id', 'id');
     }
 
     /**

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('daily_production', function (Blueprint $table) {
-            $table->foreignId('stock_issued_id')->nullable()->after('stock_addition_id')->constrained()->onDelete('cascade');
+            $table->foreignId('stock_issued_id')->nullable()->after('stock_addition_id')->constrained('stock_issued')->onDelete('cascade');
         });
     }
 
