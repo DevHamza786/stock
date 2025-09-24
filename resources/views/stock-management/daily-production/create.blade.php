@@ -18,15 +18,15 @@
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                 <div class="p-6">
-                    @if(!isset($availableStockAdditions) || $availableStockAdditions->count() == 0)
+                    @if(!isset($availableStockIssued) || $availableStockIssued->count() == 0)
                         <div class="text-center py-12">
                             <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
                             </svg>
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Available Stock</h3>
-                            <p class="text-gray-500 mb-4">You need to add stock before you can record production.</p>
-                            <a href="{{ route('stock-management.stock-additions.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                Add Stock First
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Stock Issued for Production</h3>
+                            <p class="text-gray-500 mb-4">You need to issue stock for production before you can record production.</p>
+                            <a href="{{ route('stock-management.stock-issued.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Issue Stock for Production
                             </a>
                         </div>
                     @else
@@ -34,18 +34,18 @@
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Stock Addition -->
+                            <!-- Stock Issued -->
                             <div class="md:col-span-2">
-                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Addition</label>
-                                <select id="stock_addition_id" name="stock_addition_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" required>
-                                    <option value="">Choose stock addition...</option>
-                                    @foreach($availableStockAdditions as $addition)
-                                        <option value="{{ $addition->id }}" {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
-                                            {{ $addition->product->name }} - {{ $addition->mineVendor->name }} ({{ $addition->available_pieces }} pieces available)
+                                <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued for Production</label>
+                                <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
+                                    <option value="">Choose stock issued for production...</option>
+                                    @foreach($availableStockIssued as $issued)
+                                        <option value="{{ $issued->id }}" {{ old('stock_issued_id') == $issued->id ? 'selected' : '' }}>
+                                            {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('stock_addition_id')
+                                @error('stock_issued_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -53,7 +53,14 @@
                             <!-- Machine Name -->
                             <div>
                                 <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
-                                <input type="text" id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" value="{{ old('machine_name') }}" required>
+                                <input type="text" id="machine_name" name="machine_name" list="machine-suggestions" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" value="{{ old('machine_name') }}" required>
+                                <datalist id="machine-suggestions">
+                                    @if(isset($recentMachines))
+                                        @foreach($recentMachines as $machine)
+                                            <option value="{{ $machine }}">
+                                        @endforeach
+                                    @endif
+                                </datalist>
                                 @error('machine_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -62,7 +69,14 @@
                             <!-- Operator Name -->
                             <div>
                                 <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
-                                <input type="text" id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" value="{{ old('operator_name') }}" required>
+                                <input type="text" id="operator_name" name="operator_name" list="operator-suggestions" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" value="{{ old('operator_name') }}" required>
+                                <datalist id="operator-suggestions">
+                                    @if(isset($recentOperators))
+                                        @foreach($recentOperators as $operator)
+                                            <option value="{{ $operator }}">
+                                        @endforeach
+                                    @endif
+                                </datalist>
                                 @error('operator_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -130,7 +144,7 @@
 
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Issued Information</h3>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
@@ -141,11 +155,11 @@
                                     <span id="selected-vendor" class="text-gray-900"></span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Available Pieces:</span>
+                                    <span class="font-medium text-gray-700">Issued Pieces:</span>
                                     <span id="available-pieces" class="text-gray-900"></span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Available Sqft:</span>
+                                    <span class="font-medium text-gray-700">Issued Sqft:</span>
                                     <span id="available-sqft" class="text-gray-900"></span>
                                 </div>
                             </div>
@@ -169,7 +183,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const stockSelect = document.getElementById('stock_addition_id');
+            const stockSelect = document.getElementById('stock_issued_id');
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
@@ -179,28 +193,54 @@
             const piecesInput = document.getElementById('total_pieces');
             const sqftInput = document.getElementById('total_sqft');
 
-            // Stock data from the server
-            const stockData = @json(isset($availableStockAdditions) ? $availableStockAdditions->keyBy('id') : []);
+            // Stock issued data from the server
+            const stockIssuedData = @json(isset($availableStockIssued) ? $availableStockIssued->keyBy('id') : []);
 
             stockSelect.addEventListener('change', function() {
                 const selectedId = this.value;
 
-                if (selectedId && stockData[selectedId]) {
-                    const stock = stockData[selectedId];
+                if (selectedId && stockIssuedData[selectedId]) {
+                    const stockIssued = stockIssuedData[selectedId];
+                    const stockAddition = stockIssued.stock_addition;
 
-                    selectedProduct.textContent = stock.product.name;
-                    selectedVendor.textContent = stock.mine_vendor.name;
-                    availablePieces.textContent = stock.available_pieces;
-                    availableSqft.textContent = stock.available_sqft;
+                    selectedProduct.textContent = stockAddition.product.name;
+                    selectedVendor.textContent = stockAddition.mine_vendor.name;
+                    availablePieces.textContent = stockIssued.quantity_issued;
+                    availableSqft.textContent = stockIssued.sqft_issued;
 
                     stockInfo.classList.remove('hidden');
 
                     // Auto-fill product name
-                    productInput.value = stock.product.name;
+                    productInput.value = stockAddition.product.name;
 
-                    // Set max values for inputs
-                    piecesInput.max = stock.available_pieces;
-                    sqftInput.max = stock.available_sqft;
+                    // Auto-fill condition status if available
+                    const conditionStatusSelect = document.getElementById('condition_status');
+                    if (stockAddition.condition_status && conditionStatusSelect) {
+                        // Try to find matching option
+                        const options = conditionStatusSelect.querySelectorAll('option');
+                        for (let option of options) {
+                            if (option.value === stockAddition.condition_status) {
+                                conditionStatusSelect.value = stockAddition.condition_status;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Auto-fill machine name and operator name from stock issued if available
+                    const machineInput = document.getElementById('machine_name');
+                    const operatorInput = document.getElementById('operator_name');
+
+                    if (stockIssued.machine_name && !machineInput.value) {
+                        machineInput.value = stockIssued.machine_name;
+                    }
+
+                    if (stockIssued.operator_name && !operatorInput.value) {
+                        operatorInput.value = stockIssued.operator_name;
+                    }
+
+                    // Set max values for inputs based on issued stock
+                    piecesInput.max = stockIssued.quantity_issued;
+                    sqftInput.max = stockIssued.sqft_issued;
                 } else {
                     stockInfo.classList.add('hidden');
                 }
@@ -209,9 +249,9 @@
             // Auto-calculate sqft based on pieces
             piecesInput.addEventListener('input', function() {
                 const selectedId = stockSelect.value;
-                if (selectedId && stockData[selectedId]) {
-                    const stock = stockData[selectedId];
-                    const piecesPerSqft = stock.total_sqft / stock.total_pieces;
+                if (selectedId && stockIssuedData[selectedId]) {
+                    const stockIssued = stockIssuedData[selectedId];
+                    const piecesPerSqft = stockIssued.sqft_issued / stockIssued.quantity_issued;
                     const calculatedSqft = this.value * piecesPerSqft;
                     sqftInput.value = calculatedSqft.toFixed(2);
                 }

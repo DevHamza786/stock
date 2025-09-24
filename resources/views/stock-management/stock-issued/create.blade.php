@@ -36,13 +36,13 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Stock Addition -->
                             <div class="md:col-span-2">
-                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Addition</label>
+                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issuance</label>
                                 <select id="stock_addition_id" name="stock_addition_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" required>
-                                    <option value="">Choose stock addition...</option>
+                                    <option value="">Choose stock issuance...</option>
                                     @if(isset($stockAdditions) && $stockAdditions->count() > 0)
                                         @foreach($stockAdditions as $addition)
                                             <option value="{{ $addition->id }}" {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
-                                                {{ $addition->product->name }} - {{ $addition->mineVendor->name }} ({{ $addition->available_pieces }} pieces available)
+                                                {{ $addition->product->name }} - {{ $addition->mineVendor->name }} - Size: {{ $addition->size_3d }} ({{ $addition->available_pieces }} pieces available)
                                             </option>
                                         @endforeach
                                     @else
@@ -88,6 +88,24 @@
                                 @enderror
                             </div>
 
+                            <!-- Machine Name -->
+                            <div>
+                                <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
+                                <input type="text" id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" value="{{ old('machine_name') }}" placeholder="Enter machine name...">
+                                @error('machine_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Operator Name -->
+                            <div>
+                                <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
+                                <input type="text" id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" value="{{ old('operator_name') }}" placeholder="Enter operator name...">
+                                @error('operator_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
                             <!-- Notes -->
                             <div class="md:col-span-2">
                                 <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
@@ -110,7 +128,7 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900"></span>
@@ -118,6 +136,10 @@
                                 <div>
                                     <span class="font-medium text-gray-700">Vendor:</span>
                                     <span id="selected-vendor" class="text-gray-900"></span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Size:</span>
+                                    <span id="selected-size" class="text-gray-900"></span>
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-700">Available Pieces:</span>
@@ -152,6 +174,7 @@
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
+            const selectedSize = document.getElementById('selected-size');
             const availablePieces = document.getElementById('available-pieces');
             const availableSqft = document.getElementById('available-sqft');
             const quantityInput = document.getElementById('quantity_issued');
@@ -168,6 +191,7 @@
 
                     selectedProduct.textContent = stock.product.name;
                     selectedVendor.textContent = stock.mine_vendor.name;
+                    selectedSize.textContent = stock.size_3d;
                     availablePieces.textContent = stock.available_pieces;
                     availableSqft.textContent = stock.available_sqft;
 

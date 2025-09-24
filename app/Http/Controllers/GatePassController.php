@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountTransaction;
+use App\Models\ChartOfAccount;
 use App\Models\GatePass;
+use App\Models\JournalEntry;
 use App\Models\StockIssued;
 use Illuminate\Http\Request;
 
@@ -20,21 +23,21 @@ class GatePassController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('destination', 'like', "%{$search}%")
-                  ->orWhere('vehicle_number', 'like', "%{$search}%")
-                  ->orWhere('driver_name', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%")
-                  ->orWhereHas('stockIssued.stockAddition.product', function ($productQuery) use ($search) {
-                      $productQuery->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('stockIssued.stockAddition.mineVendor', function ($vendorQuery) use ($search) {
-                      $vendorQuery->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('stockIssued.stockAddition', function ($stockQuery) use ($search) {
-                      $stockQuery->where('stone', 'like', "%{$search}%")
-                                ->orWhere('size_3d', 'like', "%{$search}%")
-                                ->orWhere('condition_status', 'like', "%{$search}%");
-                  });
+                    ->orWhere('vehicle_number', 'like', "%{$search}%")
+                    ->orWhere('driver_name', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('stockIssued.stockAddition.product', function ($productQuery) use ($search) {
+                        $productQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('stockIssued.stockAddition.mineVendor', function ($vendorQuery) use ($search) {
+                        $vendorQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('stockIssued.stockAddition', function ($stockQuery) use ($search) {
+                        $stockQuery->where('stone', 'like', "%{$search}%")
+                            ->orWhere('size_3d', 'like', "%{$search}%")
+                            ->orWhere('condition_status', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -88,17 +91,17 @@ class GatePassController extends Controller
         switch ($sortBy) {
             case 'product':
                 $query->join('stock_issued', 'gate_pass.stock_issued_id', '=', 'stock_issued.id')
-                      ->join('stock_additions', 'stock_issued.stock_addition_id', '=', 'stock_additions.id')
-                      ->join('products', 'stock_additions.product_id', '=', 'products.id')
-                      ->orderBy('products.name', $sortOrder)
-                      ->select('gate_pass.*');
+                    ->join('stock_additions', 'stock_issued.stock_addition_id', '=', 'stock_additions.id')
+                    ->join('products', 'stock_additions.product_id', '=', 'products.id')
+                    ->orderBy('products.name', $sortOrder)
+                    ->select('gate_pass.*');
                 break;
             case 'vendor':
                 $query->join('stock_issued', 'gate_pass.stock_issued_id', '=', 'stock_issued.id')
-                      ->join('stock_additions', 'stock_issued.stock_addition_id', '=', 'stock_additions.id')
-                      ->join('mine_vendors', 'stock_additions.mine_vendor_id', '=', 'mine_vendors.id')
-                      ->orderBy('mine_vendors.name', $sortOrder)
-                      ->select('gate_pass.*');
+                    ->join('stock_additions', 'stock_issued.stock_addition_id', '=', 'stock_additions.id')
+                    ->join('mine_vendors', 'stock_additions.mine_vendor_id', '=', 'mine_vendors.id')
+                    ->orderBy('mine_vendors.name', $sortOrder)
+                    ->select('gate_pass.*');
                 break;
             case 'destination':
                 $query->orderBy('destination', $sortOrder);
@@ -139,19 +142,23 @@ class GatePassController extends Controller
     public function create(Request $request)
     {
         $stockIssuedId = $request->get('stock_issued_id');
-        $stockIssued = null;
+        $selectedStockIssued = null;
 
         if ($stockIssuedId) {
-            $stockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            $selectedStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
                 ->findOrFail($stockIssuedId);
         }
 
+        // Get stock issued records that have available stock in stock_additions table
         $stockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            ->whereHas('stockAddition', function ($query) {
+                $query->where('available_pieces', '>', 0);
+            })
             ->where('quantity_issued', '>', 0)
-            ->orderBy('date', 'asc')
+            ->orderBy('date', 'desc')
             ->get();
 
-        return view('stock-management.gate-pass.create', compact('stockIssued'));
+        return view('stock-management.gate-pass.create', compact('selectedStockIssued', 'stockIssued'));
     }
 
     /**
@@ -180,6 +187,9 @@ class GatePassController extends Controller
         }
 
         $gatePass = GatePass::create($request->all());
+
+        // Generate accounting journal entry
+        $this->generateAccountingEntry($gatePass);
 
         return redirect()->route('stock-management.gate-pass.index')
             ->with('success', 'Gate pass created successfully.');
@@ -278,7 +288,67 @@ class GatePassController extends Controller
         return response()->json([
             'remaining_quantity' => $remainingQuantity,
             'total_issued' => $stockIssued->quantity_issued,
-            'total_gate_passes' => $totalGatePasses
+            'total_gate_passes' => $totalGatePasses,
         ]);
+    }
+
+    /**
+     * Generate accounting journal entry for gate pass.
+     */
+    private function generateAccountingEntry(GatePass $gatePass)
+    {
+        try {
+            // Get accounts
+            $cogsAccount = ChartOfAccount::where('account_code', '5110')->first(); // Cost of Goods Sold
+            $finishedGoodsAccount = ChartOfAccount::where('account_code', '1160')->first(); // Finished Goods
+
+            if (! $cogsAccount || ! $finishedGoodsAccount) {
+                \Log::warning('Required accounts not found for gate pass accounting entry');
+
+                return;
+            }
+
+            // Calculate cost (you might want to add cost fields)
+            $costPerSqft = 100; // This should come from your data
+            $totalCost = $gatePass->quantity_issued * $costPerSqft; // Assuming quantity_issued is in sqft
+
+            // Create journal entry
+            $journalEntry = JournalEntry::create([
+                'entry_date' => $gatePass->date,
+                'description' => "Gate pass: {$gatePass->stockIssued->stockAddition->product->name} to {$gatePass->destination}",
+                'entry_type' => 'AUTO_GATE_PASS',
+                'total_debit' => $totalCost,
+                'total_credit' => $totalCost,
+                'status' => 'DRAFT',
+                'created_by' => auth()->id(),
+                'notes' => "Auto-generated for gate pass #{$gatePass->id}",
+            ]);
+
+            // Create transactions
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $cogsAccount->id,
+                'debit_amount' => $totalCost,
+                'credit_amount' => 0,
+                'description' => "Cost of goods sold: {$gatePass->stockIssued->stockAddition->product->name}",
+                'reference_type' => 'gate_pass',
+                'reference_id' => $gatePass->id,
+            ]);
+
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $finishedGoodsAccount->id,
+                'debit_amount' => 0,
+                'credit_amount' => $totalCost,
+                'description' => "Finished goods decrease: {$gatePass->stockIssued->stockAddition->product->name}",
+                'reference_type' => 'gate_pass',
+                'reference_id' => $gatePass->id,
+            ]);
+
+            \Log::info("Accounting entry created for gate pass #{$gatePass->id}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to create accounting entry for gate pass #{$gatePass->id}: ".$e->getMessage());
+        }
     }
 }

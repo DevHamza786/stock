@@ -23,8 +23,8 @@
                             <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                             </svg>
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Stock Issued</h3>
-                            <p class="text-gray-500 mb-4">You need to issue stock before you can create a gate pass.</p>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Available Stock for Dispatch</h3>
+                            <p class="text-gray-500 mb-4">You need to have stock with available pieces before you can create a gate pass.</p>
                             <a href="{{ route('stock-management.stock-issued.create') }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                 Issue Stock First
                             </a>
@@ -36,12 +36,13 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Stock Issued -->
                             <div class="md:col-span-2">
-                                <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued</label>
+                                <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued (Available for Dispatch)</label>
                                 <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
                                     <option value="">Choose stock issued...</option>
                                     @foreach($stockIssued as $issue)
                                         <option value="{{ $issue->id }}" {{ old('stock_issued_id') == $issue->id ? 'selected' : '' }}>
-                                            {{ $issue->stockAddition->product->name }} - {{ $issue->stockAddition->mineVendor->name }} ({{ $issue->quantity_issued }} pieces)
+                                            {{ $issue->stockAddition->product->name }} - {{ $issue->stockAddition->mineVendor->name }}
+                                            ({{ $issue->quantity_issued }} pieces issued, {{ $issue->stockAddition->available_pieces }} available) - {{ $issue->date->format('M d, Y') }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -122,7 +123,7 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900"></span>
@@ -134,6 +135,10 @@
                                 <div>
                                     <span class="font-medium text-gray-700">Issued Pieces:</span>
                                     <span id="issued-pieces" class="text-gray-900"></span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Available Pieces:</span>
+                                    <span id="available-pieces" class="text-gray-900 text-green-600 font-semibold"></span>
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-700">Issued Sqft:</span>
@@ -165,6 +170,7 @@
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
             const issuedPieces = document.getElementById('issued-pieces');
+            const availablePieces = document.getElementById('available-pieces');
             const issuedSqft = document.getElementById('issued-sqft');
             const quantityInput = document.getElementById('quantity_issued');
 
@@ -176,16 +182,25 @@
 
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
+                    const stockAddition = stock.stock_addition;
 
-                    selectedProduct.textContent = stock.stock_addition.product.name;
-                    selectedVendor.textContent = stock.stock_addition.mine_vendor.name;
+                    selectedProduct.textContent = stockAddition.product.name;
+                    selectedVendor.textContent = stockAddition.mine_vendor.name;
                     issuedPieces.textContent = stock.quantity_issued;
+                    availablePieces.textContent = stockAddition.available_pieces;
                     issuedSqft.textContent = stock.sqft_issued;
 
                     stockInfo.classList.remove('hidden');
 
-                    // Set max value for quantity input
-                    quantityInput.max = stock.quantity_issued;
+                    // Set max value for quantity input based on available stock
+                    quantityInput.max = stockAddition.available_pieces;
+
+                    // Auto-fill quantity with available pieces if it's less than issued pieces
+                    if (stockAddition.available_pieces < stock.quantity_issued) {
+                        quantityInput.value = stockAddition.available_pieces;
+                    } else {
+                        quantityInput.value = stock.quantity_issued;
+                    }
                 } else {
                     stockInfo.classList.add('hidden');
                 }

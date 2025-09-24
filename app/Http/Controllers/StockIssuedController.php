@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\StockIssued;
 use App\Models\StockAddition;
+use App\Models\JournalEntry;
+use App\Models\AccountTransaction;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 
 class StockIssuedController extends Controller
@@ -20,6 +23,8 @@ class StockIssuedController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('purpose', 'like', "%{$search}%")
+                  ->orWhere('machine_name', 'like', "%{$search}%")
+                  ->orWhere('operator_name', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%")
                   ->orWhereHas('stockAddition.product', function ($productQuery) use ($search) {
                       $productQuery->where('name', 'like', "%{$search}%");
@@ -59,6 +64,16 @@ class StockIssuedController extends Controller
         // Filter by purpose
         if ($request->filled('purpose')) {
             $query->where('purpose', $request->get('purpose'));
+        }
+
+        // Filter by machine name
+        if ($request->filled('machine_name')) {
+            $query->where('machine_name', 'like', "%{$request->get('machine_name')}%");
+        }
+
+        // Filter by operator name
+        if ($request->filled('operator_name')) {
+            $query->where('operator_name', 'like', "%{$request->get('operator_name')}%");
         }
 
         // Filter by date range
@@ -108,8 +123,10 @@ class StockIssuedController extends Controller
         $vendors = \App\Models\MineVendor::orderBy('name')->get();
         $conditionStatuses = StockAddition::distinct()->pluck('condition_status')->filter()->sort()->values();
         $purposes = StockIssued::distinct()->pluck('purpose')->filter()->sort()->values();
+        $machines = StockIssued::whereNotNull('machine_name')->distinct()->pluck('machine_name')->filter()->sort()->values();
+        $operators = StockIssued::whereNotNull('operator_name')->distinct()->pluck('operator_name')->filter()->sort()->values();
 
-        return view('stock-management.stock-issued.index', compact('stockIssued', 'products', 'vendors', 'conditionStatuses', 'purposes'));
+        return view('stock-management.stock-issued.index', compact('stockIssued', 'products', 'vendors', 'conditionStatuses', 'purposes', 'machines', 'operators'));
     }
 
     /**
@@ -145,6 +162,8 @@ class StockIssuedController extends Controller
             'quantity_issued' => 'required|integer|min:1',
             'sqft_issued' => 'required|numeric|min:0',
             'purpose' => 'required|string|max:255',
+            'machine_name' => 'nullable|string|max:255',
+            'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
         ]);
@@ -209,6 +228,8 @@ class StockIssuedController extends Controller
             'stock_addition_id' => 'required|exists:stock_additions,id',
             'quantity_issued' => 'required|integer|min:1',
             'purpose' => 'nullable|string|max:255',
+            'machine_name' => 'nullable|string|max:255',
+            'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
         ]);
@@ -270,5 +291,64 @@ class StockIssuedController extends Controller
             'total_sqft' => $stockAddition->total_sqft,
             'sqft_per_piece' => $stockAddition->total_sqft / $stockAddition->total_pieces
         ]);
+    }
+
+    /**
+     * Generate accounting journal entry for stock issued.
+     */
+    private function generateAccountingEntry(StockIssued $stockIssued)
+    {
+        try {
+            // Get accounts
+            $wipAccount = ChartOfAccount::where('account_code', '1150')->first(); // Work in Progress
+            $inventoryAccount = ChartOfAccount::where('account_code', '1130')->first(); // Stone Inventory
+
+            if (!$wipAccount || !$inventoryAccount) {
+                \Log::warning('Required accounts not found for stock issued accounting entry');
+                return;
+            }
+
+            // Calculate cost (you might want to add cost fields)
+            $costPerSqft = 100; // This should come from your data
+            $totalCost = $stockIssued->sqft_issued * $costPerSqft;
+
+            // Create journal entry
+            $journalEntry = JournalEntry::create([
+                'entry_date' => $stockIssued->date,
+                'description' => "Stock issued for {$stockIssued->purpose}: {$stockIssued->stockAddition->product->name}",
+                'entry_type' => 'AUTO_STOCK_ISSUE',
+                'total_debit' => $totalCost,
+                'total_credit' => $totalCost,
+                'status' => 'DRAFT',
+                'created_by' => auth()->id(),
+                'notes' => "Auto-generated for stock issued #{$stockIssued->id}"
+            ]);
+
+            // Create transactions
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $wipAccount->id,
+                'debit_amount' => $totalCost,
+                'credit_amount' => 0,
+                'description' => "Work in progress: {$stockIssued->stockAddition->product->name}",
+                'reference_type' => 'stock_issued',
+                'reference_id' => $stockIssued->id
+            ]);
+
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $inventoryAccount->id,
+                'debit_amount' => 0,
+                'credit_amount' => $totalCost,
+                'description' => "Inventory decrease: {$stockIssued->stockAddition->product->name}",
+                'reference_type' => 'stock_issued',
+                'reference_id' => $stockIssued->id
+            ]);
+
+            \Log::info("Accounting entry created for stock issued #{$stockIssued->id}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to create accounting entry for stock issued #{$stockIssued->id}: " . $e->getMessage());
+        }
     }
 }

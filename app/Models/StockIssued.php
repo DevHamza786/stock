@@ -18,6 +18,8 @@ class StockIssued extends Model
         'quantity_issued',
         'sqft_issued',
         'purpose',
+        'machine_name',
+        'operator_name',
         'notes',
         'date'
     ];

@@ -21,7 +21,7 @@
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between items-center h-16">
                         <!-- Left side - Logo and Navigation -->
-                        <div class="flex items-center">
+                        <div class="flex items-center space-x-8">
                             <!-- Logo -->
                             <div class="flex-shrink-0">
                                 <a href="{{ route('stock-management.dashboard') }}" class="flex items-center">
@@ -35,7 +35,7 @@
                             </div>
 
                             <!-- Navigation Links -->
-                            <div class="hidden sm:ml-8 sm:flex sm:space-x-8">
+                            <div class="hidden lg:flex lg:items-center lg:space-x-1">
                                 <a href="{{ route('stock-management.dashboard') }}" class="inline-flex items-center px-3 py-2 border-b-2 {{ request()->routeIs('stock-management.dashboard') ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} text-sm font-medium transition-colors duration-200">
                                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
@@ -79,6 +79,30 @@
                                             <a href="{{ route('stock-management.products.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Products</a>
                                             <a href="{{ route('stock-management.mine-vendors.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Mine Vendors</a>
                                             <a href="{{ route('stock-management.condition-statuses.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Condition Statuses</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="relative group">
+                                    <button class="inline-flex items-center px-3 py-2 border-b-2 {{ request()->routeIs('accounting.*') ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} text-sm font-medium transition-colors duration-200">
+                                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        Accounting
+                                        <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div class="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                        <div class="py-1">
+                                            <a href="{{ route('accounting.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Accounting Dashboard</a>
+                                            <a href="{{ route('accounting.chart-of-accounts.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Chart of Accounts</a>
+                                            <a href="{{ route('accounting.journal-entries.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Journal Entries</a>
+                                            <div class="border-t border-gray-100 my-1"></div>
+                                            <a href="{{ route('accounting.trial-balance') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Trial Balance</a>
+                                            <a href="{{ route('accounting.balance-sheet') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Balance Sheet</a>
+                                            <a href="{{ route('accounting.income-statement') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Income Statement</a>
+                                            <a href="{{ route('accounting.general-ledger') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">General Ledger</a>
                                         </div>
                                     </div>
                                 </div>

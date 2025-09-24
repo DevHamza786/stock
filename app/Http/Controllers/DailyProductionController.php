@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\DailyProduction;
 use App\Models\StockAddition;
+use App\Models\StockIssued;
+use App\Models\JournalEntry;
+use App\Models\AccountTransaction;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 
 class DailyProductionController extends Controller
@@ -129,20 +133,36 @@ class DailyProductionController extends Controller
      */
     public function create(Request $request)
     {
-        $stockAdditionId = $request->get('stock_addition_id');
-        $stockAddition = null;
+        $stockIssuedId = $request->get('stock_issued_id');
+        $stockIssued = null;
 
-        if ($stockAdditionId) {
-            $stockAddition = StockAddition::with(['product', 'mineVendor'])
-                ->findOrFail($stockAdditionId);
+        if ($stockIssuedId) {
+            $stockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+                ->findOrFail($stockIssuedId);
         }
 
-        $availableStockAdditions = StockAddition::with(['product', 'mineVendor'])
-            ->where('available_pieces', '>', 0)
-            ->orderBy('date', 'asc')
+        // Get stock issued records for production (where purpose is 'Production')
+        $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            ->where('purpose', 'Production')
+            ->orderBy('date', 'desc')
             ->get();
 
-        return view('stock-management.daily-production.create', compact('stockAddition', 'availableStockAdditions'));
+        // Get recent machine and operator names for auto-fill suggestions
+        $recentMachines = DailyProduction::whereNotNull('machine_name')
+            ->distinct()
+            ->pluck('machine_name')
+            ->take(10)
+            ->filter()
+            ->values();
+
+        $recentOperators = DailyProduction::whereNotNull('operator_name')
+            ->distinct()
+            ->pluck('operator_name')
+            ->take(10)
+            ->filter()
+            ->values();
+
+        return view('stock-management.daily-production.create', compact('stockIssued', 'availableStockIssued', 'recentMachines', 'recentOperators'));
     }
 
     /**
@@ -151,7 +171,7 @@ class DailyProductionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'stock_addition_id' => 'required|exists:stock_additions,id',
+            'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
             'product' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
@@ -162,16 +182,19 @@ class DailyProductionController extends Controller
             'date' => 'required|date',
         ]);
 
-        $stockAddition = StockAddition::findOrFail($request->stock_addition_id);
+        $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
         // Check if requested quantity is available
-        if ($request->total_pieces > $stockAddition->available_pieces) {
+        if ($request->total_pieces > $stockIssued->quantity_issued) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Requested production quantity exceeds available stock.');
+                ->with('error', 'Requested production quantity exceeds issued stock.');
         }
 
         $dailyProduction = DailyProduction::create($request->all());
+
+        // Generate accounting journal entry
+        $this->generateAccountingEntry($dailyProduction);
 
         return redirect()->route('stock-management.daily-production.index')
             ->with('success', 'Daily production recorded successfully.');
@@ -285,5 +308,64 @@ class DailyProductionController extends Controller
             ->get();
 
         return response()->json($operatorStats);
+    }
+
+    /**
+     * Generate accounting journal entry for daily production.
+     */
+    private function generateAccountingEntry(DailyProduction $dailyProduction)
+    {
+        try {
+            // Get accounts
+            $finishedGoodsAccount = ChartOfAccount::where('account_code', '1160')->first(); // Finished Goods
+            $wipAccount = ChartOfAccount::where('account_code', '1150')->first(); // Work in Progress
+
+            if (!$finishedGoodsAccount || !$wipAccount) {
+                \Log::warning('Required accounts not found for daily production accounting entry');
+                return;
+            }
+
+            // Calculate cost (you might want to add cost fields)
+            $costPerSqft = 100; // This should come from your data
+            $totalCost = $dailyProduction->total_sqft * $costPerSqft;
+
+            // Create journal entry
+            $journalEntry = JournalEntry::create([
+                'entry_date' => $dailyProduction->date,
+                'description' => "Production completed: {$dailyProduction->product} on {$dailyProduction->machine_name}",
+                'entry_type' => 'AUTO_PRODUCTION',
+                'total_debit' => $totalCost,
+                'total_credit' => $totalCost,
+                'status' => 'DRAFT',
+                'created_by' => auth()->id(),
+                'notes' => "Auto-generated for daily production #{$dailyProduction->id}"
+            ]);
+
+            // Create transactions
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $finishedGoodsAccount->id,
+                'debit_amount' => $totalCost,
+                'credit_amount' => 0,
+                'description' => "Finished goods: {$dailyProduction->product}",
+                'reference_type' => 'daily_production',
+                'reference_id' => $dailyProduction->id
+            ]);
+
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $wipAccount->id,
+                'debit_amount' => 0,
+                'credit_amount' => $totalCost,
+                'description' => "Work in progress decrease: {$dailyProduction->product}",
+                'reference_type' => 'daily_production',
+                'reference_id' => $dailyProduction->id
+            ]);
+
+            \Log::info("Accounting entry created for daily production #{$dailyProduction->id}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to create accounting entry for daily production #{$dailyProduction->id}: " . $e->getMessage());
+        }
     }
 }

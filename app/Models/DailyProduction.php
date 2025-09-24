@@ -14,6 +14,7 @@ class DailyProduction extends Model
 
     protected $fillable = [
         'stock_addition_id',
+        'stock_issued_id',
         'machine_name',
         'product',
         'operator_name',
@@ -35,6 +36,14 @@ class DailyProduction extends Model
     public function stockAddition(): BelongsTo
     {
         return $this->belongsTo(StockAddition::class);
+    }
+
+    /**
+     * Get the stock issued that owns the daily production.
+     */
+    public function stockIssued(): BelongsTo
+    {
+        return $this->belongsTo(StockIssued::class);
     }
 
     /**

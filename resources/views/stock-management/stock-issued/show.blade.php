@@ -68,6 +68,18 @@
                                     <dt class="text-sm font-medium text-gray-500">Purpose</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->purpose ?? 'Production' }}</dd>
                                 </div>
+                                @if($stockIssued->machine_name)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Machine Name</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->machine_name }}</dd>
+                                </div>
+                                @endif
+                                @if($stockIssued->operator_name)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Operator Name</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->operator_name }}</dd>
+                                </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Issue Date</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->date->format('M d, Y') }}</dd>
@@ -310,6 +322,18 @@
                             <td class="print:font-semibold print:py-1 print:pr-4">Purpose:</td>
                             <td class="print:py-1">{{ $stockIssued->purpose ?? 'Production' }}</td>
                         </tr>
+                        @if($stockIssued->machine_name)
+                        <tr>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Machine Name:</td>
+                            <td class="print:py-1">{{ $stockIssued->machine_name }}</td>
+                        </tr>
+                        @endif
+                        @if($stockIssued->operator_name)
+                        <tr>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Operator Name:</td>
+                            <td class="print:py-1">{{ $stockIssued->operator_name }}</td>
+                        </tr>
+                        @endif
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Issue Date:</td>
                             <td class="print:py-1">{{ $stockIssued->date->format('M d, Y') }}</td>
@@ -631,6 +655,8 @@
                 quantityIssued: '{{ number_format($stockIssued->quantity_issued) }}',
                 sqftIssued: '{{ number_format($stockIssued->sqft_issued, 2) }}',
                 purpose: '{{ $stockIssued->purpose ?? 'Production' }}',
+                machineName: '{{ $stockIssued->machine_name }}',
+                operatorName: '{{ $stockIssued->operator_name }}',
                 issueDate: '{{ $stockIssued->date->format('M d, Y') }}',
                 originalStockId: '{{ str_pad($stockIssued->stockAddition->id, 6, '0', STR_PAD_LEFT) }}',
                 originalDate: '{{ $stockIssued->stockAddition->date->format('M d, Y') }}',
@@ -692,6 +718,18 @@
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Purpose:</td>
                                 <td style="padding: 2px 0;">${stockData.purpose}</td>
                             </tr>
+                            ${stockData.machineName ? `
+                            <tr>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Machine Name:</td>
+                                <td style="padding: 2px 0;">${stockData.machineName}</td>
+                            </tr>
+                            ` : ''}
+                            ${stockData.operatorName ? `
+                            <tr>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Operator Name:</td>
+                                <td style="padding: 2px 0;">${stockData.operatorName}</td>
+                            </tr>
+                            ` : ''}
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Issue Date:</td>
                                 <td style="padding: 2px 0;">${stockData.issueDate}</td>

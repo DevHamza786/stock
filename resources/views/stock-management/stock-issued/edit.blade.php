@@ -56,6 +56,20 @@
                                 <x-input-error :messages="$errors->get('purpose')" class="mt-2" />
                             </div>
 
+                            <!-- Machine Name -->
+                            <div>
+                                <x-input-label for="machine_name" :value="__('Machine Name')" />
+                                <x-text-input id="machine_name" name="machine_name" type="text" class="mt-1 block w-full" :value="old('machine_name', $stockIssued->machine_name)" placeholder="Enter machine name..." />
+                                <x-input-error :messages="$errors->get('machine_name')" class="mt-2" />
+                            </div>
+
+                            <!-- Operator Name -->
+                            <div>
+                                <x-input-label for="operator_name" :value="__('Operator Name')" />
+                                <x-text-input id="operator_name" name="operator_name" type="text" class="mt-1 block w-full" :value="old('operator_name', $stockIssued->operator_name)" placeholder="Enter operator name..." />
+                                <x-input-error :messages="$errors->get('operator_name')" class="mt-2" />
+                            </div>
+
                             <!-- Date -->
                             <div>
                                 <x-input-label for="date" :value="__('Issue Date')" />

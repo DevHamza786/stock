@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\StockAddition;
 use App\Models\Product;
 use App\Models\MineVendor;
+use App\Models\JournalEntry;
+use App\Models\AccountTransaction;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StockAdditionController extends Controller
 {
@@ -121,6 +125,9 @@ class StockAdditionController extends Controller
 
         $stockAddition = StockAddition::create($request->all());
 
+        // Generate accounting journal entry
+        $this->generateAccountingEntry($stockAddition);
+
         return redirect()->route('stock-management.stock-additions.index')
             ->with('success', 'Stock addition created successfully.');
     }
@@ -203,5 +210,64 @@ class StockAdditionController extends Controller
             'sqft_per_piece' => $sqft,
             'total_sqft' => $totalSqft
         ]);
+    }
+
+    /**
+     * Generate accounting journal entry for stock addition.
+     */
+    private function generateAccountingEntry(StockAddition $stockAddition)
+    {
+        try {
+            // Get accounts
+            $inventoryAccount = ChartOfAccount::where('account_code', '1130')->first(); // Stone Inventory
+            $payableAccount = ChartOfAccount::where('account_code', '2110')->first(); // Accounts Payable
+
+            if (!$inventoryAccount || !$payableAccount) {
+                \Log::warning('Required accounts not found for stock addition accounting entry');
+                return;
+            }
+
+            // Calculate cost per sqft (you might want to add cost fields to stock additions)
+            $costPerSqft = 100; // This should come from your stock addition data
+            $totalCost = $stockAddition->total_sqft * $costPerSqft;
+
+            // Create journal entry
+            $journalEntry = JournalEntry::create([
+                'entry_date' => $stockAddition->date,
+                'description' => "Stock addition: {$stockAddition->product->name} from {$stockAddition->mineVendor->name}",
+                'entry_type' => 'AUTO_STOCK_ADD',
+                'total_debit' => $totalCost,
+                'total_credit' => $totalCost,
+                'status' => 'DRAFT',
+                'created_by' => auth()->id(),
+                'notes' => "Auto-generated for stock addition #{$stockAddition->id}"
+            ]);
+
+            // Create transactions
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $inventoryAccount->id,
+                'debit_amount' => $totalCost,
+                'credit_amount' => 0,
+                'description' => "Inventory increase: {$stockAddition->product->name}",
+                'reference_type' => 'stock_addition',
+                'reference_id' => $stockAddition->id
+            ]);
+
+            AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $payableAccount->id,
+                'debit_amount' => 0,
+                'credit_amount' => $totalCost,
+                'description' => "Amount payable to {$stockAddition->mineVendor->name}",
+                'reference_type' => 'stock_addition',
+                'reference_id' => $stockAddition->id
+            ]);
+
+            \Log::info("Accounting entry created for stock addition #{$stockAddition->id}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to create accounting entry for stock addition #{$stockAddition->id}: " . $e->getMessage());
+        }
     }
 }
