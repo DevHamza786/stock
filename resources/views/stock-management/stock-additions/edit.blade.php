@@ -77,9 +77,11 @@
                                 <x-input-label for="condition_status" :value="__('Condition Status')" />
                                 <select id="condition_status" name="condition_status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                     <option value="">Select Condition</option>
-                                    <option value="Block" {{ old('condition_status', $stockAddition->condition_status) == 'Block' ? 'selected' : '' }}>Block</option>
-                                    <option value="Slabs" {{ old('condition_status', $stockAddition->condition_status) == 'Slabs' ? 'selected' : '' }}>Slabs</option>
-                                    <option value="Polished" {{ old('condition_status', $stockAddition->condition_status) == 'Polished' ? 'selected' : '' }}>Polished</option>
+                                    @foreach($conditionStatuses as $status)
+                                        <option value="{{ $status->name }}" {{ old('condition_status', $stockAddition->condition_status) == $status->name ? 'selected' : '' }}>
+                                            {{ $status->name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                                 <x-input-error :messages="$errors->get('condition_status')" class="mt-2" />
                             </div>

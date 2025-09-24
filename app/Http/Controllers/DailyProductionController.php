@@ -10,6 +10,7 @@ use App\Models\AccountTransaction;
 use App\Models\ChartOfAccount;
 use App\Models\Machine;
 use App\Models\Operator;
+use App\Models\ConditionStatus;
 use Illuminate\Http\Request;
 
 class DailyProductionController extends Controller
@@ -145,7 +146,6 @@ class DailyProductionController extends Controller
 
         // Get stock issued records for production (where purpose is 'Production')
         $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
-            ->where('purpose', 'Production')
             ->orderBy('date', 'desc')
             ->get();
 
@@ -168,7 +168,10 @@ class DailyProductionController extends Controller
         $machines = Machine::active()->orderBy('name')->get();
         $operators = Operator::active()->orderBy('name')->get();
 
-        return view('stock-management.daily-production.create', compact('stockIssued', 'availableStockIssued', 'recentMachines', 'recentOperators', 'machines', 'operators'));
+        // Get condition statuses from database
+        $conditionStatuses = ConditionStatus::active()->orderBy('name')->get();
+
+        return view('stock-management.daily-production.create', compact('stockIssued', 'availableStockIssued', 'recentMachines', 'recentOperators', 'machines', 'operators', 'conditionStatuses'));
     }
 
     /**
@@ -227,7 +230,10 @@ class DailyProductionController extends Controller
             ->orderBy('date', 'asc')
             ->get();
 
-        return view('stock-management.daily-production.edit', compact('dailyProduction', 'availableStockAdditions'));
+        // Get condition statuses from database
+        $conditionStatuses = ConditionStatus::active()->orderBy('name')->get();
+
+        return view('stock-management.daily-production.edit', compact('dailyProduction', 'availableStockAdditions', 'conditionStatuses'));
     }
 
     /**

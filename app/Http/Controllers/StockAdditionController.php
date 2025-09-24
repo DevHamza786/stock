@@ -149,8 +149,9 @@ class StockAdditionController extends Controller
     {
         $products = Product::where('is_active', true)->get();
         $mineVendors = MineVendor::where('is_active', true)->get();
+        $conditionStatuses = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
 
-        return view('stock-management.stock-additions.edit', compact('stockAddition', 'products', 'mineVendors'));
+        return view('stock-management.stock-additions.edit', compact('stockAddition', 'products', 'mineVendors', 'conditionStatuses'));
     }
 
     /**

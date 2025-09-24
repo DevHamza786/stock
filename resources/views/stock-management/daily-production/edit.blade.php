@@ -71,9 +71,11 @@
                                 <label for="condition_status" class="block text-sm font-medium text-gray-700 mb-2">Condition Status</label>
                                 <select id="condition_status" name="condition_status" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('condition_status') border-red-500 @enderror" required>
                                     <option value="">Select condition...</option>
-                                    <option value="Block" {{ old('condition_status', $dailyProduction->condition_status) == 'Block' ? 'selected' : '' }}>Block</option>
-                                    <option value="Slabs" {{ old('condition_status', $dailyProduction->condition_status) == 'Slabs' ? 'selected' : '' }}>Slabs</option>
-                                    <option value="Polished" {{ old('condition_status', $dailyProduction->condition_status) == 'Polished' ? 'selected' : '' }}>Polished</option>
+                                    @foreach($conditionStatuses as $status)
+                                        <option value="{{ $status->name }}" {{ old('condition_status', $dailyProduction->condition_status) == $status->name ? 'selected' : '' }}>
+                                            {{ $status->name }}
+                                        </option>
+                                    @endforeach
                                 </select>
                                 @error('condition_status')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
