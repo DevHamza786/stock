@@ -157,30 +157,63 @@
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <div class="text-sm font-medium text-gray-900">{{ $production->product }}</div>
-                                                    <div class="text-sm text-gray-500">{{ $production->stockAddition->stone }}</div>
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        {{ $production->stockAddition->product->name }}
+                                                        @if($production->items->count() > 1)
+                                                            <span class="text-xs text-gray-500">({{ $production->items->count() }} products)</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">{{ $production->stockAddition->mineVendor->name }}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $production->machine_name }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $production->operator_name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <div>
+                                                <div class="font-medium">{{ $production->machine_name }}</div>
+                                                @if($production->machine)
+                                                    <div class="text-xs text-gray-500">{{ $production->machine->description ?? 'Active' }}</div>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            <div>
+                                                <div class="font-medium">{{ $production->operator_name }}</div>
+                                                @if($production->operator)
+                                                    <div class="text-xs text-gray-500">
+                                                        @if($production->operator->employee_id)ID: {{ $production->operator->employee_id }}@endif
+                                                        @if($production->operator->phone) - {{ $production->operator->phone }}@endif
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($production->total_pieces) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($production->total_sqft, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $production->condition_status === 'Polished' ? 'bg-green-100 text-green-800' : ($production->condition_status === 'Slabs' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800') }}">
-                                                {{ $production->condition_status }}
-                                            </span>
+                                            @if($production->items->count() > 0)
+                                                <div class="space-y-1">
+                                                    @foreach($production->items->take(2) as $item)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                            {{ $item->condition_status }}
+                                                        </span>
+                                                    @endforeach
+                                                    @if($production->items->count() > 2)
+                                                        <span class="text-xs text-gray-500">+{{ $production->items->count() - 2 }} more</span>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-gray-400">No items</span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $production->date->format('M d, Y') }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex space-x-2">
-                                                <a href="{{ route('stock-management.daily-production.show', $production) }}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200">
+                                                <a href="{{ route('stock-management.daily-production.show', $production) }}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200" title="View Details">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                                     </svg>
                                                 </a>
-                                                <a href="{{ route('stock-management.daily-production.edit', $production) }}" class="text-green-600 hover:text-green-900 transition-colors duration-200">
+                                                <a href="{{ route('stock-management.daily-production.edit', $production) }}" class="text-green-600 hover:text-green-900 transition-colors duration-200" title="Edit">
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                                     </svg>
@@ -188,7 +221,7 @@
                                                 <form method="POST" action="{{ route('stock-management.daily-production.destroy', $production) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this production record?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 transition-colors duration-200">
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 transition-colors duration-200" title="Delete">
                                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                         </svg>

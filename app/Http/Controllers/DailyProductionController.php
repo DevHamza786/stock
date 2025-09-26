@@ -119,7 +119,7 @@ class DailyProductionController extends Controller
                 break;
         }
 
-        $dailyProduction = $query->paginate(15)->withQueryString();
+        $dailyProduction = $query->with(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator'])->paginate(15)->withQueryString();
 
         // Get filter options
         $products = \App\Models\Product::orderBy('name')->get();
@@ -182,35 +182,81 @@ class DailyProductionController extends Controller
         $request->validate([
             'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
-            'product' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
-            'total_pieces' => 'required|integer|min:1',
-            'total_sqft' => 'required|numeric|min:0',
-            'condition_status' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.product_name' => 'required|string|max:255',
+            'items.*.size' => 'nullable|string|max:255',
+            'items.*.diameter' => 'nullable|string|max:255',
+            'items.*.condition_status' => 'required|string|max:255',
+            'items.*.special_status' => 'nullable|string|max:255',
+            'items.*.total_pieces' => 'required|integer|min:1',
+            'items.*.total_sqft' => 'required|numeric|min:0',
+            'items.*.narration' => 'nullable|string',
         ]);
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
+        // Calculate total pieces from all items
+        $totalPieces = collect($request->items)->sum('total_pieces');
+
         // Check if requested quantity is available
-        if ($request->total_pieces > $stockIssued->quantity_issued) {
+        if ($totalPieces > $stockIssued->quantity_issued) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Requested production quantity exceeds issued stock.');
+                ->with('error', 'Total production quantity exceeds issued stock.');
         }
 
-        // Prepare data for daily production creation
-        $data = $request->all();
-        $data['stock_addition_id'] = $stockIssued->stock_addition_id; // Set stock_addition_id from stock_issued
+        // Create daily production record
+        $dailyProduction = DailyProduction::create([
+            'stock_addition_id' => $stockIssued->stock_addition_id,
+            'stock_issued_id' => $request->stock_issued_id,
+            'machine_name' => $request->machine_name,
+            'operator_name' => $request->operator_name,
+            'notes' => $request->notes,
+            'date' => $request->date,
+        ]);
 
-        $dailyProduction = DailyProduction::create($data);
+        // Process production items with product matching logic
+        $processedItems = [];
+
+        foreach ($request->items as $itemData) {
+            $productKey = $this->generateProductKey(
+                $itemData['product_name'],
+                $itemData['size'] ?? null,
+                $itemData['diameter'] ?? null,
+                $itemData['condition_status'],
+                $itemData['special_status'] ?? null
+            );
+
+            // Check if similar product already exists in processed items
+            if (isset($processedItems[$productKey])) {
+                // Merge quantities
+                $processedItems[$productKey]['total_pieces'] += $itemData['total_pieces'];
+                $processedItems[$productKey]['total_sqft'] += $itemData['total_sqft'];
+
+                // Merge narration if provided
+                if (!empty($itemData['narration'])) {
+                    $processedItems[$productKey]['narration'] =
+                        $processedItems[$productKey]['narration'] . '; ' . $itemData['narration'];
+                }
+            } else {
+                // Add new item
+                $processedItems[$productKey] = $itemData;
+            }
+        }
+
+        // Create production items
+        foreach ($processedItems as $itemData) {
+            $dailyProduction->items()->create($itemData);
+        }
 
         // Generate accounting journal entry
         $this->generateAccountingEntry($dailyProduction);
 
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', 'Daily production recorded successfully.');
+            ->with('success', 'Daily production recorded successfully with ' . count($processedItems) . ' product(s).');
     }
 
     /**
@@ -218,7 +264,7 @@ class DailyProductionController extends Controller
      */
     public function show(DailyProduction $dailyProduction)
     {
-        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor']);
+        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator']);
 
         return view('stock-management.daily-production.show', compact('dailyProduction'));
     }
@@ -383,5 +429,19 @@ class DailyProductionController extends Controller
         } catch (\Exception $e) {
             \Log::error("Failed to create accounting entry for daily production #{$dailyProduction->id}: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate product key for matching similar products.
+     */
+    private function generateProductKey(string $productName, ?string $size, ?string $diameter, string $conditionStatus, ?string $specialStatus): string
+    {
+        return strtolower(trim(
+            $productName . '|' .
+            ($size ?? '') . '|' .
+            ($diameter ?? '') . '|' .
+            $conditionStatus . '|' .
+            ($specialStatus ?? '')
+        ));
     }
 }

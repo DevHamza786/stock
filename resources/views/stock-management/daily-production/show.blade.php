@@ -29,16 +29,29 @@
                         <div class="p-6">
                             <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Product</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->product }}</dd>
-                                </div>
-                                <div>
                                     <dt class="text-sm font-medium text-gray-500">Machine Name</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->machine_name }}</dd>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        {{ $dailyProduction->machine_name }}
+                                        @if($dailyProduction->machine)
+                                            <span class="text-xs text-gray-500 ml-2">({{ $dailyProduction->machine->description ?? 'Active' }})</span>
+                                        @endif
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Operator Name</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->operator_name }}</dd>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        {{ $dailyProduction->operator_name }}
+                                        @if($dailyProduction->operator)
+                                            <span class="text-xs text-gray-500 ml-2">
+                                                @if($dailyProduction->operator->employee_id)
+                                                    (ID: {{ $dailyProduction->operator->employee_id }})
+                                                @endif
+                                                @if($dailyProduction->operator->phone)
+                                                    - {{ $dailyProduction->operator->phone }}
+                                                @endif
+                                            </span>
+                                        @endif
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Production Date</dt>
@@ -49,20 +62,12 @@
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_pieces) }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Total Sqft Produced</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }} sqft</dd>
+                                    <dt class="text-sm font-medium text-gray-500">Total Square Feet</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Condition Status</dt>
-                                    <dd class="mt-1">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                            @if($dailyProduction->condition_status === 'Polished') bg-green-100 text-green-800
-                                            @elseif($dailyProduction->condition_status === 'Slabs') bg-yellow-100 text-yellow-800
-                                            @elseif($dailyProduction->condition_status === 'Blocks') bg-blue-100 text-blue-800
-                                            @else bg-gray-100 text-gray-800 @endif">
-                                            {{ $dailyProduction->condition_status }}
-                                        </span>
-                                    </dd>
+                                    <dt class="text-sm font-medium text-gray-500">Production Efficiency</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->efficiency, 2) }} pieces/hour</dd>
                                 </div>
                                 @if($dailyProduction->notes)
                                 <div class="md:col-span-2">
@@ -74,189 +79,237 @@
                         </div>
                     </div>
 
-                    <!-- Production Statistics -->
-                    <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <!-- Production Items -->
+                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200 mt-6">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h2 class="text-xl font-semibold text-gray-900">Production Statistics</h2>
+                            <h2 class="text-xl font-semibold text-gray-900">Production Items ({{ $dailyProduction->items->count() }})</h2>
                         </div>
                         <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-purple-600">{{ number_format($dailyProduction->total_pieces) }}</div>
-                                    <div class="text-sm text-gray-500">Pieces Produced</div>
+                            @if($dailyProduction->items->count() > 0)
+                                <div class="space-y-4">
+                                    @foreach($dailyProduction->items as $index => $item)
+                                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <h3 class="text-lg font-semibold text-gray-900">Production Item #{{ $index + 1 }}</h3>
+                                                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                                    {{ $item->total_pieces }} pieces
+                                                </span>
+                                            </div>
+
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Product Name</dt>
+                                                    <dd class="text-gray-900">{{ $item->product_name }}</dd>
+                                                </div>
+                                                @if($item->size)
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Size</dt>
+                                                    <dd class="text-gray-900">{{ $item->size }}</dd>
+                                                </div>
+                                                @endif
+                                                @if($item->diameter)
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Diameter</dt>
+                                                    <dd class="text-gray-900">{{ $item->diameter }}</dd>
+                                                </div>
+                                                @endif
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Condition Status</dt>
+                                                    <dd class="text-gray-900">{{ $item->condition_status }}</dd>
+                                                </div>
+                                                @if($item->special_status)
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Special Status</dt>
+                                                    <dd class="text-gray-900">{{ $item->special_status }}</dd>
+                                                </div>
+                                                @endif
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Total Sqft</dt>
+                                                    <dd class="text-gray-900">{{ number_format($item->total_sqft, 2) }}</dd>
+                                                </div>
+                                                @if($item->narration)
+                                                <div class="md:col-span-2 lg:col-span-3">
+                                                    <dt class="font-medium text-gray-700">Narration</dt>
+                                                    <dd class="text-gray-900">{{ $item->narration }}</dd>
+                                                </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
                                 </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-blue-600">{{ number_format($dailyProduction->total_sqft, 2) }}</div>
-                                    <div class="text-sm text-gray-500">Sqft Produced</div>
+                            @else
+                                <div class="text-center py-8 text-gray-500">
+                                    <svg class="h-12 w-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                    </svg>
+                                    <p>No production items found.</p>
                                 </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-600">{{ number_format($dailyProduction->total_sqft / $dailyProduction->total_pieces, 2) }}</div>
-                                    <div class="text-sm text-gray-500">Avg Sqft per Piece</div>
-                                </div>
-                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
 
-                <!-- Sidebar -->
+                <!-- Sidebar Information -->
                 <div class="space-y-6">
-                    <!-- Quick Actions -->
+                    <!-- Machine & Operator Information -->
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                            <h2 class="text-xl font-semibold text-gray-900">Machine & Operator Details</h2>
                         </div>
-                        <div class="p-6 space-y-3">
-                            <a href="{{ route('stock-management.daily-production.edit', $dailyProduction) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
-                                Edit Production
-                            </a>
-                            <a href="{{ route('stock-management.daily-production.create') }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
-                                Record New Production
-                            </a>
-                            <form method="POST" action="{{ route('stock-management.daily-production.destroy', $dailyProduction) }}" class="w-full" onsubmit="return confirm('Are you sure you want to delete this production record?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                    Delete Production
-                                </button>
-                            </form>
+                        <div class="p-6">
+                            <dl class="space-y-4">
+                                @if($dailyProduction->machine)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Machine Details</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <div class="font-medium">{{ $dailyProduction->machine->name }}</div>
+                                        @if($dailyProduction->machine->description)
+                                            <div class="text-gray-600">{{ $dailyProduction->machine->description }}</div>
+                                        @endif
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            Status: {{ $dailyProduction->machine->status ? 'Active' : 'Inactive' }}
+                                        </div>
+                                    </dd>
+                                </div>
+                                @endif
+
+                                @if($dailyProduction->operator)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Operator Details</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <div class="font-medium">{{ $dailyProduction->operator->name }}</div>
+                                        @if($dailyProduction->operator->employee_id)
+                                            <div class="text-gray-600">Employee ID: {{ $dailyProduction->operator->employee_id }}</div>
+                                        @endif
+                                        @if($dailyProduction->operator->phone)
+                                            <div class="text-gray-600">Phone: {{ $dailyProduction->operator->phone }}</div>
+                                        @endif
+                                        @if($dailyProduction->operator->email)
+                                            <div class="text-gray-600">Email: {{ $dailyProduction->operator->email }}</div>
+                                        @endif
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            Status: {{ $dailyProduction->operator->status ? 'Active' : 'Inactive' }}
+                                        </div>
+                                    </dd>
+                                </div>
+                                @endif
+                            </dl>
                         </div>
                     </div>
 
-                    <!-- Source Stock Information -->
+                    <!-- Stock Information -->
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Source Stock</h3>
+                            <h2 class="text-xl font-semibold text-gray-900">Stock Information</h2>
                         </div>
                         <div class="p-6">
-                            <div class="space-y-4">
+                            <dl class="space-y-4">
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stock Addition</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">
-                                        <a href="{{ route('stock-management.stock-additions.show', $dailyProduction->stockAddition) }}" class="text-blue-600 hover:text-blue-900">
-                                            {{ $dailyProduction->stockAddition->product->name }}
-                                        </a>
-                                    </dd>
+                                    <dt class="text-sm font-medium text-gray-500">Source Product</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->product->name }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->stone }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Mine Vendor</dt>
+                                    <dt class="text-sm font-medium text-gray-500">Vendor</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->mineVendor->name }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Size (3D)</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->size_3d }}</dd>
+                                    <dt class="text-sm font-medium text-gray-500">Stock Addition Date</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->date->format('M d, Y') }}</dd>
                                 </div>
-                            </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Original Pieces</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->stockAddition->total_pieces) }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Original Sqft</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->stockAddition->total_sqft, 2) }}</dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
 
-                    <!-- Production Status -->
+                    <!-- Stock Issued Information -->
+                    @if($dailyProduction->stockIssued)
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Production Status</h3>
+                            <h2 class="text-xl font-semibold text-gray-900">Stock Issued Information</h2>
                         </div>
                         <div class="p-6">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <dl class="space-y-4">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Issued Date</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockIssued->date->format('M d, Y') }}</dd>
                                 </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900">Production Completed</p>
-                                    <p class="text-sm text-gray-500">{{ $dailyProduction->condition_status }} quality</p>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Issued Pieces</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->stockIssued->quantity_issued) }}</dd>
                                 </div>
-                            </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Issued Sqft</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->stockIssued->sqft_issued, 2) }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Purpose</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockIssued->purpose }}</dd>
+                                </div>
+                                @if($dailyProduction->stockIssued->machine_name)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Machine (Issued)</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockIssued->machine_name }}</dd>
+                                </div>
+                                @endif
+                                @if($dailyProduction->stockIssued->operator_name)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Operator (Issued)</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockIssued->operator_name }}</dd>
+                                </div>
+                                @endif
+                                @if($dailyProduction->stockIssued->notes)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Notes</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockIssued->notes }}</dd>
+                                </div>
+                                @endif
+                            </dl>
                         </div>
                     </div>
+                    @endif
 
-                    <!-- Related Information -->
+                    <!-- Production Summary -->
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Related Information</h3>
+                            <h2 class="text-xl font-semibold text-gray-900">Production Summary</h2>
                         </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Product Category</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->product->category ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Contact</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->mineVendor->contact_person ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Phone</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stockAddition->mineVendor->phone ?? 'N/A' }}</dd>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Production Efficiency -->
-            <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-900">Production Efficiency</h2>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <!-- Production Metrics -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Production Metrics</h3>
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Pieces per Hour (Estimated)</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ number_format($dailyProduction->total_pieces / 8, 1) }}</span>
+                        <div class="p-6">
+                            <dl class="space-y-4">
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Products</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->items->count() }}</dd>
                                 </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Sqft per Hour (Estimated)</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ number_format($dailyProduction->total_sqft / 8, 2) }}</span>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Pieces</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_pieces) }}</dd>
                                 </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Average Piece Size</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ number_format($dailyProduction->total_sqft / $dailyProduction->total_pieces, 2) }} sqft</span>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Sqft</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }}</dd>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Quality Metrics -->
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Quality Metrics</h3>
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Condition Status</span>
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                        @if($dailyProduction->condition_status === 'Polished') bg-green-100 text-green-800
-                                        @elseif($dailyProduction->condition_status === 'Slabs') bg-yellow-100 text-yellow-800
-                                        @elseif($dailyProduction->condition_status === 'Blocks') bg-blue-100 text-blue-800
-                                        @else bg-gray-100 text-gray-800 @endif">
-                                        {{ $dailyProduction->condition_status }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Production Quality</span>
-                                    <span class="text-sm font-medium text-gray-900">
-                                        @if($dailyProduction->condition_status === 'Polished')
-                                            Excellent
-                                        @elseif($dailyProduction->condition_status === 'Slabs')
-                                            Good
-                                        @elseif($dailyProduction->condition_status === 'Blocks')
-                                            Standard
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Utilization Rate</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @if($dailyProduction->stockIssued)
+                                            {{ number_format(($dailyProduction->total_pieces / $dailyProduction->stockIssued->quantity_issued) * 100, 1) }}%
                                         @else
-                                            Basic
+                                            N/A
                                         @endif
-                                    </span>
+                                    </dd>
                                 </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-sm text-gray-600">Operator Performance</span>
-                                    <span class="text-sm font-medium text-gray-900">{{ $dailyProduction->operator_name }}</span>
-                                </div>
-                            </div>
+                            </dl>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</x-app-layout>
 </x-app-layout>

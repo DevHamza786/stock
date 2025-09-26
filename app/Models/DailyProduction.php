@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DailyProduction extends Model
 {
@@ -16,17 +17,12 @@ class DailyProduction extends Model
         'stock_addition_id',
         'stock_issued_id',
         'machine_name',
-        'product',
         'operator_name',
-        'total_pieces',
-        'total_sqft',
-        'condition_status',
         'notes',
         'date'
     ];
 
     protected $casts = [
-        'total_sqft' => 'decimal:2',
         'date' => 'datetime',
     ];
 
@@ -47,22 +43,43 @@ class DailyProduction extends Model
     }
 
     /**
-     * Boot method to auto-calculate square footage.
+     * Get the production items for this daily production.
      */
-    protected static function boot()
+    public function items(): HasMany
     {
-        parent::boot();
+        return $this->hasMany(DailyProductionItem::class);
+    }
 
-        static::creating(function ($dailyProduction) {
-            // Calculate total_sqft if not provided
-            if (empty($dailyProduction->total_sqft)) {
-                $stockAddition = StockAddition::find($dailyProduction->stock_addition_id);
-                if ($stockAddition) {
-                    $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
-                    $dailyProduction->total_sqft = $sqftPerPiece * $dailyProduction->total_pieces;
-                }
-            }
-        });
+    /**
+     * Get the machine that owns the daily production.
+     */
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class, 'machine_name', 'name');
+    }
+
+    /**
+     * Get the operator that owns the daily production.
+     */
+    public function operator(): BelongsTo
+    {
+        return $this->belongsTo(Operator::class, 'operator_name', 'name');
+    }
+
+    /**
+     * Get total pieces from all items.
+     */
+    public function getTotalPiecesAttribute(): int
+    {
+        return $this->items()->sum('total_pieces');
+    }
+
+    /**
+     * Get total square feet from all items.
+     */
+    public function getTotalSqftAttribute(): float
+    {
+        return $this->items()->sum('total_sqft');
     }
 
     /**
@@ -97,5 +114,33 @@ class DailyProduction extends Model
         // Assuming 8 hours work day
         $hours = 8;
         return $this->total_pieces / $hours;
+    }
+
+    /**
+     * Check if a product with same specifications already exists in this production.
+     */
+    public function hasProductWithSameSpecs(string $productName, string $size = null, string $diameter = null, string $conditionStatus, string $specialStatus = null): bool
+    {
+        return $this->items()
+            ->where('product_name', $productName)
+            ->where('size', $size)
+            ->where('diameter', $diameter)
+            ->where('condition_status', $conditionStatus)
+            ->where('special_status', $specialStatus)
+            ->exists();
+    }
+
+    /**
+     * Get existing item with same specifications.
+     */
+    public function getItemWithSameSpecs(string $productName, string $size = null, string $diameter = null, string $conditionStatus, string $specialStatus = null): ?DailyProductionItem
+    {
+        return $this->items()
+            ->where('product_name', $productName)
+            ->where('size', $size)
+            ->where('diameter', $diameter)
+            ->where('condition_status', $conditionStatus)
+            ->where('special_status', $specialStatus)
+            ->first();
     }
 }
