@@ -36,26 +36,26 @@
                         <!-- Basic Information Section -->
                         <div class="bg-gray-50 p-6 rounded-lg mb-6">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">Production Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Stock Issued -->
-                                <div class="md:col-span-2">
+                            <div class="md:col-span-2">
                                     <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued for Production</label>
                                     <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
                                         <option value="">Choose stock issued for production...</option>
                                         @foreach($availableStockIssued as $issued)
                                             <option value="{{ $issued->id }}" {{ old('stock_issued_id') == $issued->id ? 'selected' : '' }}>
                                                 {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                        </option>
+                                    @endforeach
+                                </select>
                                     @error('stock_issued_id')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                                <!-- Machine Name -->
-                                <div>
-                                    <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
+                            <!-- Machine Name -->
+                            <div>
+                                <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
                                     <select id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('machine_name') border-red-500 @enderror" required>
                                         <option value="">Select machine...</option>
                                         @foreach($machines as $machine)
@@ -64,14 +64,14 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('machine_name')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                                @error('machine_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                                <!-- Operator Name -->
-                                <div>
-                                    <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
+                            <!-- Operator Name -->
+                            <div>
+                                <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
                                     <select id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('operator_name') border-red-500 @enderror" required>
                                         <option value="">Select operator...</option>
                                         @foreach($operators as $operator)
@@ -80,27 +80,27 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('operator_name')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                                @error('operator_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                                <!-- Date -->
-                                <div>
-                                    <label for="date" class="block text-sm font-medium text-gray-700 mb-2">Production Date</label>
-                                    <input type="date" id="date" name="date" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('date') border-red-500 @enderror" value="{{ old('date', date('Y-m-d')) }}" required>
-                                    @error('date')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
+                            <!-- Date -->
+                            <div>
+                                <label for="date" class="block text-sm font-medium text-gray-700 mb-2">Production Date</label>
+                                <input type="date" id="date" name="date" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('date') border-red-500 @enderror" value="{{ old('date', date('Y-m-d')) }}" required>
+                                @error('date')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
 
-                                <!-- Notes -->
+                            <!-- Notes -->
                                 <div>
-                                    <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-                                    <textarea id="notes" name="notes" rows="3" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('notes') border-red-500 @enderror" placeholder="Add any additional notes...">{{ old('notes') }}</textarea>
-                                    @error('notes')
-                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                    @enderror
+                                <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                                <textarea id="notes" name="notes" rows="3" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('notes') border-red-500 @enderror" placeholder="Add any additional notes...">{{ old('notes') }}</textarea>
+                                @error('notes')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
                                 </div>
                             </div>
                         </div>
@@ -108,7 +108,7 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-blue-50 rounded-lg hidden">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Issued Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900"></span>
@@ -124,6 +124,47 @@
                                 <div>
                                     <span class="font-medium text-gray-700">Issued Sqft:</span>
                                     <span id="available-sqft" class="text-gray-900"></span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Sqft per Piece:</span>
+                                    <span id="sqft-per-piece" class="text-gray-900"></span>
+                                </div>
+                            </div>
+                            <div class="mt-4 p-3 bg-white rounded-lg border">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-medium text-gray-700">Pieces Status:</span>
+                                            <span id="remaining-pieces" class="text-lg font-semibold text-green-600">0</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                            <div id="stock-progress" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Blue = More pieces than issued (smaller pieces)</p>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-medium text-gray-700">Remaining Sqft:</span>
+                                            <span id="remaining-sqft" class="text-lg font-semibold text-blue-600">0</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                            <div id="sqft-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 p-2 bg-gray-50 rounded text-sm">
+                                    <div class="flex justify-between">
+                                        <span>Total Production Sqft:</span>
+                                        <span id="total-production-sqft" class="font-medium">0.00</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Issued Sqft:</span>
+                                        <span id="issued-sqft" class="font-medium">0.00</span>
+                                    </div>
+                                    <div class="flex justify-between border-t pt-1 mt-1">
+                                        <span>Difference:</span>
+                                        <span id="sqft-difference" class="font-medium">0.00</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -220,12 +261,23 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Pieces</label>
                     <input type="number" name="items[INDEX][total_pieces]" class="total-pieces-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="1" required>
+                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: sqft ÷ total pieces = piece size</p>
                 </div>
 
                 <!-- Total Sqft -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Sqft</label>
                     <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required>
+                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: equals issued sqft</p>
+                </div>
+
+                <!-- Piece Size Display -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Piece Size</label>
+                    <div class="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                        <span class="piece-size-display">0.00</span> sqft per piece
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Size of each individual piece</p>
                 </div>
 
                 <!-- Narration -->
@@ -258,10 +310,18 @@
             const selectedVendor = document.getElementById('selected-vendor');
             const availablePieces = document.getElementById('available-pieces');
             const availableSqft = document.getElementById('available-sqft');
+            const sqftPerPiece = document.getElementById('sqft-per-piece');
             const addItemBtn = document.getElementById('add-production-item');
             const itemsContainer = document.getElementById('production-items-container');
             const noItemsMessage = document.getElementById('no-items-message');
             const productionForm = document.getElementById('production-form');
+            const remainingPieces = document.getElementById('remaining-pieces');
+            const stockProgress = document.getElementById('stock-progress');
+            const remainingSqft = document.getElementById('remaining-sqft');
+            const sqftProgress = document.getElementById('sqft-progress');
+            const totalProductionSqft = document.getElementById('total-production-sqft');
+            const issuedSqft = document.getElementById('issued-sqft');
+            const sqftDifference = document.getElementById('sqft-difference');
 
             let itemIndex = 0;
             let stockIssuedData = @json(isset($availableStockIssued) ? $availableStockIssued->keyBy('id') : []);
@@ -278,38 +338,159 @@
                     selectedProduct.textContent = stockAddition.product.name;
                     selectedVendor.textContent = stockAddition.mine_vendor.name;
                     availablePieces.textContent = currentStockIssued.quantity_issued;
-                    availableSqft.textContent = currentStockIssued.sqft_issued;
+                    availableSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
+                    issuedSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
+
+                    // Calculate and display sqft per piece
+                    const sqftPerPieceValue = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;
+                    sqftPerPiece.textContent = sqftPerPieceValue.toFixed(2);
 
                     stockInfo.classList.remove('hidden');
 
-                    // Auto-fill machine name and operator name from stock issued if available
+                    // Auto-fill machine and operator fields
                     const machineSelect = document.getElementById('machine_name');
                     const operatorSelect = document.getElementById('operator_name');
 
-                    if (currentStockIssued.machine_name && !machineSelect.value) {
+                    if (currentStockIssued.machine_name && machineSelect) {
+                        // Find and select the machine option
                         const machineOptions = machineSelect.querySelectorAll('option');
-                        for (let option of machineOptions) {
+                        let machineFound = false;
+                        machineOptions.forEach(option => {
                             if (option.value === currentStockIssued.machine_name) {
-                                machineSelect.value = currentStockIssued.machine_name;
-                                break;
+                                option.selected = true;
+                                machineFound = true;
                             }
+                        });
+
+                        // If machine not found in options, add it as a new option
+                        if (!machineFound && currentStockIssued.machine_name) {
+                            const newOption = document.createElement('option');
+                            newOption.value = currentStockIssued.machine_name;
+                            newOption.textContent = currentStockIssued.machine_name;
+                            newOption.selected = true;
+                            machineSelect.appendChild(newOption);
                         }
                     }
 
-                    if (currentStockIssued.operator_name && !operatorSelect.value) {
+                    if (currentStockIssued.operator_name && operatorSelect) {
+                        // Find and select the operator option
                         const operatorOptions = operatorSelect.querySelectorAll('option');
-                        for (let option of operatorOptions) {
+                        let operatorFound = false;
+                        operatorOptions.forEach(option => {
                             if (option.value === currentStockIssued.operator_name) {
-                                operatorSelect.value = currentStockIssued.operator_name;
-                                break;
+                                option.selected = true;
+                                operatorFound = true;
                             }
+                        });
+
+                        // If operator not found in options, add it as a new option
+                        if (!operatorFound && currentStockIssued.operator_name) {
+                            const newOption = document.createElement('option');
+                            newOption.value = currentStockIssued.operator_name;
+                            newOption.textContent = currentStockIssued.operator_name;
+                            newOption.selected = true;
+                            operatorSelect.appendChild(newOption);
                         }
                     }
+
+                    // Update remaining stock display
+                    updateRemainingStock();
                 } else {
                     stockInfo.classList.add('hidden');
                     currentStockIssued = null;
+
+                    // Clear machine and operator selections
+                    const machineSelect = document.getElementById('machine_name');
+                    const operatorSelect = document.getElementById('operator_name');
+
+                    if (machineSelect) {
+                        machineSelect.selectedIndex = 0; // Select the first option (placeholder)
+                    }
+                    if (operatorSelect) {
+                        operatorSelect.selectedIndex = 0; // Select the first option (placeholder)
+                    }
                 }
             });
+
+            // Helper function to get total pieces used
+            function getTotalPiecesUsed() {
+                const items = itemsContainer.querySelectorAll('.production-item');
+                let totalUsedPieces = 0;
+                items.forEach(item => {
+                    const pieces = parseInt(item.querySelector('.total-pieces-input').value) || 0;
+                    totalUsedPieces += pieces;
+                });
+                return totalUsedPieces;
+            }
+
+            // Function to update remaining stock display
+            function updateRemainingStock() {
+                if (!currentStockIssued) return;
+
+                const items = itemsContainer.querySelectorAll('.production-item');
+                let totalUsedPieces = 0;
+                let totalUsedSqft = 0;
+
+                items.forEach(item => {
+                    const pieces = parseInt(item.querySelector('.total-pieces-input').value) || 0;
+                    const sqft = parseFloat(item.querySelector('.total-sqft-input').value) || 0;
+                    totalUsedPieces += pieces;
+                    totalUsedSqft += sqft;
+                });
+
+                // Update pieces display (pieces can be more than issued)
+                const piecesDifference = totalUsedPieces - currentStockIssued.quantity_issued;
+                const piecesPercentage = Math.min(100, (currentStockIssued.quantity_issued / totalUsedPieces) * 100);
+
+                if (piecesDifference > 0) {
+                    document.getElementById('remaining-pieces').textContent = `+${piecesDifference} (${totalUsedPieces} total)`;
+                    stockProgress.className = 'bg-blue-600 h-2 rounded-full transition-all duration-300';
+                    document.getElementById('remaining-pieces').className = 'text-lg font-semibold text-blue-600';
+                } else {
+                    const remainingPieces = currentStockIssued.quantity_issued - totalUsedPieces;
+                    document.getElementById('remaining-pieces').textContent = remainingPieces;
+
+                    if (remainingPieces <= 0) {
+                        stockProgress.className = 'bg-red-600 h-2 rounded-full transition-all duration-300';
+                        document.getElementById('remaining-pieces').className = 'text-lg font-semibold text-red-600';
+                    } else if (remainingPieces <= currentStockIssued.quantity_issued * 0.2) {
+                        stockProgress.className = 'bg-yellow-600 h-2 rounded-full transition-all duration-300';
+                        document.getElementById('remaining-pieces').className = 'text-lg font-semibold text-yellow-600';
+                    } else {
+                        stockProgress.className = 'bg-green-600 h-2 rounded-full transition-all duration-300';
+                        document.getElementById('remaining-pieces').className = 'text-lg font-semibold text-green-600';
+                    }
+                }
+
+                stockProgress.style.width = piecesPercentage + '%';
+
+                // Update sqft display
+                const remainingSqft = parseFloat(currentStockIssued.sqft_issued) - totalUsedSqft;
+                const sqftPercentage = (remainingSqft / parseFloat(currentStockIssued.sqft_issued)) * 100;
+
+                document.getElementById('remaining-sqft').textContent = remainingSqft.toFixed(2);
+                sqftProgress.style.width = sqftPercentage + '%';
+
+                // Update summary
+                totalProductionSqft.textContent = totalUsedSqft.toFixed(2);
+                const difference = totalUsedSqft - parseFloat(currentStockIssued.sqft_issued);
+                sqftDifference.textContent = difference.toFixed(2);
+
+                // Change color based on sqft difference
+                if (Math.abs(difference) <= 0.01) {
+                    sqftDifference.className = 'font-medium text-green-600';
+                    document.getElementById('remaining-sqft').className = 'text-lg font-semibold text-green-600';
+                    sqftProgress.className = 'bg-green-600 h-2 rounded-full transition-all duration-300';
+                } else if (Math.abs(difference) <= parseFloat(currentStockIssued.sqft_issued) * 0.1) {
+                    sqftDifference.className = 'font-medium text-yellow-600';
+                    document.getElementById('remaining-sqft').className = 'text-lg font-semibold text-yellow-600';
+                    sqftProgress.className = 'bg-yellow-600 h-2 rounded-full transition-all duration-300';
+                } else {
+                    sqftDifference.className = 'font-medium text-red-600';
+                    document.getElementById('remaining-sqft').className = 'text-lg font-semibold text-red-600';
+                    sqftProgress.className = 'bg-red-600 h-2 rounded-full transition-all duration-300';
+                }
+            }
 
             // Add production item
             addItemBtn.addEventListener('click', function() {
@@ -337,14 +518,23 @@
                 const title = newItem.querySelector('.production-item-title');
                 title.textContent = `Production #${itemIndex + 1}`;
 
-                // Auto-fill product name from stock addition
+                // Product name input (no auto-fill)
                 const productNameInput = newItem.querySelector('.product-name-input');
-                if (currentStockIssued) {
-                    productNameInput.value = currentStockIssued.stock_addition.product.name;
-                }
+                const totalPiecesInput = newItem.querySelector('.total-pieces-input');
+
+                // No max limit for pieces input - allow any number of pieces
 
                 // Add event listeners
                 setupProductionItemEvents(newItem);
+
+                // Set initial piece size display
+                if (currentStockIssued) {
+                    const sqftPerPiece = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;
+                    const pieceSizeDisplay = newItem.querySelector('.piece-size-display');
+                    if (pieceSizeDisplay) {
+                        pieceSizeDisplay.textContent = sqftPerPiece.toFixed(2);
+                    }
+                }
 
                 itemsContainer.appendChild(newItem);
                 noItemsMessage.classList.add('hidden');
@@ -362,18 +552,49 @@
                 removeBtn.addEventListener('click', function() {
                     item.remove();
                     updateItemTitles();
+                    updateRemainingStock();
                     if (itemsContainer.children.length === 0) {
                         noItemsMessage.classList.remove('hidden');
-                    }
-                });
+                }
+            });
 
-                // Auto-calculate sqft based on pieces
+                // Auto-calculate sqft based on pieces with stock validation
                 totalPiecesInput.addEventListener('input', function() {
                     if (currentStockIssued && this.value) {
-                        const piecesPerSqft = currentStockIssued.sqft_issued / currentStockIssued.quantity_issued;
-                        const calculatedSqft = this.value * piecesPerSqft;
+                        // Store current value for next validation
+                        this.dataset.previousValue = this.value;
+
+                        const totalPieces = parseInt(this.value);
+                        let sqftPerPiece;
+                        let calculatedSqft;
+
+                        if (totalPieces > currentStockIssued.quantity_issued) {
+                            // If pieces > issued pieces: divide issued sqft by total pieces
+                            sqftPerPiece = parseFloat(currentStockIssued.sqft_issued) / totalPieces;
+                            calculatedSqft = parseFloat(currentStockIssued.sqft_issued); // Total sqft = issued sqft
+                        } else {
+                            // If pieces <= issued pieces: use original calculation
+                            sqftPerPiece = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;
+                            calculatedSqft = totalPieces * sqftPerPiece;
+                        }
+
                         totalSqftInput.value = calculatedSqft.toFixed(2);
+
+                        // Update piece size display
+                        const pieceSizeDisplay = item.querySelector('.piece-size-display');
+                        if (pieceSizeDisplay) {
+                            pieceSizeDisplay.textContent = sqftPerPiece.toFixed(2);
+                        }
                     }
+                    updateRemainingStock();
+                });
+
+                // Allow any number of pieces (no max limit)
+                // Pieces can be more than issued stock since smaller pieces can be produced
+
+                // Update remaining stock when sqft changes
+                totalSqftInput.addEventListener('input', function() {
+                    updateRemainingStock();
                 });
 
                 // Check for product matching
@@ -442,16 +663,56 @@
                     return;
                 }
 
-                // Validate total pieces don't exceed issued stock
+                // Ensure stock is selected
+                const selectedStockId = stockSelect.value;
+                if (!selectedStockId) {
+                    e.preventDefault();
+                    alert('Please select a stock issued for production.');
+                    return;
+                }
+
+                // Get current stock issued data
+                const stockIssued = stockIssuedData[selectedStockId];
+                if (!stockIssued) {
+                    e.preventDefault();
+                    alert('Invalid stock selection. Please refresh the page and try again.');
+                    return;
+                }
+
+                // Calculate total pieces (no limit check - pieces can be more than issued stock)
                 let totalPieces = 0;
                 items.forEach(item => {
                     const pieces = parseInt(item.querySelector('.total-pieces-input').value) || 0;
                     totalPieces += pieces;
                 });
 
-                if (currentStockIssued && totalPieces > currentStockIssued.quantity_issued) {
+                // Validate total sqft matches issued sqft
+                let totalSqft = 0;
+                items.forEach(item => {
+                    const sqft = parseFloat(item.querySelector('.total-sqft-input').value) || 0;
+                    totalSqft += sqft;
+                });
+
+                const sqftDifference = Math.abs(totalSqft - parseFloat(stockIssued.sqft_issued));
+                if (sqftDifference > 0.01) {
                     e.preventDefault();
-                    alert(`Total pieces (${totalPieces}) cannot exceed issued stock (${currentStockIssued.quantity_issued}).`);
+                    alert(`Total production sqft (${totalSqft.toFixed(2)}) must equal issued sqft (${parseFloat(stockIssued.sqft_issued).toFixed(2)}). The block size must be divided among all products.`);
+                    return;
+                }
+
+                // Validate individual item quantities
+                let hasInvalidItems = false;
+                items.forEach((item, index) => {
+                    const pieces = parseInt(item.querySelector('.total-pieces-input').value) || 0;
+                    if (pieces <= 0) {
+                        e.preventDefault();
+                        alert(`Production item #${index + 1} must have at least 1 piece.`);
+                        hasInvalidItems = true;
+                        return;
+                    }
+                });
+
+                if (hasInvalidItems) {
                     return;
                 }
             });

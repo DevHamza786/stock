@@ -22,9 +22,11 @@ class DatabaseSeeder extends Seeder
 
         // Seed stock management data
         $this->call([
+            AdminUserSeeder::class,
             ProductSeeder::class,
             MineVendorSeeder::class,
             ConditionStatusSeeder::class,
+            ChartOfAccountSeeder::class,
         ]);
     }
 }

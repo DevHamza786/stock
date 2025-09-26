@@ -70,7 +70,9 @@ class DailyProductionController extends Controller
 
         // Filter by condition status
         if ($request->filled('condition_status')) {
-            $query->where('condition_status', $request->get('condition_status'));
+            $query->whereHas('items', function ($itemQuery) use ($request) {
+                $itemQuery->where('condition_status', $request->get('condition_status'));
+            });
         }
 
         // Filter by date range
@@ -112,7 +114,9 @@ class DailyProductionController extends Controller
                 $query->orderBy('total_sqft', $sortOrder);
                 break;
             case 'condition':
-                $query->orderBy('condition_status', $sortOrder);
+                $query->join('daily_production_items', 'daily_production.id', '=', 'daily_production_items.daily_production_id')
+                      ->orderBy('daily_production_items.condition_status', $sortOrder)
+                      ->select('daily_production.*');
                 break;
             default:
                 $query->orderBy('date', $sortOrder);
@@ -126,7 +130,7 @@ class DailyProductionController extends Controller
         $vendors = \App\Models\MineVendor::orderBy('name')->get();
         $machines = DailyProduction::distinct()->pluck('machine_name')->filter()->sort()->values();
         $operators = DailyProduction::distinct()->pluck('operator_name')->filter()->sort()->values();
-        $conditionStatuses = DailyProduction::distinct()->pluck('condition_status')->filter()->sort()->values();
+        $conditionStatuses = \App\Models\DailyProductionItem::distinct()->pluck('condition_status')->filter()->sort()->values();
 
         return view('stock-management.daily-production.index', compact('dailyProduction', 'products', 'vendors', 'machines', 'operators', 'conditionStatuses'));
     }
@@ -198,14 +202,18 @@ class DailyProductionController extends Controller
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Calculate total pieces from all items
+        // Calculate total pieces and sqft from all items
         $totalPieces = collect($request->items)->sum('total_pieces');
+        $totalSqft = collect($request->items)->sum('total_sqft');
 
-        // Check if requested quantity is available
-        if ($totalPieces > $stockIssued->quantity_issued) {
+        // No piece limit validation - pieces can be more than issued stock
+
+        // Check if total sqft matches issued sqft (with small tolerance for rounding)
+        $sqftDifference = abs($totalSqft - $stockIssued->sqft_issued);
+        if ($sqftDifference > 0.01) { // Allow 0.01 sqft difference for rounding
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Total production quantity exceeds issued stock.');
+                ->with('error', "Total production sqft ({$totalSqft}) must equal issued sqft ({$stockIssued->sqft_issued}). The block size must be divided among all products.");
         }
 
         // Create daily production record
@@ -252,11 +260,66 @@ class DailyProductionController extends Controller
             $dailyProduction->items()->create($itemData);
         }
 
+        // Create new stock addition entries for produced items
+        $originalStockAddition = $stockIssued->stockAddition;
+
+        // Group produced items by product specifications
+        $producedStockGroups = [];
+        foreach ($processedItems as $itemData) {
+            $key = $itemData['product_name'] . '|' . ($itemData['size'] ?? '') . '|' . ($itemData['diameter'] ?? '') . '|' . $itemData['condition_status'] . '|' . ($itemData['special_status'] ?? '');
+
+            if (!isset($producedStockGroups[$key])) {
+                $producedStockGroups[$key] = [
+                    'product_name' => $itemData['product_name'],
+                    'size' => $itemData['size'] ?? '',
+                    'diameter' => $itemData['diameter'] ?? '',
+                    'condition_status' => $itemData['condition_status'],
+                    'special_status' => $itemData['special_status'] ?? '',
+                    'total_pieces' => 0,
+                    'total_sqft' => 0,
+                ];
+            }
+
+            $producedStockGroups[$key]['total_pieces'] += $itemData['total_pieces'];
+            $producedStockGroups[$key]['total_sqft'] += $itemData['total_sqft'];
+        }
+
+        // Create new stock addition entries for each group
+        foreach ($producedStockGroups as $group) {
+            // Find or create product
+            $product = \App\Models\Product::firstOrCreate(
+                ['name' => $group['product_name']],
+                ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
+            );
+
+            // Create stock addition for produced items
+            \App\Models\StockAddition::create([
+                'product_id' => $product->id,
+                'mine_vendor_id' => $originalStockAddition->mine_vendor_id, // Same vendor
+                'stone' => $group['size'] . ($group['diameter'] ? '|' . $group['diameter'] : ''),
+                'size_3d' => $group['size'] ?: '00000',
+                'total_pieces' => $group['total_pieces'],
+                'total_sqft' => $group['total_sqft'],
+                'condition_status' => $group['condition_status'],
+                'available_pieces' => $group['total_pieces'],
+                'available_sqft' => $group['total_sqft'],
+                'date' => $request->date,
+            ]);
+        }
+
+        // Log the stock creation for debugging
+        \Log::info("New Stock Additions Created", [
+            'original_stock_addition_id' => $originalStockAddition->id,
+            'produced_groups' => count($producedStockGroups),
+            'total_produced_pieces' => $totalPieces,
+            'total_produced_sqft' => $totalSqft
+        ]);
+
         // Generate accounting journal entry
         $this->generateAccountingEntry($dailyProduction);
 
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', 'Daily production recorded successfully with ' . count($processedItems) . ' product(s).');
+            ->with('success', "Daily production recorded successfully with {$totalPieces} pieces ({$totalSqft} sqft) across " . count($processedItems) . ' product(s). New stock additions created for produced items.');
     }
 
     /**
@@ -274,16 +337,22 @@ class DailyProductionController extends Controller
      */
     public function edit(DailyProduction $dailyProduction)
     {
-        $availableStockAdditions = StockAddition::with(['product', 'mineVendor'])
-            ->where('available_pieces', '>', 0)
-            ->orWhere('id', $dailyProduction->stock_addition_id)
-            ->orderBy('date', 'asc')
+        // Load the daily production with its relationships
+        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'stockIssued', 'items']);
+
+        // Get stock issued records for production
+        $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            ->orderBy('date', 'desc')
             ->get();
+
+        // Get active machines and operators for dropdowns
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
 
         // Get condition statuses from database
         $conditionStatuses = ConditionStatus::active()->orderBy('name')->get();
 
-        return view('stock-management.daily-production.edit', compact('dailyProduction', 'availableStockAdditions', 'conditionStatuses'));
+        return view('stock-management.daily-production.edit', compact('dailyProduction', 'availableStockIssued', 'machines', 'operators', 'conditionStatuses'));
     }
 
     /**
@@ -292,33 +361,172 @@ class DailyProductionController extends Controller
     public function update(Request $request, DailyProduction $dailyProduction)
     {
         $request->validate([
-            'stock_addition_id' => 'required|exists:stock_additions,id',
+            'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
-            'product' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
-            'total_pieces' => 'required|integer|min:1',
-            'total_sqft' => 'required|numeric|min:0',
-            'condition_status' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.product_name' => 'required|string|max:255',
+            'items.*.size' => 'nullable|string|max:255',
+            'items.*.diameter' => 'nullable|string|max:255',
+            'items.*.condition_status' => 'required|string|max:255',
+            'items.*.special_status' => 'nullable|string|max:255',
+            'items.*.total_pieces' => 'required|integer|min:1',
+            'items.*.total_sqft' => 'required|numeric|min:0',
+            'items.*.narration' => 'nullable|string',
         ]);
 
-        $stockAddition = StockAddition::findOrFail($request->stock_addition_id);
+        $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Check if requested quantity is available (considering current production)
-        $currentProduction = $dailyProduction->total_pieces;
-        $availableAfterRestore = $stockAddition->available_pieces + $currentProduction;
+        // Calculate total pieces and sqft from all items
+        $totalPieces = collect($request->items)->sum('total_pieces');
+        $totalSqft = collect($request->items)->sum('total_sqft');
 
-        if ($request->total_pieces > $availableAfterRestore) {
+        // Check if total sqft matches issued sqft (with small tolerance for rounding)
+        $sqftDifference = abs($totalSqft - $stockIssued->sqft_issued);
+        if ($sqftDifference > 0.01) { // Allow 0.01 sqft difference for rounding
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Requested production quantity exceeds available stock.');
+                ->with('error', "Total production sqft ({$totalSqft}) must equal issued sqft ({$stockIssued->sqft_issued}). The block size must be divided among all products.");
         }
 
-        $dailyProduction->update($request->all());
+        // Store old production data for stock adjustment
+        $oldTotalPieces = $dailyProduction->items->sum('total_pieces');
+        $oldTotalSqft = $dailyProduction->items->sum('total_sqft');
+
+        // Update daily production record
+        $dailyProduction->update([
+            'stock_addition_id' => $stockIssued->stock_addition_id,
+            'stock_issued_id' => $request->stock_issued_id,
+            'machine_name' => $request->machine_name,
+            'operator_name' => $request->operator_name,
+            'notes' => $request->notes,
+            'date' => $request->date,
+        ]);
+
+        // Delete existing production items
+        $dailyProduction->items()->delete();
+
+        // Process production items with product matching logic
+        $processedItems = [];
+
+        foreach ($request->items as $itemData) {
+            $productKey = $this->generateProductKey(
+                $itemData['product_name'],
+                $itemData['size'] ?? null,
+                $itemData['diameter'] ?? null,
+                $itemData['condition_status'],
+                $itemData['special_status'] ?? null
+            );
+
+            // Check if similar product already exists in processed items
+            if (isset($processedItems[$productKey])) {
+                // Merge quantities
+                $processedItems[$productKey]['total_pieces'] += $itemData['total_pieces'];
+                $processedItems[$productKey]['total_sqft'] += $itemData['total_sqft'];
+
+                // Merge narration if provided
+                if (!empty($itemData['narration'])) {
+                    $processedItems[$productKey]['narration'] =
+                        $processedItems[$productKey]['narration'] . '; ' . $itemData['narration'];
+                }
+            } else {
+                // Add new item
+                $processedItems[$productKey] = $itemData;
+            }
+        }
+
+        // Create new production items
+        foreach ($processedItems as $itemData) {
+            $dailyProduction->items()->create($itemData);
+        }
+
+        // Calculate the difference in production
+        $piecesDifference = $totalPieces - $oldTotalPieces;
+        $sqftDifference = $totalSqft - $oldTotalSqft;
+
+        // Update stock additions for produced items (not the original block)
+        $originalStockAddition = $stockIssued->stockAddition;
+
+        // Get existing stock additions that were created from this daily production
+        $existingProducedStockAdditions = \App\Models\StockAddition::where('date', $dailyProduction->date)
+            ->where('mine_vendor_id', $originalStockAddition->mine_vendor_id)
+            ->where('condition_status', '!=', $originalStockAddition->condition_status) // Different from original
+            ->get();
+
+        // Group produced items by product specifications
+        $producedStockGroups = [];
+        foreach ($processedItems as $itemData) {
+            $key = $itemData['product_name'] . '|' . ($itemData['size'] ?? '') . '|' . ($itemData['diameter'] ?? '') . '|' . $itemData['condition_status'] . '|' . ($itemData['special_status'] ?? '');
+
+            if (!isset($producedStockGroups[$key])) {
+                $producedStockGroups[$key] = [
+                    'product_name' => $itemData['product_name'],
+                    'size' => $itemData['size'] ?? '',
+                    'diameter' => $itemData['diameter'] ?? '',
+                    'condition_status' => $itemData['condition_status'],
+                    'special_status' => $itemData['special_status'] ?? '',
+                    'total_pieces' => 0,
+                    'total_sqft' => 0,
+                ];
+            }
+
+            $producedStockGroups[$key]['total_pieces'] += $itemData['total_pieces'];
+            $producedStockGroups[$key]['total_sqft'] += $itemData['total_sqft'];
+        }
+
+        // Delete existing produced stock additions
+        foreach ($existingProducedStockAdditions as $existingStock) {
+            $existingStock->delete();
+            \Log::info("Deleted existing produced stock addition", [
+                'stock_addition_id' => $existingStock->id,
+                'product' => $existingStock->product->name
+            ]);
+        }
+
+        // Create new stock addition entries for each produced item group
+        foreach ($producedStockGroups as $group) {
+            $product = \App\Models\Product::firstOrCreate(
+                ['name' => $group['product_name']],
+                ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
+            );
+
+            // Create new stock addition for produced items
+            \App\Models\StockAddition::create([
+                'product_id' => $product->id,
+                'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
+                'stone' => $group['size'] . ($group['diameter'] ? '|' . $group['diameter'] : ''),
+                'size_3d' => $group['size'] ?: '00000',
+                'total_pieces' => $group['total_pieces'],
+                'total_sqft' => $group['total_sqft'],
+                'condition_status' => $group['condition_status'],
+                'available_pieces' => $group['total_pieces'],
+                'available_sqft' => $group['total_sqft'],
+                'date' => $request->date,
+            ]);
+
+            \Log::info("Created new stock addition for produced item", [
+                'product' => $product->name,
+                'total_pieces' => $group['total_pieces'],
+                'total_sqft' => $group['total_sqft']
+            ]);
+        }
+
+        // Log the production update
+        \Log::info("Daily Production Updated", [
+            'daily_production_id' => $dailyProduction->id,
+            'old_production_pieces' => $oldTotalPieces,
+            'new_production_pieces' => $totalPieces,
+            'pieces_difference' => $piecesDifference,
+            'old_production_sqft' => $oldTotalSqft,
+            'new_production_sqft' => $totalSqft,
+            'sqft_difference' => $sqftDifference,
+            'produced_groups' => count($producedStockGroups)
+        ]);
 
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', 'Daily production updated successfully.');
+            ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$totalSqft} sqft) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
     }
 
     /**
