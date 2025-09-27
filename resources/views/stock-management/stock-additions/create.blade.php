@@ -48,12 +48,18 @@
                                 <x-input-error :messages="$errors->get('stone')" class="mt-2" />
                             </div>
 
-                            <!-- Size 3D -->
+                            <!-- Length -->
                             <div>
-                                <x-input-label for="size_3d" :value="__('Size (3D)')" />
-                                <x-text-input id="size_3d" name="size_3d" type="text" class="mt-1 block w-full" :value="old('size_3d')" placeholder="e.g., 20143 (20x14x3)" required />
-                                <p class="mt-1 text-sm text-gray-500">Format: Length x Width x Height (e.g., 20143 = 20x14x3)</p>
-                                <x-input-error :messages="$errors->get('size_3d')" class="mt-2" />
+                                <x-input-label for="length" :value="__('Length (cm)')" />
+                                <x-text-input id="length" name="length" type="number" class="mt-1 block w-full" :value="old('length')" placeholder="Enter length in cm" step="0.1" required />
+                                <x-input-error :messages="$errors->get('length')" class="mt-2" />
+                            </div>
+
+                            <!-- Height -->
+                            <div>
+                                <x-input-label for="height" :value="__('Height (cm)')" />
+                                <x-text-input id="height" name="height" type="number" class="mt-1 block w-full" :value="old('height')" placeholder="Enter height in cm" step="0.1" required />
+                                <x-input-error :messages="$errors->get('height')" class="mt-2" />
                             </div>
 
                             <!-- Total Pieces -->
@@ -61,6 +67,33 @@
                                 <x-input-label for="total_pieces" :value="__('Total Pieces')" />
                                 <x-text-input id="total_pieces" name="total_pieces" type="number" class="mt-1 block w-full" :value="old('total_pieces')" min="1" required />
                                 <x-input-error :messages="$errors->get('total_pieces')" class="mt-2" />
+                            </div>
+
+                            <!-- Size Information Display -->
+                            <div class="md:col-span-2">
+                                <div class="bg-gray-50 p-4 rounded-lg border">
+                                    <h3 class="text-sm font-medium text-gray-900 mb-3">Size Information</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Single Piece Size</label>
+                                            <div id="single_piece_size" class="text-sm text-gray-600 bg-white p-2 rounded border">
+                                                <span class="text-gray-400">Enter dimensions to see size</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Single Piece (sqft)</label>
+                                            <div id="single_piece_sqft" class="text-sm text-gray-600 bg-white p-2 rounded border">
+                                                <span class="text-gray-400">Enter dimensions to see size</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Total Size (sqft)</label>
+                                            <div id="total_size_display" class="text-sm text-gray-600 bg-white p-2 rounded border">
+                                                <span class="text-gray-400">Enter dimensions and pieces</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Total Sqft (Auto-calculated) -->
@@ -109,37 +142,61 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const size3dInput = document.getElementById('size_3d');
+            const lengthInput = document.getElementById('length');
+            const heightInput = document.getElementById('height');
             const totalPiecesInput = document.getElementById('total_pieces');
             const totalSqftInput = document.getElementById('total_sqft');
+            
+            // Display elements
+            const singlePieceSizeDisplay = document.getElementById('single_piece_size');
+            const singlePieceSqftDisplay = document.getElementById('single_piece_sqft');
+            const totalSizeDisplay = document.getElementById('total_size_display');
 
-            function calculateSqft() {
-                const size3d = size3dInput.value;
+            function calculateSize() {
+                const length = parseFloat(lengthInput.value) || 0;
+                const height = parseFloat(heightInput.value) || 0;
                 const pieces = parseInt(totalPiecesInput.value) || 0;
 
-                if (size3d && pieces > 0) {
-                    // Extract dimensions from size_3d (e.g., 20143 = 20x14x3)
-                    if (size3d.length >= 3) {
-                        const length = parseInt(size3d.substring(0, 2));
-                        const width = parseInt(size3d.substring(2, 4));
-                        const height = parseInt(size3d.substring(4, 5));
+                if (length > 0 && height > 0) {
+                    // Convert cm to sqft (1 cm² = 0.00107639 sqft)
+                    const cmToSqft = 0.00107639;
+                    
+                    // Calculate single piece size in cm²
+                    const singlePieceSizeCm = length * height;
+                    
+                    // Calculate single piece size in sqft
+                    const singlePieceSizeSqft = singlePieceSizeCm * cmToSqft;
+                    
+                    // Calculate total size in sqft
+                    const totalSizeSqft = singlePieceSizeSqft * pieces;
 
-                        if (length && width) {
-                            const sqftPerPiece = length * width;
-                            const totalSqft = sqftPerPiece * pieces;
-                            totalSqftInput.value = totalSqft.toFixed(2);
-                        }
+                    // Update displays
+                    singlePieceSizeDisplay.innerHTML = `<span class="font-medium text-blue-600">${singlePieceSizeCm.toFixed(2)} cm²</span><br><span class="text-xs text-gray-500">${length} × ${height} cm</span>`;
+                    singlePieceSqftDisplay.innerHTML = `<span class="font-medium text-green-600">${singlePieceSizeSqft.toFixed(4)} sqft</span>`;
+                    
+                    if (pieces > 0) {
+                        totalSizeDisplay.innerHTML = `<span class="font-medium text-purple-600">${totalSizeSqft.toFixed(4)} sqft</span><br><span class="text-xs text-gray-500">${pieces} pieces</span>`;
+                        totalSqftInput.value = totalSizeSqft.toFixed(4);
+                    } else {
+                        totalSizeDisplay.innerHTML = '<span class="text-gray-400">Enter number of pieces</span>';
+                        totalSqftInput.value = '';
                     }
                 } else {
+                    // Reset displays
+                    singlePieceSizeDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions to see size</span>';
+                    singlePieceSqftDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions to see size</span>';
+                    totalSizeDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions and pieces</span>';
                     totalSqftInput.value = '';
                 }
             }
 
-            size3dInput.addEventListener('input', calculateSqft);
-            totalPiecesInput.addEventListener('input', calculateSqft);
+            // Add event listeners
+            lengthInput.addEventListener('input', calculateSize);
+            heightInput.addEventListener('input', calculateSize);
+            totalPiecesInput.addEventListener('input', calculateSize);
 
             // Calculate on page load if values exist
-            calculateSqft();
+            calculateSize();
         });
     </script>
 </x-app-layout>
