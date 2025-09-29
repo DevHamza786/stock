@@ -41,6 +41,20 @@
                                 <x-input-error :messages="$errors->get('mine_vendor_id')" class="mt-2" />
                             </div>
 
+                            <!-- Condition Status -->
+                            <div>
+                                <x-input-label for="condition_status" :value="__('Condition Status')" />
+                                <select id="condition_status" name="condition_status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                    <option value="">Select condition...</option>
+                                    @foreach($conditionStatuses as $status)
+                                        <option value="{{ $status->name }}" {{ old('condition_status') == $status->name ? 'selected' : '' }}>
+                                            {{ $status->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('condition_status')" class="mt-2" />
+                            </div>
+
                             <!-- Stone Type -->
                             <div>
                                 <x-input-label for="stone" :value="__('Stone Type')" />
@@ -49,25 +63,32 @@
                             </div>
 
                             <!-- Length -->
-                            <div>
+                            <div id="length-field">
                                 <x-input-label for="length" :value="__('Length (cm)')" />
-                                <x-text-input id="length" name="length" type="number" class="mt-1 block w-full" :value="old('length')" placeholder="Enter length in cm" step="0.1" required />
+                                <x-text-input id="length" name="length" type="number" class="mt-1 block w-full" :value="old('length')" placeholder="Enter length in cm" step="0.1" />
                                 <x-input-error :messages="$errors->get('length')" class="mt-2" />
                             </div>
 
                             <!-- Height -->
-                            <div>
+                            <div id="height-field">
                                 <x-input-label for="height" :value="__('Height (cm)')" />
-                                <x-text-input id="height" name="height" type="number" class="mt-1 block w-full" :value="old('height')" placeholder="Enter height in cm" step="0.1" required />
+                                <x-text-input id="height" name="height" type="number" class="mt-1 block w-full" :value="old('height')" placeholder="Enter height in cm" step="0.1" />
                                 <x-input-error :messages="$errors->get('height')" class="mt-2" />
                             </div>
 
                             <!-- Diameter -->
-                            <div>
+                            <div id="diameter-field">
                                 <x-input-label for="diameter" :value="__('Diameter/Thickness (cm)')" />
                                 <x-text-input id="diameter" name="diameter" type="text" class="mt-1 block w-full" :value="old('diameter')" placeholder="e.g., 6cm, 2cm, 3.5cm" />
                                 <p class="mt-1 text-xs text-gray-500">Enter the thickness or diameter of the product</p>
                                 <x-input-error :messages="$errors->get('diameter')" class="mt-2" />
+                            </div>
+
+                            <!-- Weight (for Block condition) -->
+                            <div id="weight-field" style="display: none;">
+                                <x-input-label for="weight" :value="__('Weight (kg)')" />
+                                <x-text-input id="weight" name="weight" type="number" class="mt-1 block w-full" :value="old('weight')" placeholder="Enter weight in kg" step="0.1" />
+                                <x-input-error :messages="$errors->get('weight')" class="mt-2" />
                             </div>
 
                             <!-- Total Pieces -->
@@ -78,7 +99,7 @@
                             </div>
 
                             <!-- Size Information Display -->
-                            <div class="md:col-span-2">
+                            <div id="size-info-section" class="md:col-span-2">
                                 <div class="bg-gray-50 p-4 rounded-lg border">
                                     <h3 class="text-sm font-medium text-gray-900 mb-3">Size Information</h3>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -104,26 +125,33 @@
                                 </div>
                             </div>
 
+                            <!-- Block Information Display -->
+                            <div id="block-info-section" class="md:col-span-2" style="display: none;">
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h3 class="text-sm font-medium text-blue-900 mb-3">Block Information</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-blue-700 mb-1">Total Weight</label>
+                                            <div id="total_weight_display" class="text-sm text-blue-600 bg-white p-2 rounded border">
+                                                <span class="text-gray-400">Enter weight and pieces</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-blue-700 mb-1">Total Pieces</label>
+                                            <div id="total_pieces_display" class="text-sm text-blue-600 bg-white p-2 rounded border">
+                                                <span class="text-gray-400">Enter number of pieces</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Total Sqft (Auto-calculated) -->
-                            <div>
+                            <div id="total-sqft-field">
                                 <x-input-label for="total_sqft" :value="__('Total Sqft')" />
                                 <x-text-input id="total_sqft" name="total_sqft" type="number" class="mt-1 block w-full bg-gray-100" readonly />
                                 <p class="mt-1 text-sm text-gray-500">Auto-calculated based on size and pieces</p>
                                 <x-input-error :messages="$errors->get('total_sqft')" class="mt-2" />
-                            </div>
-
-                            <!-- Condition Status -->
-                            <div>
-                                <x-input-label for="condition_status" :value="__('Condition Status')" />
-                                <select id="condition_status" name="condition_status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                    <option value="">Select condition...</option>
-                                    @foreach($conditionStatuses as $status)
-                                        <option value="{{ $status->name }}" {{ old('condition_status') == $status->name ? 'selected' : '' }}>
-                                            {{ $status->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <x-input-error :messages="$errors->get('condition_status')" class="mt-2" />
                             </div>
 
                             <!-- Date -->
@@ -150,15 +178,69 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const conditionStatusSelect = document.getElementById('condition_status');
             const lengthInput = document.getElementById('length');
             const heightInput = document.getElementById('height');
+            const weightInput = document.getElementById('weight');
             const totalPiecesInput = document.getElementById('total_pieces');
             const totalSqftInput = document.getElementById('total_sqft');
+            
+            // Field containers
+            const lengthField = document.getElementById('length-field');
+            const heightField = document.getElementById('height-field');
+            const diameterField = document.getElementById('diameter-field');
+            const weightField = document.getElementById('weight-field');
+            const sizeInfoSection = document.getElementById('size-info-section');
+            const blockInfoSection = document.getElementById('block-info-section');
+            const totalSqftField = document.getElementById('total-sqft-field');
             
             // Display elements
             const singlePieceSizeDisplay = document.getElementById('single_piece_size');
             const singlePieceSqftDisplay = document.getElementById('single_piece_sqft');
             const totalSizeDisplay = document.getElementById('total_size_display');
+            const totalWeightDisplay = document.getElementById('total_weight_display');
+            const totalPiecesDisplay = document.getElementById('total_pieces_display');
+
+            function toggleFields() {
+                const conditionStatus = conditionStatusSelect.value.toLowerCase();
+                const isBlock = conditionStatus === 'block';
+
+                if (isBlock) {
+                    // Hide size fields and show weight field
+                    lengthField.style.display = 'none';
+                    heightField.style.display = 'none';
+                    diameterField.style.display = 'none';
+                    weightField.style.display = 'block';
+                    sizeInfoSection.style.display = 'none';
+                    blockInfoSection.style.display = 'block';
+                    totalSqftField.style.display = 'none';
+                    
+                    // Remove required attributes from size fields
+                    lengthInput.removeAttribute('required');
+                    heightInput.removeAttribute('required');
+                    weightInput.setAttribute('required', 'required');
+                    
+                    // Clear size calculations
+                    clearSizeCalculations();
+                } else {
+                    // Show size fields and hide weight field
+                    lengthField.style.display = 'block';
+                    heightField.style.display = 'block';
+                    diameterField.style.display = 'block';
+                    weightField.style.display = 'none';
+                    sizeInfoSection.style.display = 'block';
+                    blockInfoSection.style.display = 'none';
+                    totalSqftField.style.display = 'block';
+                    
+                    // Add required attributes to size fields
+                    lengthInput.setAttribute('required', 'required');
+                    heightInput.setAttribute('required', 'required');
+                    weightInput.removeAttribute('required');
+                    
+                    // Clear block calculations
+                    clearBlockCalculations();
+                }
+            }
 
             function calculateSize() {
                 const length = parseFloat(lengthInput.value) || 0;
@@ -198,13 +280,59 @@
                 }
             }
 
+            function calculateBlock() {
+                const weight = parseFloat(weightInput.value) || 0;
+                const pieces = parseInt(totalPiecesInput.value) || 0;
+
+                if (weight > 0 && pieces > 0) {
+                    const totalWeight = weight * pieces;
+                    
+                    // Update displays
+                    totalWeightDisplay.innerHTML = `<span class="font-medium text-blue-600">${totalWeight.toFixed(2)} kg</span><br><span class="text-xs text-gray-500">${weight} kg × ${pieces} pieces</span>`;
+                    totalPiecesDisplay.innerHTML = `<span class="font-medium text-green-600">${pieces} pieces</span>`;
+                } else {
+                    // Reset displays
+                    totalWeightDisplay.innerHTML = '<span class="text-gray-400">Enter weight and pieces</span>';
+                    totalPiecesDisplay.innerHTML = '<span class="text-gray-400">Enter number of pieces</span>';
+                }
+            }
+
+            function clearSizeCalculations() {
+                singlePieceSizeDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions to see size</span>';
+                singlePieceSqftDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions to see size</span>';
+                totalSizeDisplay.innerHTML = '<span class="text-gray-400">Enter dimensions and pieces</span>';
+                totalSqftInput.value = '';
+            }
+
+            function clearBlockCalculations() {
+                totalWeightDisplay.innerHTML = '<span class="text-gray-400">Enter weight and pieces</span>';
+                totalPiecesDisplay.innerHTML = '<span class="text-gray-400">Enter number of pieces</span>';
+            }
+
             // Add event listeners
+            conditionStatusSelect.addEventListener('change', toggleFields);
             lengthInput.addEventListener('input', calculateSize);
             heightInput.addEventListener('input', calculateSize);
-            totalPiecesInput.addEventListener('input', calculateSize);
+            weightInput.addEventListener('input', calculateBlock);
+            totalPiecesInput.addEventListener('input', function() {
+                const conditionStatus = conditionStatusSelect.value.toLowerCase();
+                if (conditionStatus === 'block') {
+                    calculateBlock();
+                } else {
+                    calculateSize();
+                }
+            });
+
+            // Initialize fields on page load
+            toggleFields();
 
             // Calculate on page load if values exist
-            calculateSize();
+            const conditionStatus = conditionStatusSelect.value.toLowerCase();
+            if (conditionStatus === 'block') {
+                calculateBlock();
+            } else {
+                calculateSize();
+            }
         });
     </script>
 </x-app-layout>

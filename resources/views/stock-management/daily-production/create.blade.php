@@ -44,7 +44,13 @@
                                         <option value="">Choose stock issued for production...</option>
                                         @foreach($availableStockIssued as $issued)
                                             <option value="{{ $issued->id }}" {{ old('stock_issued_id') == $issued->id ? 'selected' : '' }}>
-                                                {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - 
+                                                {{ ucfirst($issued->stockAddition->condition_status) }} - 
+                                                @if(strtolower($issued->stockAddition->condition_status) === 'block')
+                                                    Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                @else
+                                                    Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                @endif
                                         </option>
                                     @endforeach
                                 </select>
@@ -214,6 +220,24 @@
                                 </svg>
                                 <p>No production items added yet. Click "Add Production Item" to start.</p>
                             </div>
+
+                            <!-- Total Summary -->
+                            <div id="total-summary" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-blue-900">Production Summary</h3>
+                                        <p class="text-sm text-blue-700">Total production overview</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-bold text-blue-900">
+                                            <span id="total-sqft-display">0.00</span> sqft
+                                        </div>
+                                        <div class="text-sm text-blue-700">
+                                            <span id="total-pieces-display">0</span> pieces
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Form Actions -->
@@ -253,8 +277,9 @@
 
                 <!-- Size -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Size (e.g., 60*90, H*L)</label>
-                    <input type="text" name="items[INDEX][size]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 60*90">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Size (cm) - e.g., 60*90, H*L</label>
+                    <input type="text" name="items[INDEX][size]" class="size-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 21*60" oninput="calculatePieceSize(this)">
+                    <p class="text-xs text-gray-500 mt-1">Enter size in cm (height × length)</p>
                 </div>
 
                 <!-- Diameter -->
@@ -283,15 +308,15 @@
                 <!-- Total Pieces -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Pieces</label>
-                    <input type="number" name="items[INDEX][total_pieces]" class="total-pieces-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="1" required>
-                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: sqft ÷ total pieces = piece size</p>
+                    <input type="number" name="items[INDEX][total_pieces]" class="total-pieces-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="1" required oninput="calculatePieceSize(this)">
+                    <p class="text-xs text-gray-500 mt-1">Number of pieces produced</p>
                 </div>
 
                 <!-- Total Sqft -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Sqft</label>
-                    <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required>
-                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: equals issued sqft</p>
+                    <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required readonly>
+                    <p class="text-xs text-gray-500 mt-1">Auto-calculated from size and pieces</p>
                 </div>
 
                 <!-- Piece Size Display -->
@@ -715,17 +740,17 @@
                     totalPieces += pieces;
                 });
 
-                // Validate total sqft matches issued sqft
+                // Validate total sqft does not exceed issued sqft
                 let totalSqft = 0;
                 items.forEach(item => {
                     const sqft = parseFloat(item.querySelector('.total-sqft-input').value) || 0;
                     totalSqft += sqft;
                 });
 
-                const sqftDifference = Math.abs(totalSqft - parseFloat(stockIssued.sqft_issued));
-                if (sqftDifference > 0.01) {
+                const issuedSqft = parseFloat(stockIssued.sqft_issued);
+                if (totalSqft > issuedSqft) {
                     e.preventDefault();
-                    alert(`Total production sqft (${totalSqft.toFixed(2)}) must equal issued sqft (${parseFloat(stockIssued.sqft_issued).toFixed(2)}). The block size must be divided among all products.`);
+                    alert(`Total production sqft (${totalSqft.toFixed(2)}) cannot exceed issued sqft (${issuedSqft.toFixed(2)}). Please reduce production quantities.`);
                     return;
                 }
 
@@ -746,5 +771,154 @@
                 }
             });
         });
+
+        // Function to calculate piece size from cm to sqft
+        function calculatePieceSize(input) {
+            const item = input.closest('.production-item');
+            const sizeInput = item.querySelector('.size-input');
+            const totalPiecesInput = item.querySelector('.total-pieces-input');
+            const totalSqftInput = item.querySelector('.total-sqft-input');
+            const pieceSizeDisplay = item.querySelector('.piece-size-display');
+
+            const size = sizeInput.value.trim();
+            const totalPieces = parseInt(totalPiecesInput.value) || 1; // Default to 1 if not entered
+
+            if (size) {
+                // Parse size (e.g., "21*60" or "21×60")
+                const sizeMatch = size.match(/(\d+(?:\.\d+)?)\s*[×*x]\s*(\d+(?:\.\d+)?)/i);
+                
+                if (sizeMatch) {
+                    const height = parseFloat(sizeMatch[1]);
+                    const length = parseFloat(sizeMatch[2]);
+                    
+                    // Convert cm² to sqft (1 cm² = 1/929.0304 sqft)
+                    const areaCm = height * length;
+                    const areaSqft = areaCm / 929.0304;
+                    
+                    // Calculate total sqft and per piece sqft
+                    const totalSqft = areaSqft * totalPieces;
+                    const perPieceSqft = areaSqft;
+                    
+                    // Update the fields
+                    totalSqftInput.value = totalSqft.toFixed(2);
+                    pieceSizeDisplay.textContent = perPieceSqft.toFixed(4);
+                    
+                    // Update total summary
+                    updateTotalSummary();
+                    
+                    // Check if total exceeds issued sqft
+                    checkSqftLimit();
+                } else {
+                    // Invalid size format
+                    totalSqftInput.value = '';
+                    pieceSizeDisplay.textContent = '0.0000';
+                }
+            } else {
+                // Clear calculations if size is empty
+                totalSqftInput.value = '';
+                pieceSizeDisplay.textContent = '0.0000';
+                
+                // Update total summary
+                updateTotalSummary();
+                
+                // Check if total exceeds issued sqft
+                checkSqftLimit();
+            }
+        }
+
+        // Function to update total summary
+        function updateTotalSummary() {
+            const totalSummary = document.getElementById('total-summary');
+            const totalSqftDisplay = document.getElementById('total-sqft-display');
+            const totalPiecesDisplay = document.getElementById('total-pieces-display');
+            
+            let totalSqft = 0;
+            let totalPieces = 0;
+            
+            // Calculate totals from all production items
+            const productionItems = document.querySelectorAll('.production-item');
+            productionItems.forEach(item => {
+                const sqftInput = item.querySelector('.total-sqft-input');
+                const piecesInput = item.querySelector('.total-pieces-input');
+                
+                if (sqftInput && piecesInput) {
+                    const sqft = parseFloat(sqftInput.value) || 0;
+                    const pieces = parseInt(piecesInput.value) || 0;
+                    
+                    totalSqft += sqft;
+                    totalPieces += pieces;
+                }
+            });
+            
+            // Update display
+            totalSqftDisplay.textContent = totalSqft.toFixed(2);
+            totalPiecesDisplay.textContent = totalPieces;
+            
+            // Show/hide summary based on whether there are items
+            if (productionItems.length > 0) {
+                totalSummary.classList.remove('hidden');
+            } else {
+                totalSummary.classList.add('hidden');
+            }
+        }
+
+        // Function to check if total sqft exceeds issued sqft
+        function checkSqftLimit() {
+            const stockSelect = document.getElementById('stock_issued_id');
+            if (!stockSelect.value) return;
+
+            const stockIssued = stockIssuedData[stockSelect.value];
+            if (!stockIssued) return;
+
+            const issuedSqft = parseFloat(stockIssued.sqft_issued);
+            const totalSqftDisplay = document.getElementById('total-sqft-display');
+            const totalSummary = document.getElementById('total-summary');
+
+            if (totalSqftDisplay && totalSummary) {
+                const currentTotal = parseFloat(totalSqftDisplay.textContent) || 0;
+                
+                if (currentTotal > issuedSqft) {
+                    // Show warning by changing background color
+                    totalSummary.classList.remove('bg-blue-50', 'border-blue-200');
+                    totalSummary.classList.add('bg-red-50', 'border-red-200');
+                    
+                    // Update text colors
+                    const title = totalSummary.querySelector('h3');
+                    const subtitle = totalSummary.querySelector('p');
+                    const sqftDisplay = totalSummary.querySelector('.text-2xl');
+                    const piecesDisplay = totalSummary.querySelector('.text-sm');
+                    
+                    if (title) title.classList.remove('text-blue-900');
+                    if (subtitle) subtitle.classList.remove('text-blue-700');
+                    if (sqftDisplay) sqftDisplay.classList.remove('text-blue-900');
+                    if (piecesDisplay) piecesDisplay.classList.remove('text-blue-700');
+                    
+                    if (title) title.classList.add('text-red-900');
+                    if (subtitle) subtitle.classList.add('text-red-700');
+                    if (sqftDisplay) sqftDisplay.classList.add('text-red-900');
+                    if (piecesDisplay) piecesDisplay.classList.add('text-red-700');
+                } else {
+                    // Reset to normal colors
+                    totalSummary.classList.remove('bg-red-50', 'border-red-200');
+                    totalSummary.classList.add('bg-blue-50', 'border-blue-200');
+                    
+                    // Reset text colors
+                    const title = totalSummary.querySelector('h3');
+                    const subtitle = totalSummary.querySelector('p');
+                    const sqftDisplay = totalSummary.querySelector('.text-2xl');
+                    const piecesDisplay = totalSummary.querySelector('.text-sm');
+                    
+                    if (title) title.classList.remove('text-red-900');
+                    if (subtitle) subtitle.classList.remove('text-red-700');
+                    if (sqftDisplay) sqftDisplay.classList.remove('text-red-900');
+                    if (piecesDisplay) piecesDisplay.classList.remove('text-red-700');
+                    
+                    if (title) title.classList.add('text-blue-900');
+                    if (subtitle) subtitle.classList.add('text-blue-700');
+                    if (sqftDisplay) sqftDisplay.classList.add('text-blue-900');
+                    if (piecesDisplay) piecesDisplay.classList.add('text-blue-700');
+                }
+            }
+        }
     </script>
 </x-app-layout>

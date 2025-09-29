@@ -170,7 +170,8 @@ class StockIssuedController extends Controller
         $request->validate([
             'stock_addition_id' => 'required|exists:stock_additions,id',
             'quantity_issued' => 'required|integer|min:1',
-            'sqft_issued' => 'required|numeric|min:0',
+            'sqft_issued' => 'nullable|numeric|min:0',
+            'weight_issued' => 'nullable|numeric|min:0',
             'purpose' => 'required|string|max:255',
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
@@ -188,11 +189,25 @@ class StockIssuedController extends Controller
                 ->with('error', 'Requested quantity exceeds available stock.');
         }
 
-        // Check if requested sqft is available
-        if ($request->sqft_issued > $stockAddition->available_sqft) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Requested square footage exceeds available stock.');
+        // Custom validation based on condition status
+        $conditionStatus = strtolower($stockAddition->condition_status);
+        if ($conditionStatus === 'block') {
+            // For block condition, weight_issued is required
+            $request->validate([
+                'weight_issued' => 'required|numeric|min:0.1',
+            ]);
+        } else {
+            // For other conditions, sqft_issued is required
+            $request->validate([
+                'sqft_issued' => 'required|numeric|min:0.1',
+            ]);
+            
+            // Check if requested sqft is available
+            if ($request->sqft_issued > $stockAddition->available_sqft) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Requested square footage exceeds available stock.');
+            }
         }
 
         $stockIssued = StockIssued::create($request->all());
@@ -245,6 +260,8 @@ class StockIssuedController extends Controller
         $request->validate([
             'stock_addition_id' => 'required|exists:stock_additions,id',
             'quantity_issued' => 'required|integer|min:1',
+            'sqft_issued' => 'nullable|numeric|min:0',
+            'weight_issued' => 'nullable|numeric|min:0',
             'purpose' => 'nullable|string|max:255',
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
@@ -263,6 +280,20 @@ class StockIssuedController extends Controller
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Requested quantity exceeds available stock.');
+        }
+
+        // Custom validation based on condition status
+        $conditionStatus = strtolower($stockAddition->condition_status);
+        if ($conditionStatus === 'block') {
+            // For block condition, weight_issued is required
+            $request->validate([
+                'weight_issued' => 'required|numeric|min:0.1',
+            ]);
+        } else {
+            // For other conditions, sqft_issued is required
+            $request->validate([
+                'sqft_issued' => 'required|numeric|min:0.1',
+            ]);
         }
 
         $stockIssued->update($request->all());

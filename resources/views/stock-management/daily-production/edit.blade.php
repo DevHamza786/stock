@@ -22,6 +22,45 @@
                         @csrf
                         @method('PUT')
 
+                        <!-- Current Production Items Summary -->
+                        @if($dailyProduction->items && $dailyProduction->items->count() > 0)
+                        <div class="bg-green-50 p-6 rounded-lg mb-6 border border-green-200">
+                            <h3 class="text-lg font-semibold text-green-900 mb-4">Current Production Items</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @foreach($dailyProduction->items as $item)
+                                <div class="bg-white p-4 rounded-lg border border-green-200">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h4 class="font-medium text-gray-900">{{ $item->product_name }}</h4>
+                                        <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">{{ $item->condition_status }}</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm text-gray-600">
+                                        @if($item->size)
+                                        <div><span class="font-medium">Size:</span> {{ $item->size }} cm</div>
+                                        @endif
+                                        @if($item->diameter)
+                                        <div><span class="font-medium">Diameter:</span> {{ $item->diameter }}</div>
+                                        @endif
+                                        <div><span class="font-medium">Pieces:</span> {{ $item->total_pieces }}</div>
+                                        <div><span class="font-medium">Sqft:</span> {{ number_format($item->total_sqft, 2) }}</div>
+                                        @if($item->size && $item->total_pieces > 0)
+                                        <div><span class="font-medium">Per Piece:</span> {{ number_format($item->total_sqft / $item->total_pieces, 4) }} sqft</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                            <div class="mt-4 p-3 bg-green-100 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-green-900">Total Production:</span>
+                                    <div class="text-right">
+                                        <div class="font-bold text-green-900">{{ $dailyProduction->items->sum('total_pieces') }} pieces</div>
+                                        <div class="text-sm text-green-700">{{ number_format($dailyProduction->items->sum('total_sqft'), 2) }} sqft</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Basic Information Section -->
                         <div class="bg-gray-50 p-6 rounded-lg mb-6">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">Production Information</h3>
@@ -33,7 +72,13 @@
                                         <option value="">Choose stock issued for production...</option>
                                         @foreach($availableStockIssued as $issued)
                                             <option value="{{ $issued->id }}" {{ old('stock_issued_id', $dailyProduction->stock_issued_id) == $issued->id ? 'selected' : '' }}>
-                                                {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - 
+                                                {{ ucfirst($issued->stockAddition->condition_status) }} - 
+                                                @if(strtolower($issued->stockAddition->condition_status) === 'block')
+                                                    Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                @else
+                                                    Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
+                                                @endif
                                             </option>
                                         @endforeach
                                     </select>
@@ -142,6 +187,51 @@
                                     <span id="sqft-per-piece" class="text-gray-900">{{ $dailyProduction->stockIssued ? number_format($dailyProduction->stockIssued->sqft_issued / $dailyProduction->stockIssued->quantity_issued, 2) : '0.00' }}</span>
                                 </div>
                             </div>
+
+                            <!-- Status Bars -->
+                            <div class="mt-4 space-y-3">
+                                <!-- Pieces Status -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-sm font-medium text-gray-700">Pieces Status</span>
+                                        <span id="pieces-status-value" class="text-sm font-semibold text-green-600">0</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="pieces-status-bar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Blue = More pieces than issued (smaller pieces)</p>
+                                </div>
+
+                                <!-- Remaining Sqft -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-sm font-medium text-gray-700">Remaining Sqft</span>
+                                        <span id="remaining-sqft-value" class="text-sm font-semibold text-red-600">0.00</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div id="remaining-sqft-bar" class="bg-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Summary Table -->
+                            <div class="mt-4 bg-white rounded-lg p-3 border border-gray-200">
+                                <h4 class="text-sm font-semibold text-gray-800 mb-2">Production Summary</h4>
+                                <div class="grid grid-cols-3 gap-4 text-sm">
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold text-blue-600" id="total-production-sqft">0.00</div>
+                                        <div class="text-xs text-gray-500">Total Production Sqft</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold text-gray-600" id="issued-sqft-display">0.00</div>
+                                        <div class="text-xs text-gray-500">Issued Sqft</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold" id="difference-display">0.00</div>
+                                        <div class="text-xs text-gray-500">Difference</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Production Items Section -->
@@ -165,6 +255,24 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                 </svg>
                                 <p>No production items added yet. Click "Add Production Item" to start.</p>
+                            </div>
+
+                            <!-- Total Summary -->
+                            <div id="total-summary" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-blue-900">Production Summary</h3>
+                                        <p class="text-sm text-blue-700">Total production overview</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-bold text-blue-900">
+                                            <span id="total-sqft-display">0.00</span> sqft
+                                        </div>
+                                        <div class="text-sm text-blue-700">
+                                            <span id="total-pieces-display">0</span> pieces
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -204,8 +312,9 @@
 
                 <!-- Size -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Size (e.g., 60*90, H*L)</label>
-                    <input type="text" name="items[INDEX][size]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 60*90">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Size (cm) - e.g., 60*90, H*L</label>
+                    <input type="text" name="items[INDEX][size]" class="size-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 21*60" oninput="calculatePieceSize(this)">
+                    <p class="text-xs text-gray-500 mt-1">Enter size in cm (height × length)</p>
                 </div>
 
                 <!-- Diameter -->
@@ -234,15 +343,15 @@
                 <!-- Total Pieces -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Pieces</label>
-                    <input type="number" name="items[INDEX][total_pieces]" class="total-pieces-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="1" required>
-                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: sqft ÷ total pieces = piece size</p>
+                    <input type="number" name="items[INDEX][total_pieces]" class="total-pieces-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" min="1" required oninput="calculatePieceSize(this)">
+                    <p class="text-xs text-gray-500 mt-1">Number of pieces produced</p>
                 </div>
 
                 <!-- Total Sqft -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Total Sqft</label>
-                    <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required>
-                    <p class="text-xs text-gray-500 mt-1">If > issued pieces: equals issued sqft</p>
+                    <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required readonly>
+                    <p class="text-xs text-gray-500 mt-1">Auto-calculated from size and pieces</p>
                 </div>
 
                 <!-- Piece Size Display -->
@@ -419,6 +528,30 @@
                     newItem.querySelector('input[name*="[total_pieces]"]').value = existingItem.total_pieces || '';
                     newItem.querySelector('input[name*="[total_sqft]"]').value = existingItem.total_sqft || '';
                     newItem.querySelector('textarea[name*="[narration]"]').value = existingItem.narration || '';
+                    
+                    // Calculate and display piece size if size is provided
+                    if (existingItem.size && existingItem.total_pieces) {
+                        const sizeInput = newItem.querySelector('.size-input');
+                        const totalPiecesInput = newItem.querySelector('.total-pieces-input');
+                        const totalSqftInput = newItem.querySelector('.total-sqft-input');
+                        const pieceSizeDisplay = newItem.querySelector('.piece-size-display');
+                        
+                        if (sizeInput && totalPiecesInput && totalSqftInput && pieceSizeDisplay) {
+                            const size = existingItem.size.trim();
+                            const totalPieces = parseInt(existingItem.total_pieces) || 1;
+                            
+                            const sizeMatch = size.match(/(\d+(?:\.\d+)?)\s*[×*x]\s*(\d+(?:\.\d+)?)/i);
+                            if (sizeMatch) {
+                                const height = parseFloat(sizeMatch[1]);
+                                const length = parseFloat(sizeMatch[2]);
+                                const areaCm = height * length;
+                                const areaSqft = areaCm / 929.0304;
+                                const perPieceSqft = areaSqft;
+                                
+                                pieceSizeDisplay.textContent = perPieceSqft.toFixed(4);
+                            }
+                        }
+                    }
                 }
 
                 // Set initial piece size display
@@ -439,6 +572,9 @@
                 if (index === null) {
                     itemIndex++;
                 }
+                
+                // Update status bars and summary after adding item
+                updateStatusBars();
             }
 
             function setupProductionItemEvents(item) {
@@ -455,6 +591,8 @@
                     if (itemsContainer.children.length === 0) {
                         noItemsMessage.classList.remove('hidden');
                     }
+                    // Update status bars and summary after removing item
+                    updateStatusBars();
                 });
 
                 // Auto-calculate sqft based on pieces
@@ -481,6 +619,9 @@
                         if (pieceSizeDisplay) {
                             pieceSizeDisplay.textContent = sqftPerPieceValue.toFixed(2);
                         }
+                        
+                        // Update status bars and summary
+                        updateStatusBars();
                     }
                 });
 
@@ -492,6 +633,9 @@
                         if (pieceSizeDisplay) {
                             pieceSizeDisplay.textContent = sqftPerPieceValue.toFixed(2);
                         }
+                        
+                        // Update status bars and summary
+                        updateStatusBars();
                     }
                 });
 
@@ -568,6 +712,28 @@
                     return;
                 }
 
+                // Get current stock issued data
+                const stockIssued = stockIssuedData[selectedStockId];
+                if (!stockIssued) {
+                    e.preventDefault();
+                    alert('Invalid stock selection. Please refresh the page and try again.');
+                    return;
+                }
+
+                // Validate total sqft does not exceed issued sqft
+                let totalSqft = 0;
+                items.forEach(item => {
+                    const sqft = parseFloat(item.querySelector('.total-sqft-input').value) || 0;
+                    totalSqft += sqft;
+                });
+
+                const issuedSqft = parseFloat(stockIssued.sqft_issued);
+                if (totalSqft > issuedSqft) {
+                    e.preventDefault();
+                    alert(`Total production sqft (${totalSqft.toFixed(2)}) cannot exceed issued sqft (${issuedSqft.toFixed(2)}). Please reduce production quantities.`);
+                    return;
+                }
+
                 // Validate individual item quantities
                 let hasInvalidItems = false;
                 items.forEach((item, index) => {
@@ -599,7 +765,304 @@
 
                 stockInfo.classList.remove('hidden');
                 currentStockIssued = stock;
+                
+                // Update status bars and summary
+                updateStatusBars();
             }
+
+            // Load existing production items on page load
+            @if($dailyProduction->items && $dailyProduction->items->count() > 0)
+                @foreach($dailyProduction->items as $index => $item)
+                    addProductionItem({
+                        product_name: '{{ $item->product_name }}',
+                        size: '{{ $item->size }}',
+                        diameter: '{{ $item->diameter }}',
+                        condition_status: '{{ $item->condition_status }}',
+                        special_status: '{{ $item->special_status }}',
+                        total_pieces: {{ $item->total_pieces }},
+                        total_sqft: {{ $item->total_sqft }},
+                        narration: '{{ $item->narration }}'
+                    }, {{ $index }});
+                @endforeach
+            @endif
+
+            // Function to calculate piece size from cm to sqft
+            function calculatePieceSize(input) {
+                const item = input.closest('.production-item');
+                const sizeInput = item.querySelector('.size-input');
+                const totalPiecesInput = item.querySelector('.total-pieces-input');
+                const totalSqftInput = item.querySelector('.total-sqft-input');
+                const pieceSizeDisplay = item.querySelector('.piece-size-display');
+
+                const size = sizeInput.value.trim();
+                const totalPieces = parseInt(totalPiecesInput.value) || 1; // Default to 1 if not entered
+
+                if (size) {
+                    // Parse size (e.g., "21*60" or "21×60")
+                    const sizeMatch = size.match(/(\d+(?:\.\d+)?)\s*[×*x]\s*(\d+(?:\.\d+)?)/i);
+                    
+                    if (sizeMatch) {
+                        const height = parseFloat(sizeMatch[1]);
+                        const length = parseFloat(sizeMatch[2]);
+                        
+                        // Convert cm² to sqft (1 cm² = 1/929.0304 sqft)
+                        const areaCm = height * length;
+                        const areaSqft = areaCm / 929.0304;
+                        
+                        // Calculate total sqft and per piece sqft
+                        const totalSqft = areaSqft * totalPieces;
+                        const perPieceSqft = areaSqft;
+                        
+                        // Update the fields
+                        totalSqftInput.value = totalSqft.toFixed(2);
+                        pieceSizeDisplay.textContent = perPieceSqft.toFixed(4);
+                        
+                        // Update total summary
+                        updateTotalSummary();
+                        
+                        // Check if total exceeds issued sqft
+                        checkSqftLimit();
+                        
+                        // Update status bars
+                        updateStatusBars();
+                    } else {
+                        // Invalid size format
+                        totalSqftInput.value = '';
+                        pieceSizeDisplay.textContent = '0.0000';
+                    }
+                } else {
+                    // Clear calculations if size is empty
+                    totalSqftInput.value = '';
+                    pieceSizeDisplay.textContent = '0.0000';
+                    
+                    // Update total summary
+                    updateTotalSummary();
+                    
+                    // Check if total exceeds issued sqft
+                    checkSqftLimit();
+                    
+                    // Update status bars
+                    updateStatusBars();
+                }
+            }
+
+            // Function to update total summary
+            function updateTotalSummary() {
+                const totalSummary = document.getElementById('total-summary');
+                const totalSqftDisplay = document.getElementById('total-sqft-display');
+                const totalPiecesDisplay = document.getElementById('total-pieces-display');
+                
+                let totalSqft = 0;
+                let totalPieces = 0;
+                
+                // Calculate totals from all production items
+                const productionItems = document.querySelectorAll('.production-item');
+                productionItems.forEach(item => {
+                    const sqftInput = item.querySelector('.total-sqft-input');
+                    const piecesInput = item.querySelector('.total-pieces-input');
+                    
+                    if (sqftInput && piecesInput) {
+                        const sqft = parseFloat(sqftInput.value) || 0;
+                        const pieces = parseInt(piecesInput.value) || 0;
+                        
+                        totalSqft += sqft;
+                        totalPieces += pieces;
+                    }
+                });
+                
+                // Update display
+                totalSqftDisplay.textContent = totalSqft.toFixed(2);
+                totalPiecesDisplay.textContent = totalPieces;
+                
+                // Show/hide summary based on whether there are items
+                if (productionItems.length > 0) {
+                    totalSummary.classList.remove('hidden');
+                } else {
+                    totalSummary.classList.add('hidden');
+                }
+            }
+
+            // Function to check if total sqft exceeds issued sqft
+            function checkSqftLimit() {
+                const stockSelect = document.getElementById('stock_issued_id');
+                if (!stockSelect.value) return;
+
+                const stockIssued = stockIssuedData[stockSelect.value];
+                if (!stockIssued) return;
+
+                const issuedSqft = parseFloat(stockIssued.sqft_issued);
+                const totalSqftDisplay = document.getElementById('total-sqft-display');
+                const totalSummary = document.getElementById('total-summary');
+
+                if (totalSqftDisplay && totalSummary) {
+                    const currentTotal = parseFloat(totalSqftDisplay.textContent) || 0;
+                    
+                    if (currentTotal > issuedSqft) {
+                        // Show warning by changing background color
+                        totalSummary.classList.remove('bg-blue-50', 'border-blue-200');
+                        totalSummary.classList.add('bg-red-50', 'border-red-200');
+                        
+                        // Update text colors
+                        const title = totalSummary.querySelector('h3');
+                        const subtitle = totalSummary.querySelector('p');
+                        const sqftDisplay = totalSummary.querySelector('.text-2xl');
+                        const piecesDisplay = totalSummary.querySelector('.text-sm');
+                        
+                        if (title) title.classList.remove('text-blue-900');
+                        if (subtitle) subtitle.classList.remove('text-blue-700');
+                        if (sqftDisplay) sqftDisplay.classList.remove('text-blue-900');
+                        if (piecesDisplay) piecesDisplay.classList.remove('text-blue-700');
+                        
+                        if (title) title.classList.add('text-red-900');
+                        if (subtitle) subtitle.classList.add('text-red-700');
+                        if (sqftDisplay) sqftDisplay.classList.add('text-red-900');
+                        if (piecesDisplay) piecesDisplay.classList.add('text-red-700');
+                    } else {
+                        // Reset to normal colors
+                        totalSummary.classList.remove('bg-red-50', 'border-red-200');
+                        totalSummary.classList.add('bg-blue-50', 'border-blue-200');
+                        
+                        // Reset text colors
+                        const title = totalSummary.querySelector('h3');
+                        const subtitle = totalSummary.querySelector('p');
+                        const sqftDisplay = totalSummary.querySelector('.text-2xl');
+                        const piecesDisplay = totalSummary.querySelector('.text-sm');
+                        
+                        if (title) title.classList.remove('text-red-900');
+                        if (subtitle) subtitle.classList.remove('text-red-700');
+                        if (sqftDisplay) sqftDisplay.classList.remove('text-red-900');
+                        if (piecesDisplay) piecesDisplay.classList.remove('text-red-700');
+                        
+                        if (title) title.classList.add('text-blue-900');
+                        if (subtitle) subtitle.classList.add('text-blue-700');
+                        if (sqftDisplay) sqftDisplay.classList.add('text-blue-900');
+                        if (piecesDisplay) piecesDisplay.classList.add('text-blue-700');
+                    }
+                }
+            }
+        }
+
+        // Function to update status bars
+        function updateStatusBars() {
+            const stockSelect = document.getElementById('stock_issued_id');
+            if (!stockSelect.value) return;
+
+            const stockIssued = stockIssuedData[stockSelect.value];
+            if (!stockIssued) return;
+
+            const issuedPieces = parseInt(stockIssued.quantity_issued);
+            const issuedSqft = parseFloat(stockIssued.sqft_issued);
+
+            // Calculate total production pieces and sqft
+            let totalPieces = 0;
+            let totalSqft = 0;
+
+            const productionItems = document.querySelectorAll('.production-item');
+            productionItems.forEach(item => {
+                const piecesInput = item.querySelector('.total-pieces-input');
+                const sqftInput = item.querySelector('.total-sqft-input');
+
+                if (piecesInput && sqftInput) {
+                    const pieces = parseInt(piecesInput.value) || 0;
+                    const sqft = parseFloat(sqftInput.value) || 0;
+
+                    totalPieces += pieces;
+                    totalSqft += sqft;
+                }
+            });
+
+            // Update pieces status bar
+            const piecesStatusValue = document.getElementById('pieces-status-value');
+            const piecesStatusBar = document.getElementById('pieces-status-bar');
+            
+            if (piecesStatusValue && piecesStatusBar) {
+                piecesStatusValue.textContent = totalPieces;
+                
+                if (totalPieces > issuedPieces) {
+                    // More pieces than issued (smaller pieces)
+                    piecesStatusValue.classList.remove('text-green-600', 'text-red-600');
+                    piecesStatusValue.classList.add('text-blue-600');
+                    piecesStatusBar.classList.remove('bg-green-500', 'bg-red-500');
+                    piecesStatusBar.classList.add('bg-blue-500');
+                    piecesStatusBar.style.width = '100%';
+                } else if (totalPieces === issuedPieces) {
+                    // Equal pieces
+                    piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
+                    piecesStatusValue.classList.add('text-green-600');
+                    piecesStatusBar.classList.remove('bg-blue-500', 'bg-red-500');
+                    piecesStatusBar.classList.add('bg-green-500');
+                    piecesStatusBar.style.width = '100%';
+                } else {
+                    // Fewer pieces than issued
+                    piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
+                    piecesStatusValue.classList.add('text-red-600');
+                    piecesStatusBar.classList.remove('bg-green-500', 'bg-blue-500');
+                    piecesStatusBar.classList.add('bg-red-500');
+                    const percentage = (totalPieces / issuedPieces) * 100;
+                    piecesStatusBar.style.width = Math.min(percentage, 100) + '%';
+                }
+            }
+
+            // Update remaining sqft bar
+            const remainingSqft = issuedSqft - totalSqft;
+            const remainingSqftValue = document.getElementById('remaining-sqft-value');
+            const remainingSqftBar = document.getElementById('remaining-sqft-bar');
+            
+            if (remainingSqftValue && remainingSqftBar) {
+                remainingSqftValue.textContent = remainingSqft.toFixed(2);
+                
+                if (remainingSqft > 0) {
+                    // Still have remaining sqft
+                    remainingSqftValue.classList.remove('text-green-600', 'text-blue-600');
+                    remainingSqftValue.classList.add('text-red-600');
+                    remainingSqftBar.classList.remove('bg-green-500', 'bg-blue-500');
+                    remainingSqftBar.classList.add('bg-red-500');
+                    const percentage = (remainingSqft / issuedSqft) * 100;
+                    remainingSqftBar.style.width = Math.min(percentage, 100) + '%';
+                } else if (remainingSqft === 0) {
+                    // Exactly used all sqft
+                    remainingSqftValue.classList.remove('text-red-600', 'text-blue-600');
+                    remainingSqftValue.classList.add('text-green-600');
+                    remainingSqftBar.classList.remove('bg-red-500', 'bg-blue-500');
+                    remainingSqftBar.classList.add('bg-green-500');
+                    remainingSqftBar.style.width = '0%';
+                } else {
+                    // Exceeded issued sqft
+                    remainingSqftValue.classList.remove('text-green-600', 'text-red-600');
+                    remainingSqftValue.classList.add('text-blue-600');
+                    remainingSqftBar.classList.remove('bg-green-500', 'bg-red-500');
+                    remainingSqftBar.classList.add('bg-blue-500');
+                    remainingSqftBar.style.width = '100%';
+                }
+            }
+
+            // Update summary table
+            const totalProductionSqft = document.getElementById('total-production-sqft');
+            const issuedSqftDisplay = document.getElementById('issued-sqft-display');
+            const differenceDisplay = document.getElementById('difference-display');
+
+            if (totalProductionSqft && issuedSqftDisplay && differenceDisplay) {
+                totalProductionSqft.textContent = totalSqft.toFixed(2);
+                issuedSqftDisplay.textContent = issuedSqft.toFixed(2);
+                
+                const difference = totalSqft - issuedSqft;
+                differenceDisplay.textContent = difference.toFixed(2);
+                
+                if (difference > 0) {
+                    // Exceeded issued sqft
+                    differenceDisplay.classList.remove('text-green-600', 'text-red-600');
+                    differenceDisplay.classList.add('text-blue-600');
+                } else if (difference === 0) {
+                    // Exactly matches issued sqft
+                    differenceDisplay.classList.remove('text-red-600', 'text-blue-600');
+                    differenceDisplay.classList.add('text-green-600');
+                } else {
+                    // Less than issued sqft
+                    differenceDisplay.classList.remove('text-green-600', 'text-blue-600');
+                    differenceDisplay.classList.add('text-red-600');
+                }
+            }
+        }
         });
     </script>
 </x-app-layout>

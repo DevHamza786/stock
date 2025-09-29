@@ -49,12 +49,19 @@
                                                     data-available-sqft="{{ $addition->available_sqft }}"
                                                     data-total-sqft="{{ $addition->total_sqft }}"
                                                     data-total-pieces="{{ $addition->total_pieces }}"
+                                                    data-weight="{{ $addition->weight }}"
+                                                    data-condition-status="{{ $addition->condition_status }}"
                                                     {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
                                                 {{ $addition->product->name }} - {{ $addition->mineVendor->name }} - 
-                                                @if($addition->length && $addition->height)
-                                                    Size: {{ $addition->length }} × {{ $addition->height }} cm
+                                                {{ ucfirst($addition->condition_status) }} - 
+                                                @if(strtolower($addition->condition_status) === 'block')
+                                                    Weight: {{ number_format($addition->weight, 2) }} kg
                                                 @else
-                                                    Size: {{ $addition->size_3d }}
+                                                    @if($addition->length && $addition->height)
+                                                        Size: {{ $addition->length }} × {{ $addition->height }} cm
+                                                    @else
+                                                        Size: {{ $addition->size_3d }}
+                                                    @endif
                                                 @endif
                                                 ({{ $addition->available_pieces }} pieces available)
                                             </option>
@@ -78,12 +85,22 @@
                             </div>
 
                             <!-- Sqft Issued -->
-                            <div>
+                            <div id="sqft-field">
                                 <label for="sqft_issued" class="block text-sm font-medium text-gray-700 mb-2">Square Feet to Issue</label>
                                 <input type="number" id="sqft_issued" name="sqft_issued" step="0.01" min="0" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('sqft_issued') border-red-500 @enderror" value="{{ old('sqft_issued') }}" required>
                                 @error('sqft_issued')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
+                            </div>
+
+                            <!-- Weight Issued (for Block condition) -->
+                            <div id="weight-field" style="display: none;">
+                                <label for="weight_issued" class="block text-sm font-medium text-gray-700 mb-2">Weight to Issue (kg)</label>
+                                <input type="number" id="weight_issued" name="weight_issued" step="0.01" min="0" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('weight_issued') border-red-500 @enderror" value="{{ old('weight_issued') }}">
+                                @error('weight_issued')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">Total weight to issue for selected pieces</p>
                             </div>
 
                             <!-- Purpose -->
@@ -166,7 +183,7 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900"></span>
@@ -176,14 +193,22 @@
                                     <span id="selected-vendor" class="text-gray-900"></span>
                                 </div>
                                 <div>
+                                    <span class="font-medium text-gray-700">Condition:</span>
+                                    <span id="selected-condition" class="text-gray-900"></span>
+                                </div>
+                                <div id="size-info">
                                     <span class="font-medium text-gray-700">Size:</span>
                                     <span id="selected-size" class="text-gray-900"></span>
+                                </div>
+                                <div id="weight-info" style="display: none;">
+                                    <span class="font-medium text-gray-700">Weight:</span>
+                                    <span id="selected-weight" class="text-gray-900"></span>
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-700">Available Pieces:</span>
                                     <span id="available-pieces" class="text-gray-900"></span>
                                 </div>
-                                <div>
+                                <div id="sqft-info">
                                     <span class="font-medium text-gray-700">Available Sqft:</span>
                                     <span id="available-sqft" class="text-gray-900"></span>
                                 </div>
@@ -226,19 +251,57 @@
 
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
+                    const conditionStatus = stock.condition_status.toLowerCase();
 
                     selectedProduct.textContent = stock.product.name;
                     selectedVendor.textContent = stock.mine_vendor.name;
+                    document.getElementById('selected-condition').textContent = stock.condition_status;
                     
-                    // Display size in 2D format if available, otherwise fallback to 3D
-                    if (stock.length && stock.height) {
-                        selectedSize.innerHTML = `<span class="font-medium text-blue-600">${stock.length} × ${stock.height} cm</span><br><span class="text-xs text-gray-500">${(stock.length * stock.height).toFixed(2)} cm²</span>`;
+                    // Show/hide fields based on condition status
+                    const sqftField = document.getElementById('sqft-field');
+                    const weightField = document.getElementById('weight-field');
+                    const sizeInfo = document.getElementById('size-info');
+                    const weightInfo = document.getElementById('weight-info');
+                    const sqftInfo = document.getElementById('sqft-info');
+                    const selectedWeight = document.getElementById('selected-weight');
+
+                    if (conditionStatus === 'block') {
+                        // Show weight field, hide sqft field
+                        sqftField.style.display = 'none';
+                        weightField.style.display = 'block';
+                        sizeInfo.style.display = 'none';
+                        weightInfo.style.display = 'block';
+                        sqftInfo.style.display = 'none';
+                        
+                        // Display weight
+                        selectedWeight.textContent = `${stock.weight} kg per piece`;
+                        
+                        // Remove required from sqft, add to weight
+                        sqftInput.removeAttribute('required');
+                        document.getElementById('weight_issued').setAttribute('required', 'required');
                     } else {
-                        selectedSize.textContent = stock.size_3d || 'N/A';
+                        // Show sqft field, hide weight field
+                        sqftField.style.display = 'block';
+                        weightField.style.display = 'none';
+                        sizeInfo.style.display = 'block';
+                        weightInfo.style.display = 'none';
+                        sqftInfo.style.display = 'block';
+                        
+                        // Display size in 2D format if available, otherwise fallback to 3D
+                        if (stock.length && stock.height) {
+                            selectedSize.innerHTML = `<span class="font-medium text-blue-600">${stock.length} × ${stock.height} cm</span><br><span class="text-xs text-gray-500">${(stock.length * stock.height).toFixed(2)} cm²</span>`;
+                        } else {
+                            selectedSize.textContent = stock.size_3d || 'N/A';
+                        }
+                        
+                        availableSqft.textContent = stock.available_sqft;
+                        
+                        // Add required to sqft, remove from weight
+                        sqftInput.setAttribute('required', 'required');
+                        document.getElementById('weight_issued').removeAttribute('required');
                     }
                     
                     availablePieces.textContent = stock.available_pieces;
-                    availableSqft.textContent = stock.available_sqft;
 
                     // Auto-fill stone field
                     const stoneField = document.getElementById('stone');
@@ -250,20 +313,32 @@
 
                     // Set max values for inputs
                     quantityInput.max = stock.available_pieces;
-                    sqftInput.max = stock.available_sqft;
+                    if (conditionStatus !== 'block') {
+                        sqftInput.max = stock.available_sqft;
+                    }
                 } else {
                     stockInfo.classList.add('hidden');
                 }
             });
 
-            // Auto-calculate sqft based on quantity (if needed)
+            // Auto-calculate sqft/weight based on quantity (if needed)
             quantityInput.addEventListener('input', function() {
                 const selectedId = stockSelect.value;
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
-                    const piecesPerSqft = stock.total_sqft / stock.total_pieces;
-                    const calculatedSqft = this.value * piecesPerSqft;
-                    sqftInput.value = calculatedSqft.toFixed(2);
+                    const conditionStatus = stock.condition_status.toLowerCase();
+                    
+                    if (conditionStatus === 'block') {
+                        // Calculate total weight for blocks
+                        const weightPerPiece = stock.weight;
+                        const totalWeight = this.value * weightPerPiece;
+                        document.getElementById('weight_issued').value = totalWeight.toFixed(2);
+                    } else {
+                        // Calculate sqft for other conditions
+                        const piecesPerSqft = stock.total_sqft / stock.total_pieces;
+                        const calculatedSqft = this.value * piecesPerSqft;
+                        sqftInput.value = calculatedSqft.toFixed(2);
+                    }
                 }
             });
         });

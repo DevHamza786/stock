@@ -18,20 +18,24 @@ class StockAddition extends Model
         'length',
         'height',
         'diameter',
+        'weight',
         'size_3d', // Keep for backward compatibility
         'total_pieces',
         'total_sqft',
         'condition_status',
         'available_pieces',
         'available_sqft',
+        'available_weight',
         'date'
     ];
 
     protected $casts = [
         'length' => 'decimal:2',
         'height' => 'decimal:2',
+        'weight' => 'decimal:2',
         'total_sqft' => 'decimal:2',
         'available_sqft' => 'decimal:2',
+        'available_weight' => 'decimal:2',
         'date' => 'datetime',
     ];
 

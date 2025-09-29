@@ -17,6 +17,7 @@ class StockIssued extends Model
         'stock_addition_id',
         'quantity_issued',
         'sqft_issued',
+        'weight_issued',
         'purpose',
         'machine_name',
         'operator_name',
@@ -27,6 +28,7 @@ class StockIssued extends Model
 
     protected $casts = [
         'sqft_issued' => 'decimal:2',
+        'weight_issued' => 'decimal:2',
         'date' => 'datetime',
     ];
 

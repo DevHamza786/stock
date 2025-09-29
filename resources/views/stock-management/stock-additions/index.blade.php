@@ -191,7 +191,7 @@
                                         </a>
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stone</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size/Weight</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_pieces', 'sort_direction' => request('sort_by') == 'total_pieces' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
                                             Pieces
@@ -288,12 +288,22 @@
                                             {{ $addition->stone }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @if($addition->length && $addition->height)
-                                                <span class="font-medium text-blue-600">{{ $addition->length }} × {{ $addition->height }} cm</span>
-                                                <br>
-                                                <span class="text-xs text-gray-400">{{ number_format($addition->length * $addition->height, 2) }} cm²</span>
+                                            @if(strtolower($addition->condition_status) === 'block')
+                                                @if($addition->weight)
+                                                    <span class="font-medium text-green-600">{{ number_format($addition->weight, 2) }} kg</span>
+                                                    <br>
+                                                    <span class="text-xs text-gray-400">Weight per piece</span>
+                                                @else
+                                                    <span class="text-gray-400">N/A</span>
+                                                @endif
                                             @else
-                                                <span class="text-gray-400">{{ $addition->size_3d ?? 'N/A' }}</span>
+                                                @if($addition->length && $addition->height)
+                                                    <span class="font-medium text-blue-600">{{ $addition->length }} × {{ $addition->height }} cm</span>
+                                                    <br>
+                                                    <span class="text-xs text-gray-400">{{ number_format($addition->length * $addition->height, 2) }} cm²</span>
+                                                @else
+                                                    <span class="text-gray-400">{{ $addition->size_3d ?? 'N/A' }}</span>
+                                                @endif
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

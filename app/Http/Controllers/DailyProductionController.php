@@ -356,6 +356,12 @@ class DailyProductionController extends Controller
      */
     public function edit(DailyProduction $dailyProduction)
     {
+        // Check if production is closed - prevent editing
+        if ($dailyProduction->status === 'close') {
+            return redirect()->route('stock-management.daily-production.show', $dailyProduction)
+                ->with('error', 'Cannot edit closed production. Production is marked as completed.');
+        }
+
         // Load the daily production with its relationships
         $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'stockIssued', 'items']);
 
@@ -379,6 +385,12 @@ class DailyProductionController extends Controller
      */
     public function update(Request $request, DailyProduction $dailyProduction)
     {
+        // Check if production is closed - prevent updating
+        if ($dailyProduction->status === 'close') {
+            return redirect()->route('stock-management.daily-production.show', $dailyProduction)
+                ->with('error', 'Cannot update closed production. Production is marked as completed.');
+        }
+
         $request->validate([
             'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
@@ -572,6 +584,12 @@ class DailyProductionController extends Controller
      */
     public function destroy(DailyProduction $dailyProduction)
     {
+        // Check if production is closed - prevent deletion
+        if ($dailyProduction->status === 'close') {
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('error', 'Cannot delete closed production. Production is marked as completed.');
+        }
+
         $dailyProduction->delete();
 
         return redirect()->route('stock-management.daily-production.index')

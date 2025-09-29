@@ -178,7 +178,7 @@
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'sqft', 'sort_order' => request('sort_by') == 'sqft' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" class="flex items-center space-x-1 hover:text-gray-700">
-                                            <span>Sqft Issued</span>
+                                            <span>Sqft/Weight Issued</span>
                                             @if(request('sort_by') == 'sqft')
                                                 @if(request('sort_order') == 'asc')
                                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,7 +254,17 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($issue->quantity_issued) }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($issue->sqft_issued, 2) }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            @if(strtolower($issue->stockAddition->condition_status) === 'block')
+                                                @if($issue->weight_issued)
+                                                    <span class="font-medium text-green-600">{{ number_format($issue->weight_issued, 2) }} kg</span>
+                                                @else
+                                                    <span class="text-gray-400">N/A</span>
+                                                @endif
+                                            @else
+                                                {{ number_format($issue->sqft_issued, 2) }} sqft
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                 {{ $issue->purpose }}
