@@ -62,6 +62,14 @@
                                 <x-input-error :messages="$errors->get('height')" class="mt-2" />
                             </div>
 
+                            <!-- Diameter -->
+                            <div>
+                                <x-input-label for="diameter" :value="__('Diameter/Thickness (cm)')" />
+                                <x-text-input id="diameter" name="diameter" type="text" class="mt-1 block w-full" :value="old('diameter')" placeholder="e.g., 6cm, 2cm, 3.5cm" />
+                                <p class="mt-1 text-xs text-gray-500">Enter the thickness or diameter of the product</p>
+                                <x-input-error :messages="$errors->get('diameter')" class="mt-2" />
+                            </div>
+
                             <!-- Total Pieces -->
                             <div>
                                 <x-input-label for="total_pieces" :value="__('Total Pieces')" />

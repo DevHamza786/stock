@@ -17,6 +17,7 @@ class StockAddition extends Model
         'stone',
         'length',
         'height',
+        'diameter',
         'size_3d', // Keep for backward compatibility
         'total_pieces',
         'total_sqft',

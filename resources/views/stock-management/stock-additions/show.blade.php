@@ -46,6 +46,9 @@
                                         @if($stockAddition->length && $stockAddition->height)
                                             <div class="space-y-1">
                                                 <div class="font-medium text-blue-600">{{ $stockAddition->length }} × {{ $stockAddition->height }} cm</div>
+                                                @if($stockAddition->diameter)
+                                                    <div class="text-sm text-green-600">Thickness: {{ $stockAddition->diameter }}</div>
+                                                @endif
                                                 <div class="text-xs text-gray-500">
                                                     Single piece: {{ number_format($stockAddition->length * $stockAddition->height, 2) }} cm²
                                                 </div>

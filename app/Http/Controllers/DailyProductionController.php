@@ -190,6 +190,7 @@ class DailyProductionController extends Controller
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
+            'status' => 'required|in:open,close',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
             'items.*.size' => 'nullable|string|max:255',
@@ -217,6 +218,9 @@ class DailyProductionController extends Controller
                 ->with('error', "Total production sqft ({$totalSqft}) must equal issued sqft ({$stockIssued->sqft_issued}). The block size must be divided among all products.");
         }
 
+        // Calculate wastage (issued sqft - produced sqft)
+        $wastageSqft = $stockIssued->sqft_issued - $totalSqft;
+
         // Create daily production record
         $dailyProduction = DailyProduction::create([
             'stock_addition_id' => $stockIssued->stock_addition_id,
@@ -226,6 +230,8 @@ class DailyProductionController extends Controller
             'notes' => $request->notes,
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
+            'status' => $request->status,
+            'wastage_sqft' => $wastageSqft,
         ]);
 
         // Process production items with product matching logic
@@ -380,6 +386,7 @@ class DailyProductionController extends Controller
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
+            'status' => 'required|in:open,close',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
             'items.*.size' => 'nullable|string|max:255',
@@ -409,6 +416,9 @@ class DailyProductionController extends Controller
         $oldTotalPieces = $dailyProduction->items->sum('total_pieces');
         $oldTotalSqft = $dailyProduction->items->sum('total_sqft');
 
+        // Calculate wastage (issued sqft - produced sqft)
+        $wastageSqft = $stockIssued->sqft_issued - $totalSqft;
+
         // Update daily production record
         $dailyProduction->update([
             'stock_addition_id' => $stockIssued->stock_addition_id,
@@ -418,6 +428,8 @@ class DailyProductionController extends Controller
             'notes' => $request->notes,
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
+            'status' => $request->status,
+            'wastage_sqft' => $wastageSqft,
         ]);
 
         // Delete existing production items

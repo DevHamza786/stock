@@ -268,6 +268,11 @@
                                             <div>
                                                 <p class="text-sm text-gray-500">Production recorded: <span class="font-medium text-gray-900">{{ number_format($production->total_pieces) }} pieces</span></p>
                                                 <p class="text-sm text-gray-500">{{ $production->machine_name }} - {{ $production->operator_name }}</p>
+                                                <p class="text-xs">
+                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $production->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                        {{ ucfirst($production->status) }}
+                                                    </span>
+                                                </p>
                                             </div>
                                             <div class="text-right text-sm whitespace-nowrap text-gray-500">
                                                 {{ $production->date->format('M d, Y') }}

@@ -20,11 +20,14 @@ class DailyProduction extends Model
         'operator_name',
         'notes',
         'stone',
-        'date'
+        'date',
+        'status',
+        'wastage_sqft'
     ];
 
     protected $casts = [
         'date' => 'datetime',
+        'wastage_sqft' => 'decimal:2',
     ];
 
     /**

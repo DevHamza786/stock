@@ -18,7 +18,10 @@ class StockIssuedController extends Controller
      */
     public function index(Request $request)
     {
-        $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor']);
+        $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            ->whereDoesntHave('dailyProduction', function ($dailyQuery) {
+                $dailyQuery->where('status', 'close');
+            });
 
         // Search functionality
         if ($request->filled('search')) {
@@ -232,6 +235,13 @@ class StockIssuedController extends Controller
      */
     public function update(Request $request, StockIssued $stockIssued)
     {
+        // Check if this stock issue is linked to a closed daily production
+        $closedProduction = $stockIssued->dailyProduction()->where('status', 'close')->first();
+        if ($closedProduction) {
+            return redirect()->back()
+                ->with('error', 'Cannot update stock issue that is linked to a closed daily production.');
+        }
+
         $request->validate([
             'stock_addition_id' => 'required|exists:stock_additions,id',
             'quantity_issued' => 'required|integer|min:1',
@@ -266,6 +276,13 @@ class StockIssuedController extends Controller
      */
     public function destroy(StockIssued $stockIssued)
     {
+        // Check if this stock issue is linked to a closed daily production
+        $closedProduction = $stockIssued->dailyProduction()->where('status', 'close')->first();
+        if ($closedProduction) {
+            return redirect()->route('stock-management.stock-issued.index')
+                ->with('error', 'Cannot delete stock issue that is linked to a closed daily production.');
+        }
+
         // Check if there are any gate passes
         if ($stockIssued->gatePass()->count() > 0) {
             return redirect()->route('stock-management.stock-issued.index')

@@ -57,6 +57,14 @@
                                     <dt class="text-sm font-medium text-gray-500">Production Date</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->date->format('M d, Y') }}</dd>
                                 </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Status</dt>
+                                    <dd class="mt-1">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $dailyProduction->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                            {{ ucfirst($dailyProduction->status) }}
+                                        </span>
+                                    </dd>
+                                </div>
                                 @if($dailyProduction->stone)
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
@@ -69,7 +77,15 @@
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Total Square Feet</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }}</dd>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }} sqft</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Wastage</dt>
+                                    <dd class="mt-1">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $dailyProduction->wastage_sqft > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                            {{ number_format($dailyProduction->wastage_sqft, 2) }} sqft
+                                        </span>
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Production Efficiency</dt>
@@ -109,13 +125,13 @@
                                                 </div>
                                                 @if($item->size)
                                                 <div>
-                                                    <dt class="font-medium text-gray-700">Size</dt>
+                                                    <dt class="font-medium text-gray-700">Size (cm)</dt>
                                                     <dd class="text-gray-900">{{ $item->size }}</dd>
                                                 </div>
                                                 @endif
                                                 @if($item->diameter)
                                                 <div>
-                                                    <dt class="font-medium text-gray-700">Diameter</dt>
+                                                    <dt class="font-medium text-gray-700">Diameter/Thickness</dt>
                                                     <dd class="text-gray-900">{{ $item->diameter }}</dd>
                                                 </div>
                                                 @endif
@@ -131,8 +147,14 @@
                                                 @endif
                                                 <div>
                                                     <dt class="font-medium text-gray-700">Total Sqft</dt>
-                                                    <dd class="text-gray-900">{{ number_format($item->total_sqft, 2) }}</dd>
+                                                    <dd class="text-gray-900">{{ number_format($item->total_sqft, 2) }} sqft</dd>
                                                 </div>
+                                                @if($item->size)
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Per Piece Sqft</dt>
+                                                    <dd class="text-gray-900">{{ number_format($item->total_sqft / $item->total_pieces, 4) }} sqft</dd>
+                                                </div>
+                                                @endif
                                                 @if($item->narration)
                                                 <div class="md:col-span-2 lg:col-span-3">
                                                     <dt class="font-medium text-gray-700">Narration</dt>
