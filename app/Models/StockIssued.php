@@ -55,6 +55,14 @@ class StockIssued extends Model
     }
 
     /**
+     * Get the daily production records for this stock issued.
+     */
+    public function dailyProduction(): HasMany
+    {
+        return $this->hasMany(DailyProduction::class);
+    }
+
+    /**
      * Boot method to update stock addition available quantities.
      */
     protected static function boot()
