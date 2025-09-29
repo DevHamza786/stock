@@ -28,6 +28,11 @@ class MachineController extends Controller
             $query->where('status', $request->get('status') === 'active');
         }
 
+        // Filter by can_add_stock
+        if ($request->filled('can_add_stock')) {
+            $query->where('can_add_stock', $request->get('can_add_stock') === 'yes');
+        }
+
         $machines = $query->orderBy('name')->paginate(15);
 
         return view('master-data.machines.index', compact('machines'));
@@ -50,12 +55,14 @@ class MachineController extends Controller
             'name' => 'required|string|max:255|unique:machines,name',
             'description' => 'nullable|string',
             'status' => 'boolean',
+            'can_add_stock' => 'boolean',
         ]);
 
         Machine::create([
             'name' => $request->name,
             'description' => $request->description,
             'status' => $request->boolean('status', true),
+            'can_add_stock' => $request->boolean('can_add_stock', true),
             'created_by' => auth()->id(),
         ]);
 
@@ -89,12 +96,14 @@ class MachineController extends Controller
             'name' => 'required|string|max:255|unique:machines,name,' . $machine->id,
             'description' => 'nullable|string',
             'status' => 'boolean',
+            'can_add_stock' => 'boolean',
         ]);
 
         $machine->update([
             'name' => $request->name,
             'description' => $request->description,
             'status' => $request->boolean('status', true),
+            'can_add_stock' => $request->boolean('can_add_stock', true),
             'updated_by' => auth()->id(),
         ]);
 

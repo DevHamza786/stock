@@ -91,6 +91,16 @@
                                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                     @enderror
                                 </div>
+
+                                <!-- Stone -->
+                                <div>
+                                    <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Stone Type</label>
+                                    <input type="text" id="stone" name="stone" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stone') border-red-500 @enderror" value="{{ old('stone', $dailyProduction->stone) }}" readonly>
+                                    @error('stone')
+                                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                    @enderror
+                                    <p class="text-xs text-gray-500 mt-1">This field is automatically filled from the stock addition</p>
+                                </div>
                             </div>
                         </div>
 
@@ -289,6 +299,12 @@
                     selectedVendor.textContent = stockAddition.mine_vendor.name;
                     availablePieces.textContent = currentStockIssued.quantity_issued;
                     availableSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
+                    
+                    // Auto-fill stone field
+                    const stoneField = document.getElementById('stone');
+                    if (stoneField) {
+                        stoneField.value = currentStockIssued.stone || stockAddition.stone || '';
+                    }
 
                     // Calculate and display sqft per piece
                     const sqftPerPieceValue = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;

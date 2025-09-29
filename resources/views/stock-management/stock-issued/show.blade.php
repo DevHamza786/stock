@@ -53,8 +53,22 @@
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->stone }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Size (3D)</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->size_3d }}</dd>
+                                    <dt class="text-sm font-medium text-gray-500">Dimensions</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @if($stockIssued->stockAddition->length && $stockIssued->stockAddition->height)
+                                            <div class="space-y-1">
+                                                <div class="font-medium text-blue-600">{{ $stockIssued->stockAddition->length }} × {{ $stockIssued->stockAddition->height }} cm</div>
+                                                <div class="text-xs text-gray-500">
+                                                    Single piece: {{ number_format($stockIssued->stockAddition->length * $stockIssued->stockAddition->height, 2) }} cm²
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    Single piece: {{ number_format(($stockIssued->stockAddition->length * $stockIssued->stockAddition->height) * 0.00107639, 4) }} sqft
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-400">{{ $stockIssued->stockAddition->size_3d ?? 'N/A' }}</span>
+                                        @endif
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Quantity Issued</dt>
@@ -307,8 +321,14 @@
                             <td class="print:py-1">{{ $stockIssued->stockAddition->stone }}</td>
                         </tr>
                         <tr>
-                            <td class="print:font-semibold print:py-1 print:pr-4">Size (3D):</td>
-                            <td class="print:py-1">{{ $stockIssued->stockAddition->size_3d }}</td>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Dimensions:</td>
+                            <td class="print:py-1">
+                                @if($stockIssued->stockAddition->length && $stockIssued->stockAddition->height)
+                                    {{ $stockIssued->stockAddition->length }} × {{ $stockIssued->stockAddition->height }} cm
+                                @else
+                                    {{ $stockIssued->stockAddition->size_3d ?? 'N/A' }}
+                                @endif
+                            </td>
                         </tr>
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Quantity Issued:</td>
@@ -651,7 +671,7 @@
                 productName: '{{ $stockIssued->stockAddition->product->name }}',
                 vendorName: '{{ $stockIssued->stockAddition->mineVendor->name }}',
                 stoneType: '{{ $stockIssued->stockAddition->stone }}',
-                size3d: '{{ $stockIssued->stockAddition->size_3d }}',
+                size3d: '{{ $stockIssued->stockAddition->length && $stockIssued->stockAddition->height ? $stockIssued->stockAddition->length . " × " . $stockIssued->stockAddition->height . " cm" : $stockIssued->stockAddition->size_3d }}',
                 quantityIssued: '{{ number_format($stockIssued->quantity_issued) }}',
                 sqftIssued: '{{ number_format($stockIssued->sqft_issued, 2) }}',
                 purpose: '{{ $stockIssued->purpose ?? 'Production' }}',

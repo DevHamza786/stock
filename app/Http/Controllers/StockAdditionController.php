@@ -27,6 +27,8 @@ class StockAdditionController extends Controller
                 $q->where('stone', 'like', "%{$search}%")
                   ->orWhere('size_3d', 'like', "%{$search}%")
                   ->orWhere('condition_status', 'like', "%{$search}%")
+                  ->orWhere('length', 'like', "%{$search}%")
+                  ->orWhere('height', 'like', "%{$search}%")
                   ->orWhereHas('product', function ($productQuery) use ($search) {
                       $productQuery->where('name', 'like', "%{$search}%");
                   })
@@ -117,7 +119,8 @@ class StockAdditionController extends Controller
             'product_id' => 'required|exists:products,id',
             'mine_vendor_id' => 'required|exists:mine_vendors,id',
             'stone' => 'required|string|max:255',
-            'size_3d' => 'required|string|max:10',
+            'length' => 'required|numeric|min:0.1',
+            'height' => 'required|numeric|min:0.1',
             'total_pieces' => 'required|integer|min:1',
             'condition_status' => 'required|string|max:255',
             'date' => 'required|date',
@@ -163,16 +166,23 @@ class StockAdditionController extends Controller
             'product_id' => 'required|exists:products,id',
             'mine_vendor_id' => 'required|exists:mine_vendors,id',
             'stone' => 'required|string|max:255',
-            'size_3d' => 'required|string|max:10',
+            'length' => 'required|numeric|min:0.1',
+            'height' => 'required|numeric|min:0.1',
             'total_pieces' => 'required|integer|min:1',
             'condition_status' => 'required|string|max:255',
             'date' => 'required|date',
         ]);
 
-        $stockAddition->update($request->all());
+        try {
+            $stockAddition->update($request->all());
 
-        return redirect()->route('stock-management.stock-additions.index')
-            ->with('success', 'Stock addition updated successfully.');
+            return redirect()->route('stock-management.stock-additions.index')
+                ->with('success', 'Stock addition updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -193,18 +203,19 @@ class StockAdditionController extends Controller
     }
 
     /**
-     * Calculate square footage from size_3d.
+     * Calculate square footage from dimensions.
      */
     public function calculateSqft(Request $request)
     {
-        $size3d = $request->get('size_3d');
+        $length = $request->get('length');
+        $height = $request->get('height');
         $pieces = $request->get('pieces', 1);
 
-        if (empty($size3d)) {
+        if (empty($length) || empty($height)) {
             return response()->json(['sqft' => 0]);
         }
 
-        $sqft = StockAddition::calculateSqftFromSize3d($size3d);
+        $sqft = StockAddition::calculateSqftFromDimensions($length, $height);
         $totalSqft = $sqft * $pieces;
 
         return response()->json([

@@ -41,8 +41,22 @@
                                     <option value="">Choose stock issuance...</option>
                                     @if(isset($stockAdditions) && $stockAdditions->count() > 0)
                                         @foreach($stockAdditions as $addition)
-                                            <option value="{{ $addition->id }}" {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
-                                                {{ $addition->product->name }} - {{ $addition->mineVendor->name }} - Size: {{ $addition->size_3d }} ({{ $addition->available_pieces }} pieces available)
+                                            <option value="{{ $addition->id }}" 
+                                                    data-length="{{ $addition->length }}"
+                                                    data-height="{{ $addition->height }}"
+                                                    data-size-3d="{{ $addition->size_3d }}"
+                                                    data-available-pieces="{{ $addition->available_pieces }}"
+                                                    data-available-sqft="{{ $addition->available_sqft }}"
+                                                    data-total-sqft="{{ $addition->total_sqft }}"
+                                                    data-total-pieces="{{ $addition->total_pieces }}"
+                                                    {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
+                                                {{ $addition->product->name }} - {{ $addition->mineVendor->name }} - 
+                                                @if($addition->length && $addition->height)
+                                                    Size: {{ $addition->length }} × {{ $addition->height }} cm
+                                                @else
+                                                    Size: {{ $addition->size_3d }}
+                                                @endif
+                                                ({{ $addition->available_pieces }} pieces available)
                                             </option>
                                         @endforeach
                                     @else
@@ -129,6 +143,16 @@
                                 @enderror
                             </div>
 
+                            <!-- Stone -->
+                            <div>
+                                <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Stone Type (Auto-filled)</label>
+                                <input type="text" id="stone" name="stone" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('stone') border-red-500 @enderror" placeholder="Will be auto-filled from stock addition..." readonly>
+                                @error('stone')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">This field will be automatically filled from the selected stock addition</p>
+                            </div>
+
                             <!-- Date -->
                             <div>
                                 <label for="date" class="block text-sm font-medium text-gray-700 mb-2">Issue Date</label>
@@ -205,9 +229,22 @@
 
                     selectedProduct.textContent = stock.product.name;
                     selectedVendor.textContent = stock.mine_vendor.name;
-                    selectedSize.textContent = stock.size_3d;
+                    
+                    // Display size in 2D format if available, otherwise fallback to 3D
+                    if (stock.length && stock.height) {
+                        selectedSize.innerHTML = `<span class="font-medium text-blue-600">${stock.length} × ${stock.height} cm</span><br><span class="text-xs text-gray-500">${(stock.length * stock.height).toFixed(2)} cm²</span>`;
+                    } else {
+                        selectedSize.textContent = stock.size_3d || 'N/A';
+                    }
+                    
                     availablePieces.textContent = stock.available_pieces;
                     availableSqft.textContent = stock.available_sqft;
+
+                    // Auto-fill stone field
+                    const stoneField = document.getElementById('stone');
+                    if (stoneField) {
+                        stoneField.value = stock.stone || '';
+                    }
 
                     stockInfo.classList.remove('hidden');
 

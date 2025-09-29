@@ -15,7 +15,9 @@ class StockAddition extends Model
         'product_id',
         'mine_vendor_id',
         'stone',
-        'size_3d',
+        'length',
+        'height',
+        'size_3d', // Keep for backward compatibility
         'total_pieces',
         'total_sqft',
         'condition_status',
@@ -25,6 +27,8 @@ class StockAddition extends Model
     ];
 
     protected $casts = [
+        'length' => 'decimal:2',
+        'height' => 'decimal:2',
         'total_sqft' => 'decimal:2',
         'available_sqft' => 'decimal:2',
         'date' => 'datetime',
@@ -63,7 +67,24 @@ class StockAddition extends Model
     }
 
     /**
-     * Calculate square footage from 3D dimensions.
+     * Calculate square footage from 2D dimensions (cm to sqft).
+     * Conversion factor: 1 cm² = 0.00107639 sqft
+     */
+    public static function calculateSqftFromDimensions(float $length, float $height): float
+    {
+        if ($length <= 0 || $height <= 0) {
+            return 0;
+        }
+
+        // Calculate area in cm²
+        $areaCm = $length * $height;
+        
+        // Convert to sqft (1 cm² = 0.00107639 sqft)
+        return $areaCm * 0.00107639;
+    }
+
+    /**
+     * Calculate square footage from 3D dimensions (legacy method).
      * Format: 20143 (20x14x3)
      */
     public static function calculateSqftFromSize3d(string $size3d): float
@@ -75,14 +96,22 @@ class StockAddition extends Model
         // Extract dimensions from size_3d (e.g., 20143 = 20x14x3)
         $length = (int) substr($size3d, 0, 2);
         $width = (int) substr($size3d, 2, 2);
-        $height = (int) substr($size3d, 4, 1);
 
         // Calculate square footage (length * width)
         return $length * $width;
     }
 
     /**
-     * Calculate total square footage for multiple pieces.
+     * Calculate total square footage for multiple pieces using new 2D method.
+     */
+    public static function calculateTotalSqftFromDimensions(float $length, float $height, int $pieces): float
+    {
+        $sqftPerPiece = self::calculateSqftFromDimensions($length, $height);
+        return $sqftPerPiece * $pieces;
+    }
+
+    /**
+     * Calculate total square footage for multiple pieces (legacy method).
      */
     public static function calculateTotalSqft(string $size3d, int $pieces): float
     {
@@ -99,10 +128,21 @@ class StockAddition extends Model
 
         static::creating(function ($stockAddition) {
             if (empty($stockAddition->total_sqft)) {
-                $stockAddition->total_sqft = self::calculateTotalSqft(
-                    $stockAddition->size_3d,
-                    $stockAddition->total_pieces
-                );
+                // Use new 2D method if length and height are provided
+                if (!empty($stockAddition->length) && !empty($stockAddition->height)) {
+                    $stockAddition->total_sqft = self::calculateTotalSqftFromDimensions(
+                        $stockAddition->length,
+                        $stockAddition->height,
+                        $stockAddition->total_pieces
+                    );
+                } 
+                // Fallback to legacy 3D method
+                elseif (!empty($stockAddition->size_3d)) {
+                    $stockAddition->total_sqft = self::calculateTotalSqft(
+                        $stockAddition->size_3d,
+                        $stockAddition->total_pieces
+                    );
+                }
             }
 
             // Set available quantities equal to total quantities initially
@@ -111,11 +151,41 @@ class StockAddition extends Model
         });
 
         static::updating(function ($stockAddition) {
-            if ($stockAddition->isDirty(['size_3d', 'total_pieces'])) {
-                $stockAddition->total_sqft = self::calculateTotalSqft(
-                    $stockAddition->size_3d,
-                    $stockAddition->total_pieces
-                );
+            // Check if there are any stock issues for this stock addition
+            if ($stockAddition->stockIssued()->count() > 0) {
+                // Check if critical fields are being changed
+                $criticalFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft'];
+                $hasCriticalChanges = false;
+                
+                foreach ($criticalFields as $field) {
+                    if ($stockAddition->isDirty($field)) {
+                        $hasCriticalChanges = true;
+                        break;
+                    }
+                }
+                
+                if ($hasCriticalChanges) {
+                    throw new \Exception('Cannot update stock dimensions or quantities after stock has been issued. Please delete all related stock issuances first.');
+                }
+            }
+            
+            // Recalculate if any dimension fields change
+            if ($stockAddition->isDirty(['length', 'height', 'size_3d', 'total_pieces'])) {
+                // Use new 2D method if length and height are provided
+                if (!empty($stockAddition->length) && !empty($stockAddition->height)) {
+                    $stockAddition->total_sqft = self::calculateTotalSqftFromDimensions(
+                        $stockAddition->length,
+                        $stockAddition->height,
+                        $stockAddition->total_pieces
+                    );
+                } 
+                // Fallback to legacy 3D method
+                elseif (!empty($stockAddition->size_3d)) {
+                    $stockAddition->total_sqft = self::calculateTotalSqft(
+                        $stockAddition->size_3d,
+                        $stockAddition->total_pieces
+                    );
+                }
             }
         });
     }
@@ -142,6 +212,22 @@ class StockAddition extends Model
     public function hasAvailableStock(): bool
     {
         return $this->available_pieces > 0;
+    }
+
+    /**
+     * Check if this stock has been issued (has stock issuances).
+     */
+    public function hasBeenIssued(): bool
+    {
+        return $this->stockIssued()->count() > 0;
+    }
+
+    /**
+     * Check if this stock can be updated (no stock issuances exist).
+     */
+    public function canBeUpdated(): bool
+    {
+        return !$this->hasBeenIssued();
     }
 
     /**

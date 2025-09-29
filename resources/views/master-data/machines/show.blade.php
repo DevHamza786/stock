@@ -40,6 +40,15 @@
                                     </span>
                                 </dd>
                             </div>
+
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Can Add Stock</dt>
+                                <dd class="mt-1">
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $machine->can_add_stock ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
+                                        {{ $machine->can_add_stock ? 'Yes' : 'No' }}
+                                    </span>
+                                </dd>
+                            </div>
                         </div>
 
                         <!-- Audit Information -->

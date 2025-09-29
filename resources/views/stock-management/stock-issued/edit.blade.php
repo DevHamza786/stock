@@ -21,7 +21,13 @@
                                     <div class="text-sm text-gray-900">
                                         <strong>{{ $stockIssued->stockAddition->product->name }}</strong><br>
                                         <span class="text-gray-600">{{ $stockIssued->stockAddition->mineVendor->name }}</span><br>
-                                        <span class="text-gray-500">{{ $stockIssued->stockAddition->stone }} - {{ $stockIssued->stockAddition->size_3d }}</span>
+                                        <span class="text-gray-500">{{ $stockIssued->stockAddition->stone }} - 
+                                            @if($stockIssued->stockAddition->length && $stockIssued->stockAddition->height)
+                                                {{ $stockIssued->stockAddition->length }} × {{ $stockIssued->stockAddition->height }} cm
+                                            @else
+                                                {{ $stockIssued->stockAddition->size_3d }}
+                                            @endif
+                                        </span>
                                     </div>
                                 </div>
                                 <input type="hidden" name="stock_addition_id" value="{{ $stockIssued->stock_addition_id }}">
@@ -96,6 +102,14 @@
                                 <x-input-label for="notes" :value="__('Notes')" />
                                 <textarea id="notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('notes', $stockIssued->notes) }}</textarea>
                                 <x-input-error :messages="$errors->get('notes')" class="mt-2" />
+                            </div>
+
+                            <!-- Stone -->
+                            <div>
+                                <x-input-label for="stone" :value="__('Stone Type')" />
+                                <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full bg-gray-100" :value="old('stone', $stockIssued->stone)" readonly />
+                                <p class="mt-1 text-sm text-gray-500">Automatically filled from stock addition</p>
+                                <x-input-error :messages="$errors->get('stone')" class="mt-2" />
                             </div>
                         </div>
 

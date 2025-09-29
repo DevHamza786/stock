@@ -37,6 +37,8 @@ class StockIssuedController extends Controller
                   ->orWhereHas('stockAddition', function ($stockQuery) use ($search) {
                       $stockQuery->where('stone', 'like', "%{$search}%")
                                 ->orWhere('size_3d', 'like', "%{$search}%")
+                                ->orWhere('length', 'like', "%{$search}%")
+                                ->orWhere('height', 'like', "%{$search}%")
                                 ->orWhere('condition_status', 'like', "%{$search}%");
                   });
             });
@@ -170,6 +172,7 @@ class StockIssuedController extends Controller
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
         ]);
 
@@ -191,10 +194,7 @@ class StockIssuedController extends Controller
 
         $stockIssued = StockIssued::create($request->all());
 
-        // Update available stock
-        $stockAddition->available_pieces -= $request->quantity_issued;
-        $stockAddition->available_sqft -= $request->sqft_issued;
-        $stockAddition->save();
+        // The model's boot method will automatically update available stock quantities
 
         return redirect()->route('stock-management.stock-issued.index')
             ->with('success', 'Stock issued successfully.');
@@ -239,6 +239,7 @@ class StockIssuedController extends Controller
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
         ]);
 
@@ -271,12 +272,7 @@ class StockIssuedController extends Controller
                 ->with('error', 'Cannot delete stock issuance with existing gate passes.');
         }
 
-        // Restore stock to available quantity
-        $stockAddition = $stockIssued->stockAddition;
-        $stockAddition->available_pieces += $stockIssued->quantity_issued;
-        $stockAddition->available_sqft += $stockIssued->sqft_issued;
-        $stockAddition->save();
-
+        // Delete the stock issued record - the model's boot method will handle restoring available quantities
         $stockIssued->delete();
 
         return redirect()->route('stock-management.stock-issued.index')

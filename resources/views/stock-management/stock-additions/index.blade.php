@@ -288,7 +288,13 @@
                                             {{ $addition->stone }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $addition->size_3d }}
+                                            @if($addition->length && $addition->height)
+                                                <span class="font-medium text-blue-600">{{ $addition->length }} × {{ $addition->height }} cm</span>
+                                                <br>
+                                                <span class="text-xs text-gray-400">{{ number_format($addition->length * $addition->height, 2) }} cm²</span>
+                                            @else
+                                                <span class="text-gray-400">{{ $addition->size_3d ?? 'N/A' }}</span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {{ number_format($addition->total_pieces) }}

@@ -188,6 +188,7 @@ class DailyProductionController extends Controller
             'machine_name' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
+            'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
@@ -223,6 +224,7 @@ class DailyProductionController extends Controller
             'machine_name' => $request->machine_name,
             'operator_name' => $request->operator_name,
             'notes' => $request->notes,
+            'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
         ]);
 
@@ -284,26 +286,37 @@ class DailyProductionController extends Controller
             $producedStockGroups[$key]['total_sqft'] += $itemData['total_sqft'];
         }
 
-        // Create new stock addition entries for each group
-        foreach ($producedStockGroups as $group) {
-            // Find or create product
-            $product = \App\Models\Product::firstOrCreate(
-                ['name' => $group['product_name']],
-                ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
-            );
+        // Check if machine can add stock before creating stock additions
+        $machine = \App\Models\Machine::where('name', $request->machine_name)->first();
+        
+        if ($machine && $machine->can_add_stock) {
+            // Create new stock addition entries for each group
+            foreach ($producedStockGroups as $group) {
+                // Find or create product
+                $product = \App\Models\Product::firstOrCreate(
+                    ['name' => $group['product_name']],
+                    ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
+                );
 
-            // Create stock addition for produced items
-            \App\Models\StockAddition::create([
-                'product_id' => $product->id,
-                'mine_vendor_id' => $originalStockAddition->mine_vendor_id, // Same vendor
-                'stone' => $group['size'] . ($group['diameter'] ? '|' . $group['diameter'] : ''),
-                'size_3d' => $group['size'] ?: '00000',
-                'total_pieces' => $group['total_pieces'],
-                'total_sqft' => $group['total_sqft'],
-                'condition_status' => $group['condition_status'],
-                'available_pieces' => $group['total_pieces'],
-                'available_sqft' => $group['total_sqft'],
-                'date' => $request->date,
+                // Create stock addition for produced items
+                \App\Models\StockAddition::create([
+                    'product_id' => $product->id,
+                    'mine_vendor_id' => $originalStockAddition->mine_vendor_id, // Same vendor
+                    'stone' => $originalStockAddition->stone,
+                    'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
+                    'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
+                    'total_pieces' => $group['total_pieces'],
+                    'total_sqft' => $group['total_sqft'],
+                    'condition_status' => $group['condition_status'],
+                    'available_pieces' => $group['total_pieces'],
+                    'available_sqft' => $group['total_sqft'],
+                    'date' => $request->date,
+                ]);
+            }
+        } else {
+            \Log::warning("Stock additions not created - Machine cannot add stock", [
+                'machine_name' => $request->machine_name,
+                'can_add_stock' => $machine ? $machine->can_add_stock : 'Machine not found'
             ]);
         }
 
@@ -365,6 +378,7 @@ class DailyProductionController extends Controller
             'machine_name' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
+            'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
@@ -402,6 +416,7 @@ class DailyProductionController extends Controller
             'machine_name' => $request->machine_name,
             'operator_name' => $request->operator_name,
             'notes' => $request->notes,
+            'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
         ]);
 
@@ -485,31 +500,42 @@ class DailyProductionController extends Controller
             ]);
         }
 
-        // Create new stock addition entries for each produced item group
-        foreach ($producedStockGroups as $group) {
-            $product = \App\Models\Product::firstOrCreate(
-                ['name' => $group['product_name']],
-                ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
-            );
+        // Check if machine can add stock before creating stock additions
+        $machine = \App\Models\Machine::where('name', $request->machine_name)->first();
+        
+        if ($machine && $machine->can_add_stock) {
+            // Create new stock addition entries for each produced item group
+            foreach ($producedStockGroups as $group) {
+                $product = \App\Models\Product::firstOrCreate(
+                    ['name' => $group['product_name']],
+                    ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
+                );
 
-            // Create new stock addition for produced items
-            \App\Models\StockAddition::create([
-                'product_id' => $product->id,
-                'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
-                'stone' => $group['size'] . ($group['diameter'] ? '|' . $group['diameter'] : ''),
-                'size_3d' => $group['size'] ?: '00000',
-                'total_pieces' => $group['total_pieces'],
-                'total_sqft' => $group['total_sqft'],
-                'condition_status' => $group['condition_status'],
-                'available_pieces' => $group['total_pieces'],
-                'available_sqft' => $group['total_sqft'],
-                'date' => $request->date,
-            ]);
+                // Create new stock addition for produced items
+                \App\Models\StockAddition::create([
+                    'product_id' => $product->id,
+                    'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
+                    'stone' => $originalStockAddition->stone,
+                    'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
+                    'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
+                    'total_pieces' => $group['total_pieces'],
+                    'total_sqft' => $group['total_sqft'],
+                    'condition_status' => $group['condition_status'],
+                    'available_pieces' => $group['total_pieces'],
+                    'available_sqft' => $group['total_sqft'],
+                    'date' => $request->date,
+                ]);
 
-            \Log::info("Created new stock addition for produced item", [
-                'product' => $product->name,
-                'total_pieces' => $group['total_pieces'],
-                'total_sqft' => $group['total_sqft']
+                \Log::info("Created new stock addition for produced item", [
+                    'product' => $product->name,
+                    'total_pieces' => $group['total_pieces'],
+                    'total_sqft' => $group['total_sqft']
+                ]);
+            }
+        } else {
+            \Log::warning("Stock additions not created - Machine cannot add stock", [
+                'machine_name' => $request->machine_name,
+                'can_add_stock' => $machine ? $machine->can_add_stock : 'Machine not found'
             ]);
         }
 

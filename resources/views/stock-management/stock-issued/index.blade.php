@@ -158,6 +158,9 @@
                                         </a>
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Size
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'quantity', 'sort_order' => request('sort_by') == 'quantity' && request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" class="flex items-center space-x-1 hover:text-gray-700">
                                             <span>Quantity Issued</span>
                                             @if(request('sort_by') == 'quantity')
@@ -241,6 +244,15 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $issue->stockAddition->mineVendor->name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            @if($issue->stockAddition->length && $issue->stockAddition->height)
+                                                <span class="font-medium text-blue-600">{{ $issue->stockAddition->length }} × {{ $issue->stockAddition->height }} cm</span>
+                                                <br>
+                                                <span class="text-xs text-gray-400">{{ number_format($issue->stockAddition->length * $issue->stockAddition->height, 2) }} cm²</span>
+                                            @else
+                                                <span class="text-gray-400">{{ $issue->stockAddition->size_3d ?? 'N/A' }}</span>
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($issue->quantity_issued) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($issue->sqft_issued, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">
@@ -286,7 +298,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-6 py-12 text-center">
+                                        <td colspan="8" class="px-6 py-12 text-center">
                                             <div class="flex flex-col items-center">
                                                 <svg class="h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>

@@ -27,10 +27,17 @@
                                     <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
                                 </select>
                             </div>
+                            <div>
+                                <select name="can_add_stock" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Can Add Stock</option>
+                                    <option value="yes" {{ request('can_add_stock') === 'yes' ? 'selected' : '' }}>Yes</option>
+                                    <option value="no" {{ request('can_add_stock') === 'no' ? 'selected' : '' }}>No</option>
+                                </select>
+                            </div>
                             <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">
                                 Search
                             </button>
-                            @if(request()->hasAny(['search', 'status']))
+                            @if(request()->hasAny(['search', 'status', 'can_add_stock']))
                                 <a href="{{ route('master-data.machines.index') }}" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors duration-200">
                                     Clear
                                 </a>
@@ -61,6 +68,7 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Can Add Stock</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -78,6 +86,11 @@
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $machine->status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                 {{ $machine->status ? 'Active' : 'Inactive' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $machine->can_add_stock ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
+                                                {{ $machine->can_add_stock ? 'Yes' : 'No' }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -100,7 +113,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                                        <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
                                             No machines found.
                                         </td>
                                     </tr>

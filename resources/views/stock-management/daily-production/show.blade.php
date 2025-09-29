@@ -57,6 +57,12 @@
                                     <dt class="text-sm font-medium text-gray-500">Production Date</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->date->format('M d, Y') }}</dd>
                                 </div>
+                                @if($dailyProduction->stone)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $dailyProduction->stone }}</dd>
+                                </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Total Pieces Produced</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_pieces) }}</dd>

@@ -9,6 +9,36 @@
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                 <div class="p-6">
+                    <!-- Warning if stock has been issued -->
+                    @if($stockAddition->hasBeenIssued())
+                        <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-yellow-800">Stock Has Been Issued</h3>
+                                    <div class="mt-2 text-sm text-yellow-700">
+                                        <p>This stock has been issued {{ $stockAddition->stockIssued()->count() }} time(s). You cannot modify dimensions (length, height), total pieces, or total sqft. You can only update other information like stone type, condition status, and date.</p>
+                                        <p class="mt-2 font-medium">To modify dimensions, you must first delete all related stock issuances.</p>
+                                        @if($stockAddition->stockIssued()->count() > 0)
+                                            <div class="mt-3">
+                                                <a href="{{ route('stock-management.stock-issued.index', ['search' => $stockAddition->product->name]) }}" class="inline-flex items-center text-sm font-medium text-yellow-800 hover:text-yellow-900">
+                                                    View Related Stock Issuances
+                                                    <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('stock-management.stock-additions.update', $stockAddition) }}">
                         @csrf
                         @method('PUT')
@@ -52,21 +82,30 @@
                             <!-- Length -->
                             <div>
                                 <x-input-label for="length" :value="__('Length (cm)')" />
-                                <x-text-input id="length" name="length" type="number" class="mt-1 block w-full" :value="old('length', $stockAddition->length)" placeholder="Enter length in cm" step="0.1" required />
+                                <x-text-input id="length" name="length" type="number" class="mt-1 block w-full {{ $stockAddition->hasBeenIssued() ? 'bg-gray-100' : '' }}" :value="old('length', $stockAddition->length)" placeholder="Enter length in cm" step="0.1" required {{ $stockAddition->hasBeenIssued() ? 'disabled' : '' }} />
+                                @if($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-yellow-600">Cannot modify after stock has been issued</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('length')" class="mt-2" />
                             </div>
 
                             <!-- Height -->
                             <div>
                                 <x-input-label for="height" :value="__('Height (cm)')" />
-                                <x-text-input id="height" name="height" type="number" class="mt-1 block w-full" :value="old('height', $stockAddition->height)" placeholder="Enter height in cm" step="0.1" required />
+                                <x-text-input id="height" name="height" type="number" class="mt-1 block w-full {{ $stockAddition->hasBeenIssued() ? 'bg-gray-100' : '' }}" :value="old('height', $stockAddition->height)" placeholder="Enter height in cm" step="0.1" required {{ $stockAddition->hasBeenIssued() ? 'disabled' : '' }} />
+                                @if($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-yellow-600">Cannot modify after stock has been issued</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('height')" class="mt-2" />
                             </div>
 
                             <!-- Total Pieces -->
                             <div>
                                 <x-input-label for="total_pieces" :value="__('Total Pieces')" />
-                                <x-text-input id="total_pieces" name="total_pieces" type="number" class="mt-1 block w-full" :value="old('total_pieces', $stockAddition->total_pieces)" min="1" required />
+                                <x-text-input id="total_pieces" name="total_pieces" type="number" class="mt-1 block w-full {{ $stockAddition->hasBeenIssued() ? 'bg-gray-100' : '' }}" :value="old('total_pieces', $stockAddition->total_pieces)" min="1" required {{ $stockAddition->hasBeenIssued() ? 'disabled' : '' }} />
+                                @if($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-yellow-600">Cannot modify after stock has been issued</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('total_pieces')" class="mt-2" />
                             </div>
 

@@ -19,6 +19,7 @@ class DailyProduction extends Model
         'machine_name',
         'operator_name',
         'notes',
+        'stone',
         'date'
     ];
 

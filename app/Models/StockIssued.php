@@ -21,6 +21,7 @@ class StockIssued extends Model
         'machine_name',
         'operator_name',
         'notes',
+        'stone',
         'date'
     ];
 
@@ -62,11 +63,17 @@ class StockIssued extends Model
 
         static::creating(function ($stockIssued) {
             // Calculate sqft_issued if not provided
-            if (empty($stockIssued->sqft_issued)) {
+            // Auto-fill stone field from stock addition
+            if (empty($stockIssued->sqft_issued) || empty($stockIssued->stone)) {
                 $stockAddition = StockAddition::find($stockIssued->stock_addition_id);
                 if ($stockAddition) {
-                    $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
-                    $stockIssued->sqft_issued = $sqftPerPiece * $stockIssued->quantity_issued;
+                    if (empty($stockIssued->sqft_issued)) {
+                        $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
+                        $stockIssued->sqft_issued = $sqftPerPiece * $stockIssued->quantity_issued;
+                    }
+                    if (empty($stockIssued->stone)) {
+                        $stockIssued->stone = $stockAddition->stone;
+                    }
                 }
             }
         });
@@ -77,6 +84,28 @@ class StockIssued extends Model
             $stockAddition->available_pieces -= $stockIssued->quantity_issued;
             $stockAddition->available_sqft -= $stockIssued->sqft_issued;
             $stockAddition->save();
+        });
+
+        static::updating(function ($stockIssued) {
+            // If quantity is being changed, adjust available quantities
+            if ($stockIssued->isDirty(['quantity_issued', 'sqft_issued'])) {
+                $originalQuantity = $stockIssued->getOriginal('quantity_issued');
+                $originalSqft = $stockIssued->getOriginal('sqft_issued');
+                $newQuantity = $stockIssued->quantity_issued;
+                $newSqft = $stockIssued->sqft_issued;
+                
+                $stockAddition = $stockIssued->stockAddition;
+                
+                // Restore the original quantities first
+                $stockAddition->available_pieces += $originalQuantity;
+                $stockAddition->available_sqft += $originalSqft;
+                
+                // Then subtract the new quantities
+                $stockAddition->available_pieces -= $newQuantity;
+                $stockAddition->available_sqft -= $newSqft;
+                
+                $stockAddition->save();
+            }
         });
 
         static::deleted(function ($stockIssued) {

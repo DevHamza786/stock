@@ -13,12 +13,14 @@ class Machine extends Model
         'name',
         'description',
         'status',
+        'can_add_stock',
         'created_by',
         'updated_by'
     ];
 
     protected $casts = [
         'status' => 'boolean',
+        'can_add_stock' => 'boolean',
     ];
 
     /**
@@ -27,6 +29,14 @@ class Machine extends Model
     public function scopeActive($query)
     {
         return $query->where('status', true);
+    }
+
+    /**
+     * Scope for machines that can add stock
+     */
+    public function scopeCanAddStock($query)
+    {
+        return $query->where('can_add_stock', true);
     }
 
     /**

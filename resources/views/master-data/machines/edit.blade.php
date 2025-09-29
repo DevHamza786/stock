@@ -52,6 +52,18 @@
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
+
+                            <!-- Can Add Stock -->
+                            <div>
+                                <label for="can_add_stock" class="block text-sm font-medium text-gray-700 mb-2">Can Add Stock</label>
+                                <select id="can_add_stock" name="can_add_stock" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('can_add_stock') border-red-500 @enderror">
+                                    <option value="1" {{ old('can_add_stock', $machine->can_add_stock) == '1' ? 'selected' : '' }}>Yes</option>
+                                    <option value="0" {{ old('can_add_stock', $machine->can_add_stock) == '0' ? 'selected' : '' }}>No</option>
+                                </select>
+                                @error('can_add_stock')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
 
                         <!-- Form Actions -->
