@@ -66,9 +66,9 @@
                                     <label for="condition_status" class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
                                     <select name="condition_status" id="condition_status" class="block w-full border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg shadow-sm">
                                         <option value="">All Conditions</option>
-                                        @foreach($conditionStatuses as $condition)
-                                            <option value="{{ $condition }}" {{ request('condition_status') == $condition ? 'selected' : '' }}>
-                                                {{ $condition }}
+                                        @foreach($conditions as $condition)
+                                            <option value="{{ $condition->name }}" {{ request('condition_status') == $condition->name ? 'selected' : '' }}>
+                                                {{ $condition->name }}
                                             </option>
                                         @endforeach
                                     </select>

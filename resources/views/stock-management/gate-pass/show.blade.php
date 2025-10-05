@@ -25,7 +25,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Main Content - Left Side -->
                 <div class="lg:col-span-2">
-                    <!-- Main Gate Pass Information -->
+                <!-- Main Gate Pass Information -->
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Gate Pass Information</h2>
@@ -95,61 +95,61 @@
                     <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Dispatch Details</h2>
-                        </div>
-                        <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <!-- Logistics Information -->
-                                <div>
-                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Logistics Information</h3>
-                                    <div class="space-y-4">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Destination</span>
-                                            <span class="text-sm font-medium text-gray-900">{{ $gatePass->destination ?? 'Not specified' }}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Vehicle Number</span>
-                                            <span class="text-sm font-medium text-gray-900">{{ $gatePass->vehicle_number ?? 'Not specified' }}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Driver Name</span>
-                                            <span class="text-sm font-medium text-gray-900">{{ $gatePass->driver_name ?? 'Not specified' }}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Dispatch Date</span>
-                                            <span class="text-sm font-medium text-gray-900">{{ $gatePass->date->format('M d, Y') }}</span>
-                                        </div>
-                                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Logistics Information -->
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Logistics Information</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Destination</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $gatePass->destination ?? 'Not specified' }}</span>
                                 </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Vehicle Number</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $gatePass->vehicle_number ?? 'Not specified' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Driver Name</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $gatePass->driver_name ?? 'Not specified' }}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Dispatch Date</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ $gatePass->date->format('M d, Y') }}</span>
+                                </div>
+                            </div>
+                        </div>
 
-                                <!-- Dispatch Metrics -->
-                                <div>
-                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Dispatch Metrics</h3>
-                                    <div class="space-y-4">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Dispatch Status</span>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                @if($gatePass->status === 'Dispatched') bg-green-100 text-green-800
-                                                @elseif($gatePass->status === 'Approved') bg-blue-100 text-blue-800
-                                                @else bg-yellow-100 text-yellow-800 @endif">
-                                                {{ $gatePass->status ?? 'Pending' }}
-                                            </span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Dispatch Efficiency</span>
-                                            <span class="text-sm font-medium text-gray-900">
-                                                @if($gatePass->status === 'Dispatched')
-                                                    100%
-                                                @elseif($gatePass->status === 'Approved')
-                                                    90%
-                                                @else
-                                                    0%
-                                                @endif
-                                            </span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm text-gray-600">Gate Pass Number</span>
-                                            <span class="text-sm font-medium text-gray-900 font-mono">GP-{{ str_pad($gatePass->id, 4, '0', STR_PAD_LEFT) }}</span>
-                                        </div>
+                        <!-- Dispatch Metrics -->
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">Dispatch Metrics</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Dispatch Status</span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        @if($gatePass->status === 'Dispatched') bg-green-100 text-green-800
+                                        @elseif($gatePass->status === 'Approved') bg-blue-100 text-blue-800
+                                        @else bg-yellow-100 text-yellow-800 @endif">
+                                        {{ $gatePass->status ?? 'Pending' }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Dispatch Efficiency</span>
+                                    <span class="text-sm font-medium text-gray-900">
+                                        @if($gatePass->status === 'Dispatched')
+                                            100%
+                                        @elseif($gatePass->status === 'Approved')
+                                            90%
+                                        @else
+                                            0%
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Gate Pass Number</span>
+                                    <span class="text-sm font-medium text-gray-900 font-mono">GP-{{ str_pad($gatePass->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                </div>
                                     </div>
                                 </div>
                             </div>

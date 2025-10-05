@@ -279,6 +279,22 @@ class StockAddition extends Model
     }
 
     /**
+     * Check if this stock is fully issued (no available pieces left).
+     */
+    public function isFullyIssued(): bool
+    {
+        return $this->available_pieces <= 0;
+    }
+
+    /**
+     * Check if this stock is partially issued (some pieces issued but some still available).
+     */
+    public function isPartiallyIssued(): bool
+    {
+        return $this->hasBeenIssued() && $this->available_pieces > 0;
+    }
+
+    /**
      * Check if this stock can be updated (no stock issuances exist).
      */
     public function canBeUpdated(): bool

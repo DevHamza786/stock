@@ -51,7 +51,7 @@
                                                 </div>
                                                 <div class="text-xs text-gray-500">{{ $addition->date ? $addition->date->format('M d, Y') : 'N/A' }}</div>
                                             </div>
-                                        @endforeach
+                                    @endforeach
                                     </div>
                                 </div>
                                 @error('stock_addition_id')

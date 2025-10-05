@@ -42,41 +42,41 @@
                                     <input type="hidden" id="stock_addition_id" name="stock_addition_id" value="{{ old('stock_addition_id') }}" required>
                                     <div id="stock_dropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
                                         <div class="p-2 text-gray-500 text-sm">Choose stock addition...</div>
-                                        @if(isset($stockAdditions) && $stockAdditions->count() > 0)
-                                            @foreach($stockAdditions as $addition)
+                                    @if(isset($stockAdditions) && $stockAdditions->count() > 0)
+                                        @foreach($stockAdditions as $addition)
                                                 <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" 
                                                      data-value="{{ $addition->id }}" 
                                                      data-text="{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($addition->condition_status) }}@if(strtolower($addition->condition_status) === 'block') - Weight: {{ number_format($addition->weight, 2) }} kg @else @if($addition->length && $addition->height) - Size: {{ $addition->length }} × {{ $addition->height }} cm @else - Size: {{ $addition->size_3d }} @endif @endif - ({{ $addition->available_pieces }} pieces available)@if($addition->pid) - PID: {{ $addition->pid }}@endif"
-                                                     data-length="{{ $addition->length }}"
-                                                     data-height="{{ $addition->height }}"
-                                                     data-size-3d="{{ $addition->size_3d }}"
-                                                     data-available-pieces="{{ $addition->available_pieces }}"
-                                                     data-available-sqft="{{ $addition->available_sqft }}"
-                                                     data-total-sqft="{{ $addition->total_sqft }}"
-                                                     data-total-pieces="{{ $addition->total_pieces }}"
-                                                     data-weight="{{ $addition->weight }}"
-                                                     data-condition-status="{{ $addition->condition_status }}"
+                                                    data-length="{{ $addition->length }}"
+                                                    data-height="{{ $addition->height }}"
+                                                    data-size-3d="{{ $addition->size_3d }}"
+                                                    data-available-pieces="{{ $addition->available_pieces }}"
+                                                    data-available-sqft="{{ $addition->available_sqft }}"
+                                                    data-total-sqft="{{ $addition->total_sqft }}"
+                                                    data-total-pieces="{{ $addition->total_pieces }}"
+                                                    data-weight="{{ $addition->weight }}"
+                                                    data-condition-status="{{ $addition->condition_status }}"
                                                      data-pid="{{ $addition->pid }}">
                                                     <div class="font-medium text-gray-900">{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }}</div>
                                                     <div class="text-sm text-gray-600">
-                                                        {{ ucfirst($addition->condition_status) }} - 
-                                                        @if(strtolower($addition->condition_status) === 'block')
-                                                            Weight: {{ number_format($addition->weight, 2) }} kg
-                                                        @else
-                                                            @if($addition->length && $addition->height)
-                                                                Size: {{ $addition->length }} × {{ $addition->height }} cm
-                                                            @else
-                                                                Size: {{ $addition->size_3d }}
-                                                            @endif
-                                                        @endif
+                                                {{ ucfirst($addition->condition_status) }} - 
+                                                @if(strtolower($addition->condition_status) === 'block')
+                                                    Weight: {{ number_format($addition->weight, 2) }} kg
+                                                @else
+                                                    @if($addition->length && $addition->height)
+                                                        Size: {{ $addition->length }} × {{ $addition->height }} cm
+                                                    @else
+                                                        Size: {{ $addition->size_3d }}
+                                                    @endif
+                                                @endif
                                                         @if($addition->pid) | PID: {{ $addition->pid }} @endif
                                                     </div>
                                                     <div class="text-xs text-gray-500">{{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft</div>
                                                 </div>
-                                            @endforeach
-                                        @else
+                                        @endforeach
+                                    @else
                                             <div class="p-3 text-gray-500 text-sm">No available stock additions</div>
-                                        @endif
+                                    @endif
                                     </div>
                                 </div>
                                 @error('stock_addition_id')

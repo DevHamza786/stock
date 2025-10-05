@@ -54,7 +54,7 @@
                                                     @if($addition->pid) | PID: {{ $addition->pid }} @endif
                                                 </div>
                                             </div>
-                                        @endforeach
+                                    @endforeach
                                     </div>
                                 </div>
                                 @error('stock_addition_id')

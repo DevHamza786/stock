@@ -321,10 +321,15 @@
             conditionStatusSelect.addEventListener('change', toggleFields);
             lengthInput.addEventListener('input', calculateSize);
             heightInput.addEventListener('input', calculateSize);
-            weightInput.addEventListener('input', calculateBlock);
+            weightInput.addEventListener('input', function() {
+                const conditionStatus = conditionStatusSelect.value.toLowerCase();
+                if (conditionStatus === 'block' || conditionStatus === 'monuments') {
+                    calculateBlock();
+                }
+            });
             totalPiecesInput.addEventListener('input', function() {
                 const conditionStatus = conditionStatusSelect.value.toLowerCase();
-                if (conditionStatus === 'block') {
+                if (conditionStatus === 'block' || conditionStatus === 'monuments') {
                     calculateBlock();
                 } else {
                     calculateSize();
@@ -336,7 +341,7 @@
 
             // Calculate on page load if values exist
             const conditionStatus = conditionStatusSelect.value.toLowerCase();
-            if (conditionStatus === 'block') {
+            if (conditionStatus === 'block' || conditionStatus === 'monuments') {
                 calculateBlock();
             } else {
                 calculateSize();

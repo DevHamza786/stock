@@ -129,8 +129,8 @@ class StockAdditionController extends Controller
 
         // Custom validation based on condition status
         $conditionStatus = strtolower($request->condition_status);
-        if ($conditionStatus === 'block') {
-            // For block condition, weight is required, length/height are not
+        if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+            // For block and monuments conditions, weight is required, length/height are not
             $request->validate([
                 'weight' => 'required|numeric|min:0.1',
             ]);
@@ -147,8 +147,8 @@ class StockAdditionController extends Controller
         $totalSqft = 0;
         $availableWeight = 0;
         
-        if ($conditionStatus !== 'block') {
-            // For non-block conditions, calculate total_sqft
+        if ($conditionStatus !== 'block' && $conditionStatus !== 'monuments') {
+            // For non-block/monuments conditions, calculate total_sqft
             $length = $request->length ?? 0;
             $height = $request->height ?? 0;
             $totalPieces = $request->total_pieces ?? 0;
@@ -161,7 +161,7 @@ class StockAdditionController extends Controller
                 $totalSqft = $singlePieceSizeSqft * $totalPieces;
             }
         } else {
-            // For block condition, calculate available_weight
+            // For block and monuments conditions, calculate available_weight
             $weight = $request->weight ?? 0;
             $totalPieces = $request->total_pieces ?? 0;
             $availableWeight = $weight * $totalPieces;
@@ -169,7 +169,9 @@ class StockAdditionController extends Controller
 
         $stockAddition = StockAddition::create(array_merge($request->all(), [
             'total_sqft' => $totalSqft,
-            'available_weight' => $availableWeight
+            'available_sqft' => $totalSqft,
+            'available_weight' => $availableWeight,
+            'available_pieces' => $request->total_pieces
         ]));
 
         return redirect()->route('stock-management.stock-additions.index')
@@ -211,32 +213,40 @@ class StockAdditionController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * NO VALIDATION FOR TESTING
      */
     public function update(Request $request, StockAddition $stockAddition)
     {
-        // Debug: Log everything about this request
-        \Log::info('=== STOCK UPDATE DEBUG START ===');
-        \Log::info('StockAddition Update - Request received (NO VALIDATION)', [
-            'stock_addition_id' => $stockAddition->id,
-            'method' => $request->method(),
-            'url' => $request->url(),
-            'all_request_data' => $request->all(),
-            'weight_value' => $request->input('weight'),
-            'total_pieces_value' => $request->input('total_pieces'),
-            'condition_status' => $request->input('condition_status'),
-            'has_been_issued' => $stockAddition->hasBeenIssued(),
-            'current_weight' => $stockAddition->weight,
-            'current_total_pieces' => $stockAddition->total_pieces,
+        // Basic validation
+        $request->validate([
+            'pid' => 'nullable|string|max:20|unique:stock_additions,pid,' . $stockAddition->id,
+            'product_id' => 'required|exists:products,id',
+            'mine_vendor_id' => 'required|exists:mine_vendors,id',
+            'stone' => 'required|string|max:255',
+            'length' => 'nullable|numeric|min:0.1',
+            'height' => 'nullable|numeric|min:0.1',
+            'diameter' => 'nullable|string|max:255',
+            'weight' => 'nullable|numeric|min:0.1',
+            'total_pieces' => 'required|integer|min:1',
+            'condition_status' => 'required|string|max:255',
+            'date' => 'required|date',
         ]);
 
+        // Custom validation based on condition status
+        $conditionStatus = strtolower(trim($request->condition_status));
+        if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+            // For block condition, weight is required, length/height are not
+            $request->validate([
+                'weight' => 'required|numeric|min:0.1',
+            ]);
+        } else {
+            // For other conditions, length and height are required
+            $request->validate([
+                'length' => 'required|numeric|min:0.1',
+                'height' => 'required|numeric|min:0.1',
+            ]);
+        }
+
         try {
-            // Validate PID if provided
-            if ($request->filled('pid')) {
-                $request->validate([
-                    'pid' => 'string|max:20|unique:stock_additions,pid,' . $stockAddition->id,
-                ]);
-            }
 
             // Show what data will be updated
             $updateData = $request->all();
@@ -255,6 +265,7 @@ class StockAdditionController extends Controller
                     'date' => $updateData['date'],
                     'weight' => !empty($updateData['weight']) ? $updateData['weight'] : null,
                     'total_pieces' => $updateData['total_pieces'],
+                    'available_pieces' => $updateData['total_pieces'], // Update available pieces to match total pieces
                     
                     // Set dimension fields to NULL for Block/Monuments
                     'length' => null,
@@ -267,7 +278,7 @@ class StockAdditionController extends Controller
                     // Calculate available_weight for Block/Monuments
                     'available_weight' => !empty($updateData['weight']) && !empty($updateData['total_pieces']) 
                         ? ($updateData['weight'] * $updateData['total_pieces']) 
-                        : null
+                        : 0
                 ];
                 
                 $updateData = $blockData;
@@ -280,13 +291,14 @@ class StockAdditionController extends Controller
                     'condition_status' => $updateData['condition_status'],
                     'date' => $updateData['date'],
                     'total_pieces' => $updateData['total_pieces'],
+                    'available_pieces' => $updateData['total_pieces'], // Update available pieces to match total pieces
                     'length' => !empty($updateData['length']) ? $updateData['length'] : null,
                     'height' => !empty($updateData['height']) ? $updateData['height'] : null,
                     'diameter' => !empty($updateData['diameter']) ? $updateData['diameter'] : null,
                     
                     // Set weight to NULL for non-Block/Monuments conditions
                     'weight' => null,
-                    'available_weight' => null
+                    'available_weight' => 0
                 ];
                 
                 // Calculate total_sqft for non-Block/Monuments conditions
@@ -297,6 +309,10 @@ class StockAdditionController extends Controller
                     $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
                     $sizeData['total_sqft'] = $singlePieceSizeSqft * $totalPieces;
                     $sizeData['available_sqft'] = $singlePieceSizeSqft * $totalPieces;
+                } else {
+                    // Set to NULL if no dimensions provided
+                    $sizeData['total_sqft'] = null;
+                    $sizeData['available_sqft'] = null;
                 }
                 
                 $updateData = $sizeData;
@@ -304,12 +320,30 @@ class StockAdditionController extends Controller
             
             \Log::info('Update data prepared:', $updateData);
             
+            // Log before update
+            \Log::info('Before update - Stock ID: ' . $stockAddition->id);
+            \Log::info('Before update - Current values:', [
+                'weight' => $stockAddition->weight,
+                'total_pieces' => $stockAddition->total_pieces,
+                'available_pieces' => $stockAddition->available_pieces,
+                'available_weight' => $stockAddition->available_weight
+            ]);
+            
             $stockAddition->update($updateData);
+            
+            // Refresh and log after update
+            $stockAddition->refresh();
+            \Log::info('After update - Updated values:', [
+                'weight' => $stockAddition->weight,
+                'total_pieces' => $stockAddition->total_pieces,
+                'available_pieces' => $stockAddition->available_pieces,
+                'available_weight' => $stockAddition->available_weight
+            ]);
 
             \Log::info('=== STOCK UPDATE DEBUG SUCCESS ===');
 
             return redirect()->route('stock-management.stock-additions.index')
-                ->with('success', 'Stock addition updated successfully (NO VALIDATION - TEST MODE)');
+                ->with('success', 'Stock addition updated successfully.');
         } catch (\Exception $e) {
             \Log::error('=== STOCK UPDATE DEBUG ERROR ===', [
                 'error' => $e->getMessage(),

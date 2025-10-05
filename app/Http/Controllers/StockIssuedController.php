@@ -126,14 +126,14 @@ class StockIssuedController extends Controller
         $stockIssued = $query->paginate(15)->withQueryString();
 
         // Get filter options
-        $products = \App\Models\Product::orderBy('name')->get();
-        $vendors = \App\Models\MineVendor::orderBy('name')->get();
-        $conditionStatuses = StockAddition::distinct()->pluck('condition_status')->filter()->sort()->values();
+        $products = \App\Models\Product::where('is_active', true)->orderBy('name')->get();
+        $vendors = \App\Models\MineVendor::where('is_active', true)->orderBy('name')->get();
+        $conditions = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
         $purposes = StockIssued::distinct()->pluck('purpose')->filter()->sort()->values();
         $machines = StockIssued::whereNotNull('machine_name')->distinct()->pluck('machine_name')->filter()->sort()->values();
         $operators = StockIssued::whereNotNull('operator_name')->distinct()->pluck('operator_name')->filter()->sort()->values();
 
-        return view('stock-management.stock-issued.index', compact('stockIssued', 'products', 'vendors', 'conditionStatuses', 'purposes', 'machines', 'operators'));
+        return view('stock-management.stock-issued.index', compact('stockIssued', 'products', 'vendors', 'conditions', 'purposes', 'machines', 'operators'));
     }
 
     /**

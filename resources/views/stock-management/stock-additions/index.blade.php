@@ -106,6 +106,7 @@
                                     <th>PID</th>
                                     <th>Product</th>
                                     <th>Vendor</th>
+                                    <th>Condition</th>
                                     <th>Particulars</th>
                                     <th>Size/Weight</th>
                                     <th>Diameter</th>
@@ -124,10 +125,23 @@
                                         </td>
                                         <td>{{ $addition->product->name }}</td>
                                         <td>{{ $addition->mineVendor->name }}</td>
+                                        <td>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                @if($addition->condition_status === 'Block') bg-blue-100 text-blue-800
+                                                @elseif($addition->condition_status === 'Slabs') bg-green-100 text-green-800
+                                                @elseif($addition->condition_status === 'Polished') bg-purple-100 text-purple-800
+                                                @elseif($addition->condition_status === 'Rough') bg-orange-100 text-orange-800
+                                                @else bg-gray-100 text-gray-800 @endif">
+                                                {{ $addition->condition_status }}
+                                            </span>
+                                        </td>
                                         <td>{{ $addition->stone ?? 'N/A' }}</td>
                                         <td>
-                                            @if($addition->condition_status === 'Block')
-                                                <span class="text-sm text-gray-600">{{ number_format($addition->weight, 2) }} kg</span>
+                                            @if($addition->condition_status === 'Block' || $addition->condition_status === 'Monuments')
+                                                <div class="text-sm">
+                                                    <div class="font-medium text-gray-900">{{ number_format($addition->weight, 2) }} kg</div>
+                                                    <div class="text-xs text-gray-500">Per piece</div>
+                                                </div>
                                             @else
                                                 <div class="text-sm">
                                                 @if($addition->length && $addition->height)
@@ -155,7 +169,11 @@
                                         <td>
                                             <div class="text-sm">
                                                 <div>{{ number_format($addition->available_pieces) }} pcs</div>
-                                                <div class="text-xs text-gray-500">{{ number_format($addition->available_sqft, 2) }} sqft</div>
+                                                @if($addition->condition_status === 'Block' || $addition->condition_status === 'Monuments')
+                                                    <div class="text-xs text-gray-500">{{ number_format($addition->available_weight, 2) }} kg</div>
+                                                @else
+                                                    <div class="text-xs text-gray-500">{{ number_format($addition->available_sqft, 2) }} sqft</div>
+                                                @endif
                                             </div>
                                         </td>
                                         <td>{{ $addition->date->format('M d, Y') }}</td>
@@ -202,7 +220,7 @@
                         title: 'Stock Additions Report',
                         messageTop: 'Generated on: {{ now()->format("d/m/Y H:i") }}',
                         customize: function ( win ) {
-                            // Hide action column
+                            // Hide action column (last column)
                             $(win.document.body).find('table th:last-child, table td:last-child').hide();
                             
                             // Style the table
@@ -246,8 +264,8 @@
                             // Add header row styling
                             $('row:first c', sheet).attr('s', '2');
                             
-                            // Set column widths
-                            var colWidths = [12, 20, 20, 15, 18, 12, 10, 12, 15, 12];
+                            // Set column widths (updated for new Condition column)
+                            var colWidths = [12, 20, 20, 12, 15, 18, 12, 10, 12, 15, 12];
                             $('col', sheet).each(function(index) {
                                 if (index < colWidths.length) {
                                     $(this).attr('width', colWidths[index]);
@@ -262,9 +280,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[9, 'desc']], // Sort by Date column (descending)
+                order: [[10, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 10 } // Disable sorting on Actions column
+                    { orderable: false, targets: 11 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",
