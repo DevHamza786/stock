@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-    <div class="w-full px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center justify-between">
@@ -31,9 +31,10 @@
                 </div>
             </div>
 
-            <div class="w-full">
-                <!-- Main Stock Issuance Information -->
-                <div class="w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Main Content - Left Side -->
+                <div class="lg:col-span-2">
+                    <!-- Main Stock Issuance Information -->
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Issuance Information</h2>
@@ -174,79 +175,128 @@
                             </a>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Related Activities -->
-            @if($stockIssued->gatePass->count() > 0 || $stockIssued->stockAddition->dailyProduction->count() > 0)
-            <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-900">Related Activities</h2>
-                </div>
-                <div class="p-6">
-                    <div class="flow-root">
-                        <ul class="-mb-8">
-                            @foreach($stockIssued->gatePass as $gatePass)
-                            <li>
-                                <div class="relative pb-8">
-                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                                    <div class="relative flex space-x-3">
-                                        <div>
-                                            <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
-                                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        </div>
-                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                            <div>
-                                                <p class="text-sm text-gray-500">Gate pass created: <span class="font-medium text-gray-900">{{ $gatePass->gate_pass_number }}</span></p>
-                                                <p class="text-sm text-gray-500">{{ $gatePass->destination ?? 'No destination' }} - {{ $gatePass->vehicle_number ?? 'No vehicle' }}</p>
-                                            </div>
-                                            <div class="text-right text-sm whitespace-nowrap text-gray-500">
-                                                {{ $gatePass->date->format('M d, Y') }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                            @endforeach
-
-                            @foreach($stockIssued->stockAddition->dailyProduction->take(3) as $production)
-                            <li>
-                                <div class="relative pb-8">
-                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                                    <div class="relative flex space-x-3">
-                                        <div>
-                                            <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
-                                                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        </div>
-                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                            <div>
-                                                <p class="text-sm text-gray-500">Production recorded: <span class="font-medium text-gray-900">{{ number_format($production->total_pieces) }} pieces</span></p>
-                                                <p class="text-sm text-gray-500">{{ $production->machine_name }} - {{ $production->operator_name }}</p>
-                                                <p class="text-xs">
-                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $production->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                        {{ ucfirst($production->status) }}
+                    <!-- Related Activities -->
+                    @if($stockIssued->gatePass->count() > 0 || $stockIssued->stockAddition->dailyProduction->count() > 0)
+                    <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-xl font-semibold text-gray-900">Related Activities</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="flow-root">
+                                <ul class="-mb-8">
+                                    @foreach($stockIssued->gatePass as $gatePass)
+                                    <li>
+                                        <div class="relative pb-8">
+                                            <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                            <div class="relative flex space-x-3">
+                                                <div>
+                                                    <span class="h-8 w-8 rounded-full bg-orange-500 flex items-center justify-center ring-8 ring-white">
+                                                        <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 114 0 2 2 0 01-4 0zm8 0a2 2 0 114 0 2 2 0 01-4 0z" clip-rule="evenodd" />
+                                                        </svg>
                                                     </span>
-                                                </p>
-                                            </div>
-                                            <div class="text-right text-sm whitespace-nowrap text-gray-500">
-                                                {{ $production->date->format('M d, Y') }}
+                                                </div>
+                                                <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                    <div>
+                                                        <p class="text-sm text-gray-500">Gate pass created: <span class="font-medium text-gray-900">{{ $gatePass->gate_pass_number }}</span></p>
+                                                        <p class="text-sm text-gray-500">{{ $gatePass->destination ?? 'No destination' }} - {{ $gatePass->vehicle_number ?? 'No vehicle' }}</p>
+                                                    </div>
+                                                    <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                        {{ $gatePass->date->format('M d, Y') }}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </li>
+                                    @endforeach
+
+                                    @foreach($stockIssued->stockAddition->dailyProduction->take(3) as $production)
+                                    <li>
+                                        <div class="relative pb-8">
+                                            <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                            <div class="relative flex space-x-3">
+                                                <div>
+                                                    <span class="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center ring-8 ring-white">
+                                                        <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
+                                                <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                                    <div>
+                                                        <p class="text-sm text-gray-500">Production recorded: <span class="font-medium text-gray-900">{{ number_format($production->total_pieces) }} pieces</span></p>
+                                                        <p class="text-sm text-gray-500">{{ $production->machine_name }} - {{ $production->operator_name }}</p>
+                                                        <p class="text-xs">
+                                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $production->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                                {{ ucfirst($production->status) }}
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                    <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                        {{ $production->date->format('M d, Y') }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Sidebar - Right Side -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Issuance Summary -->
+                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-xl font-semibold text-gray-900">Issuance Summary</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-6">
+                                <div class="text-center">
+                                    <div class="text-3xl font-bold text-blue-600">{{ number_format($stockIssued->quantity_issued) }}</div>
+                                    <div class="text-sm text-gray-500">Pieces Issued</div>
                                 </div>
-                            </li>
-                            @endforeach
-                        </ul>
+                                <div class="text-center">
+                                    <div class="text-3xl font-bold text-green-600">{{ number_format($stockIssued->sqft_issued, 2) }}</div>
+                                    <div class="text-sm text-gray-500">Sqft Issued</div>
+                                </div>
+                                @if($stockIssued->weight_issued)
+                                <div class="text-center">
+                                    <div class="text-3xl font-bold text-purple-600">{{ number_format($stockIssued->weight_issued, 1) }}</div>
+                                    <div class="text-sm text-gray-500">Weight Issued (kg)</div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-3">
+                                <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                    Edit Issuance
+                                </a>
+                                <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockIssued->stockAddition->id]) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                    Record Production
+                                </a>
+                                <a href="{{ route('stock-management.gate-pass.create', ['stock_issued_id' => $stockIssued->id]) }}" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                    Create Gate Pass
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            @endif
+
         </div>
     </div>
 

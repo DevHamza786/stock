@@ -112,27 +112,87 @@ class StockIssued extends Model
             $stockAddition->available_pieces -= $stockIssued->quantity_issued;
             $stockAddition->available_sqft -= $stockIssued->sqft_issued;
             $stockAddition->save();
+            
+            // Log stock issued creation
+            \App\Models\StockLog::logActivity(
+                'issued',
+                "Stock issued - {$stockIssued->quantity_issued} pieces for {$stockIssued->purpose}",
+                $stockIssued->stock_addition_id,
+                $stockIssued->id,
+                null,
+                null,
+                null,
+                [
+                    'quantity_issued' => $stockIssued->quantity_issued,
+                    'sqft_issued' => $stockIssued->sqft_issued,
+                    'purpose' => $stockIssued->purpose
+                ],
+                $stockIssued->quantity_issued,
+                $stockIssued->sqft_issued
+            );
         });
 
         static::updating(function ($stockIssued) {
-            // If quantity is being changed, adjust available quantities
-            if ($stockIssued->isDirty(['quantity_issued', 'sqft_issued'])) {
+            // If quantity or stock addition is being changed, adjust available quantities
+            if ($stockIssued->isDirty(['quantity_issued', 'sqft_issued', 'stock_addition_id'])) {
                 $originalQuantity = $stockIssued->getOriginal('quantity_issued');
                 $originalSqft = $stockIssued->getOriginal('sqft_issued');
+                $originalStockAdditionId = $stockIssued->getOriginal('stock_addition_id');
                 $newQuantity = $stockIssued->quantity_issued;
                 $newSqft = $stockIssued->sqft_issued;
+                $newStockAdditionId = $stockIssued->stock_addition_id;
                 
-                $stockAddition = $stockIssued->stockAddition;
+                // If stock addition changed, restore to old stock addition first
+                if ($originalStockAdditionId != $newStockAdditionId) {
+                    $oldStockAddition = StockAddition::find($originalStockAdditionId);
+                    if ($oldStockAddition) {
+                        $oldStockAddition->available_pieces += $originalQuantity;
+                        $oldStockAddition->available_sqft += $originalSqft;
+                        $oldStockAddition->save();
+                    }
+                    
+                    // Then subtract from new stock addition
+                    $newStockAddition = $stockIssued->stockAddition;
+                    $newStockAddition->available_pieces -= $newQuantity;
+                    $newStockAddition->available_sqft -= $newSqft;
+                    $newStockAddition->save();
+                } else {
+                    // Same stock addition, just adjust the difference
+                    $stockAddition = $stockIssued->stockAddition;
+                    $quantityDiff = $newQuantity - $originalQuantity;
+                    $sqftDiff = $newSqft - $originalSqft;
+                    
+                    $stockAddition->available_pieces -= $quantityDiff;
+                    $stockAddition->available_sqft -= $sqftDiff;
+                    $stockAddition->save();
+                }
+            }
+        });
+
+        static::updated(function ($stockIssued) {
+            // Log stock issued updates
+            if ($stockIssued->wasChanged(['quantity_issued', 'sqft_issued', 'stock_addition_id'])) {
+                $originalQuantity = $stockIssued->getOriginal('quantity_issued');
+                $newQuantity = $stockIssued->quantity_issued;
                 
-                // Restore the original quantities first
-                $stockAddition->available_pieces += $originalQuantity;
-                $stockAddition->available_sqft += $originalSqft;
-                
-                // Then subtract the new quantities
-                $stockAddition->available_pieces -= $newQuantity;
-                $stockAddition->available_sqft -= $newSqft;
-                
-                $stockAddition->save();
+                \App\Models\StockLog::logActivity(
+                    'updated',
+                    "Stock issued updated - quantity changed from {$originalQuantity} to {$newQuantity} pieces",
+                    $stockIssued->stock_addition_id,
+                    $stockIssued->id,
+                    null,
+                    null,
+                    [
+                        'quantity_issued' => $originalQuantity,
+                        'sqft_issued' => $stockIssued->getOriginal('sqft_issued')
+                    ],
+                    [
+                        'quantity_issued' => $newQuantity,
+                        'sqft_issued' => $stockIssued->sqft_issued
+                    ],
+                    $newQuantity - $originalQuantity,
+                    $stockIssued->sqft_issued - $stockIssued->getOriginal('sqft_issued')
+                );
             }
         });
 
@@ -142,6 +202,23 @@ class StockIssued extends Model
             $stockAddition->available_pieces += $stockIssued->quantity_issued;
             $stockAddition->available_sqft += $stockIssued->sqft_issued;
             $stockAddition->save();
+            
+            // Log stock issued deletion
+            \App\Models\StockLog::logActivity(
+                'deleted',
+                "Stock issued deleted - {$stockIssued->quantity_issued} pieces restored",
+                $stockIssued->stock_addition_id,
+                $stockIssued->id,
+                null,
+                null,
+                [
+                    'quantity_issued' => $stockIssued->quantity_issued,
+                    'sqft_issued' => $stockIssued->sqft_issued
+                ],
+                null,
+                $stockIssued->quantity_issued,
+                $stockIssued->sqft_issued
+            );
         });
     }
 

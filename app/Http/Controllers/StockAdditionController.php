@@ -181,7 +181,18 @@ class StockAdditionController extends Controller
      */
     public function show(StockAddition $stockAddition)
     {
-        $stockAddition->load(['product', 'mineVendor', 'stockIssued', 'dailyProduction']);
+        $stockAddition->load(['product', 'mineVendor', 'stockIssued', 'dailyProduction', 'stockLogs']);
+
+        // Check if required relationships exist
+        if (!$stockAddition->product) {
+            return redirect()->route('stock-management.stock-additions.index')
+                ->with('error', 'This stock addition has an invalid product reference. Please contact administrator.');
+        }
+        
+        if (!$stockAddition->mineVendor) {
+            return redirect()->route('stock-management.stock-additions.index')
+                ->with('error', 'This stock addition has an invalid vendor reference. Please contact administrator.');
+        }
 
         return view('stock-management.stock-additions.show', compact('stockAddition'));
     }

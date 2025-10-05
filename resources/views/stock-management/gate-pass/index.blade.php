@@ -108,8 +108,10 @@
                                 <tr>
                                     <th>Gate Pass #</th>
                                     <th>Product</th>
+                                    <th>PID</th>
                                     <th>Diameter</th>
                                     <th>Quantity</th>
+                                    <th>Sqft Issued</th>
                                     <th>Destination</th>
                                     <th>Vehicle</th>
                                     <th>Status</th>
@@ -123,7 +125,10 @@
                                         <td>
                                             <span class="font-mono text-sm font-semibold">{{ $gatePass->gate_pass_number }}</span>
                                         </td>
-                                        <td>{{ $gatePass->product->name }}</td>
+                                        <td>{{ $gatePass->stockIssued->stockAddition->product->name ?? 'N/A' }}</td>
+                                        <td>
+                                            <span class="font-mono text-sm">{{ $gatePass->stockIssued->stockAddition->pid ?? 'N/A' }}</span>
+                                        </td>
                                         <td>
                                             @if($gatePass->stockIssued && $gatePass->stockIssued->stockAddition && $gatePass->stockIssued->stockAddition->diameter)
                                                 <span class="text-sm">{{ $gatePass->stockIssued->stockAddition->diameter }}</span>
@@ -132,7 +137,10 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="font-semibold">{{ number_format($gatePass->quantity) }}</span>
+                                            <span class="font-semibold">{{ number_format($gatePass->quantity_issued) }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="font-semibold">{{ number_format($gatePass->sqft_issued, 2) }}</span>
                                         </td>
                                         <td>{{ $gatePass->destination }}</td>
                                         <td>

@@ -48,7 +48,7 @@
                                         <p class="mt-2 font-medium">⚠️ Proceed with caution when modifying dimensions and quantities as this may affect existing stock issuances.</p>
                                         @if($stockAddition->stockIssued()->count() > 0)
                                             <div class="mt-3">
-                                                <a href="{{ route('stock-management.stock-issued.index', ['search' => $stockAddition->product->name]) }}" class="inline-flex items-center text-sm font-medium text-yellow-800 hover:text-yellow-900">
+                                                <a href="{{ route('stock-management.stock-issued.index', ['search' => $stockAddition->product->name ?? 'N/A']) }}" class="inline-flex items-center text-sm font-medium text-yellow-800 hover:text-yellow-900">
                                                     View Related Stock Issuances
                                                     <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>

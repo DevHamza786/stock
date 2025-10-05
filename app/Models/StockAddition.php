@@ -73,6 +73,35 @@ class StockAddition extends Model
     }
 
     /**
+     * Get the stock logs for this stock addition.
+     */
+    public function stockLogs(): HasMany
+    {
+        return $this->hasMany(StockLog::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Recalculate available pieces based on issued stock.
+     */
+    public function recalculateAvailablePieces(): void
+    {
+        $totalIssued = $this->stockIssued()->sum('quantity_issued');
+        $totalIssuedSqft = $this->stockIssued()->sum('sqft_issued');
+        
+        $this->available_pieces = max(0, $this->total_pieces - $totalIssued);
+        $this->available_sqft = max(0, $this->total_sqft - $totalIssuedSqft);
+        $this->save();
+    }
+
+    /**
+     * Get the total issued pieces for this stock addition.
+     */
+    public function getTotalIssuedPieces(): int
+    {
+        return $this->stockIssued()->sum('quantity_issued');
+    }
+
+    /**
      * Calculate square footage from 2D dimensions (cm to sqft).
      * Conversion factor: 1 cm² = 0.00107639 sqft
      */
@@ -159,6 +188,22 @@ class StockAddition extends Model
             // Set available quantities equal to total quantities initially
             $stockAddition->available_pieces = $stockAddition->total_pieces;
             $stockAddition->available_sqft = $stockAddition->total_sqft;
+        });
+
+        static::created(function ($stockAddition) {
+            // Log stock addition creation
+            \App\Models\StockLog::logActivity(
+                'created',
+                "Stock addition created - {$stockAddition->total_pieces} pieces added",
+                $stockAddition->id,
+                null,
+                null,
+                null,
+                null,
+                ['total_pieces' => $stockAddition->total_pieces, 'total_sqft' => $stockAddition->total_sqft],
+                $stockAddition->total_pieces,
+                $stockAddition->total_sqft
+            );
         });
 
         static::updating(function ($stockAddition) {
