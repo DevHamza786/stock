@@ -36,40 +36,49 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Stock Addition -->
                             <div class="md:col-span-2">
-                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issuance</label>
-                                <select id="stock_addition_id" name="stock_addition_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" required>
-                                    <option value="">Choose stock issuance...</option>
-                                    @if(isset($stockAdditions) && $stockAdditions->count() > 0)
-                                        @foreach($stockAdditions as $addition)
-                                            <option value="{{ $addition->id }}" 
-                                                    data-length="{{ $addition->length }}"
-                                                    data-height="{{ $addition->height }}"
-                                                    data-size-3d="{{ $addition->size_3d }}"
-                                                    data-available-pieces="{{ $addition->available_pieces }}"
-                                                    data-available-sqft="{{ $addition->available_sqft }}"
-                                                    data-total-sqft="{{ $addition->total_sqft }}"
-                                                    data-total-pieces="{{ $addition->total_pieces }}"
-                                                    data-weight="{{ $addition->weight }}"
-                                                    data-condition-status="{{ $addition->condition_status }}"
-                                                    {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
-                                                {{ $addition->product->name }} - {{ $addition->mineVendor->name }} - 
-                                                {{ ucfirst($addition->condition_status) }} - 
-                                                @if(strtolower($addition->condition_status) === 'block')
-                                                    Weight: {{ number_format($addition->weight, 2) }} kg
-                                                @else
-                                                    @if($addition->length && $addition->height)
-                                                        Size: {{ $addition->length }} × {{ $addition->height }} cm
-                                                    @else
-                                                        Size: {{ $addition->size_3d }}
-                                                    @endif
-                                                @endif
-                                                ({{ $addition->available_pieces }} pieces available)
-                                            </option>
-                                        @endforeach
-                                    @else
-                                        <option value="" disabled>No available stock additions</option>
-                                    @endif
-                                </select>
+                                <label for="stock_addition_search" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issuance (Available for Production)</label>
+                                <div class="relative">
+                                    <input type="text" id="stock_addition_search" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" placeholder="Search stock addition..." autocomplete="off">
+                                    <input type="hidden" id="stock_addition_id" name="stock_addition_id" value="{{ old('stock_addition_id') }}" required>
+                                    <div id="stock_dropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
+                                        <div class="p-2 text-gray-500 text-sm">Choose stock addition...</div>
+                                        @if(isset($stockAdditions) && $stockAdditions->count() > 0)
+                                            @foreach($stockAdditions as $addition)
+                                                <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                                                     data-value="{{ $addition->id }}" 
+                                                     data-text="{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($addition->condition_status) }}@if(strtolower($addition->condition_status) === 'block') - Weight: {{ number_format($addition->weight, 2) }} kg @else @if($addition->length && $addition->height) - Size: {{ $addition->length }} × {{ $addition->height }} cm @else - Size: {{ $addition->size_3d }} @endif @endif - ({{ $addition->available_pieces }} pieces available)@if($addition->pid) - PID: {{ $addition->pid }}@endif"
+                                                     data-length="{{ $addition->length }}"
+                                                     data-height="{{ $addition->height }}"
+                                                     data-size-3d="{{ $addition->size_3d }}"
+                                                     data-available-pieces="{{ $addition->available_pieces }}"
+                                                     data-available-sqft="{{ $addition->available_sqft }}"
+                                                     data-total-sqft="{{ $addition->total_sqft }}"
+                                                     data-total-pieces="{{ $addition->total_pieces }}"
+                                                     data-weight="{{ $addition->weight }}"
+                                                     data-condition-status="{{ $addition->condition_status }}"
+                                                     data-pid="{{ $addition->pid }}">
+                                                    <div class="font-medium text-gray-900">{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }}</div>
+                                                    <div class="text-sm text-gray-600">
+                                                        {{ ucfirst($addition->condition_status) }} - 
+                                                        @if(strtolower($addition->condition_status) === 'block')
+                                                            Weight: {{ number_format($addition->weight, 2) }} kg
+                                                        @else
+                                                            @if($addition->length && $addition->height)
+                                                                Size: {{ $addition->length }} × {{ $addition->height }} cm
+                                                            @else
+                                                                Size: {{ $addition->size_3d }}
+                                                            @endif
+                                                        @endif
+                                                        @if($addition->pid) | PID: {{ $addition->pid }} @endif
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">{{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft</div>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="p-3 text-gray-500 text-sm">No available stock additions</div>
+                                        @endif
+                                    </div>
+                                </div>
                                 @error('stock_addition_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -233,7 +242,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const stockSelect = document.getElementById('stock_addition_id');
+            const stockSearch = document.getElementById('stock_addition_search');
+            const stockSelect = document.getElementById('stock_addition_id'); // Hidden input
+            const stockDropdown = document.getElementById('stock_dropdown');
+            const stockOptions = document.querySelectorAll('.stock-option');
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
@@ -246,15 +258,70 @@
             // Stock data from the server
             const stockData = @json(isset($stockAdditions) ? $stockAdditions->keyBy('id') : []);
 
-            stockSelect.addEventListener('change', function() {
-                const selectedId = this.value;
+            // Show dropdown when input is focused
+            stockSearch.addEventListener('focus', function() {
+                stockDropdown.classList.remove('hidden');
+                filterOptions();
+            });
 
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!stockSearch.contains(e.target) && !stockDropdown.contains(e.target)) {
+                    stockDropdown.classList.add('hidden');
+                }
+            });
+
+            // Search functionality
+            stockSearch.addEventListener('input', function() {
+                filterOptions();
+                stockDropdown.classList.remove('hidden');
+            });
+
+            // Filter options based on search term
+            function filterOptions() {
+                const searchTerm = stockSearch.value.toLowerCase();
+                let hasVisibleOptions = false;
+
+                stockOptions.forEach(function(option) {
+                    const optionText = option.dataset.text.toLowerCase();
+                    if (optionText.includes(searchTerm)) {
+                        option.style.display = 'block';
+                        hasVisibleOptions = true;
+                    } else {
+                        option.style.display = 'none';
+                    }
+                });
+
+                // Show/hide the placeholder based on search results
+                const placeholder = stockDropdown.querySelector('.p-2');
+                if (placeholder) {
+                    placeholder.style.display = hasVisibleOptions ? 'none' : 'block';
+                }
+            }
+
+            // Handle option selection
+            stockOptions.forEach(function(option) {
+                option.addEventListener('click', function() {
+                    const value = this.dataset.value;
+                    const text = this.dataset.text;
+                    
+                    stockSelect.value = value;
+                    stockSearch.value = text;
+                    stockDropdown.classList.add('hidden');
+                    
+                    // Update stock info
+                    updateStockInfo(value);
+                });
+            });
+
+            // Update stock information display
+            function updateStockInfo(selectedId) {
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
                     const conditionStatus = stock.condition_status.toLowerCase();
 
-                    selectedProduct.textContent = stock.product.name;
-                    selectedVendor.textContent = stock.mine_vendor.name;
+                    selectedProduct.textContent = stock.product?.name || 'N/A';
+                    selectedVendor.textContent = stock.mine_vendor?.name || 'N/A';
                     document.getElementById('selected-condition').textContent = stock.condition_status;
                     
                     // Show/hide fields based on condition status
@@ -319,7 +386,7 @@
                 } else {
                     stockInfo.classList.add('hidden');
                 }
-            });
+            }
 
             // Auto-calculate sqft/weight based on quantity (if needed)
             quantityInput.addEventListener('input', function() {
@@ -341,6 +408,17 @@
                     }
                 }
             });
+
+            // Initialize with old value if available
+            @if(old('stock_addition_id'))
+                const oldValue = {{ old('stock_addition_id') }};
+                if (stockData[oldValue]) {
+                    const stock = stockData[oldValue];
+                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} - ${stock.condition_status} - ${stock.available_pieces} pieces available`;
+                    stockSearch.value = displayText;
+                    updateStockInfo(oldValue);
+                }
+            @endif
         });
     </script>
 </x-app-layout>
