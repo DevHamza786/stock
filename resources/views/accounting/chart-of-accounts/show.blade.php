@@ -30,9 +30,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Account Details -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200 mb-8">
                         <div class="p-6">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
@@ -213,48 +213,46 @@
                 </div>
 
                 <!-- Account Summary -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="p-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Account Summary</h3>
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Account Summary</h3>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Opening Balance</label>
-                                    <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->opening_balance, 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Current Balance</label>
-                                    <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->current_balance, 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Calculated Balance</label>
-                                    <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->balance, 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Total Transactions</label>
-                                    <p class="mt-1 text-lg font-medium text-gray-900">{{ $chartOfAccount->transactions->count() }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Total Debits</label>
-                                    <p class="mt-1 text-lg font-medium text-gray-900">${{ number_format($chartOfAccount->transactions->sum('debit_amount'), 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Total Credits</label>
-                                    <p class="mt-1 text-lg font-medium text-gray-900">${{ number_format($chartOfAccount->transactions->sum('credit_amount'), 2) }}</p>
-                                </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Opening Balance</label>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->opening_balance, 2) }}</p>
                             </div>
 
-                            <div class="mt-6">
-                                <button onclick="updateBalance()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                    Update Balance
-                                </button>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Current Balance</label>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->current_balance, 2) }}</p>
                             </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Calculated Balance</label>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($chartOfAccount->balance, 2) }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Transactions</label>
+                                <p class="mt-1 text-lg font-medium text-gray-900">{{ $chartOfAccount->transactions->count() }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Debits</label>
+                                <p class="mt-1 text-lg font-medium text-gray-900">${{ number_format($chartOfAccount->transactions->sum('debit_amount'), 2) }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Credits</label>
+                                <p class="mt-1 text-lg font-medium text-gray-900">${{ number_format($chartOfAccount->transactions->sum('credit_amount'), 2) }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6">
+                            <button onclick="updateBalance()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+                                Update Balance
+                            </button>
                         </div>
                     </div>
                 </div>

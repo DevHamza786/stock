@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex justify-between items-center">
@@ -19,7 +19,6 @@
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                 <div class="p-6">
-
                     @if(session('success'))
                         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
                             {{ session('success') }}
@@ -32,35 +31,10 @@
                         </div>
                     @endif
 
-                    <!-- Search and Filter Section -->
-                    <div class="mb-6">
-                        <form method="GET" action="{{ route('stock-management.stock-additions.index') }}" class="space-y-4">
-                            <!-- Search Bar -->
-                            <div class="flex flex-col sm:flex-row gap-4">
-                                <div class="flex-1">
-                                    <div class="relative">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                            </svg>
-                                        </div>
-                                        <input type="text" name="search" value="{{ request('search') }}"
-                                               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                               placeholder="Search by product, vendor, stone, size, or condition...">
-                                    </div>
-                                </div>
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                    Search
-                                </button>
-                                @if(request()->hasAny(['search', 'product_id', 'vendor_id', 'condition_status', 'stock_status', 'date_from', 'date_to']))
-                                    <a href="{{ route('stock-management.stock-additions.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                        Clear
-                                    </a>
-                                @endif
-                            </div>
-
                             <!-- Filters -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="mb-6 p-4 bg-white rounded-lg border border-gray-200">
+                        <form method="GET" action="{{ route('stock-management.stock-additions.index') }}">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                                 <!-- Product Filter -->
                                 <div>
                                     <label for="product_id" class="block text-sm font-medium text-gray-700 mb-1">Product</label>
@@ -87,14 +61,14 @@
                                     </select>
                                 </div>
 
-                                <!-- Condition Status Filter -->
+                                <!-- Condition Filter -->
                                 <div>
                                     <label for="condition_status" class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
                                     <select name="condition_status" id="condition_status" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm">
                                         <option value="">All Conditions</option>
-                                        @foreach($conditionStatuses as $status)
-                                            <option value="{{ $status }}" {{ request('condition_status') == $status ? 'selected' : '' }}>
-                                                {{ $status }}
+                                        @foreach($conditions as $condition)
+                                            <option value="{{ $condition->name }}" {{ request('condition_status') == $condition->name ? 'selected' : '' }}>
+                                                {{ $condition->name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -106,335 +80,210 @@
                                     <select name="stock_status" id="stock_status" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm">
                                         <option value="">All Stock</option>
                                         <option value="available" {{ request('stock_status') == 'available' ? 'selected' : '' }}>Available</option>
-                                        <option value="out_of_stock" {{ request('stock_status') == 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
+                                        <option value="issued" {{ request('stock_status') == 'issued' ? 'selected' : '' }}>Issued</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <!-- Date Range Filters -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-                                    <input type="date" name="date_from" id="date_from" value="{{ request('date_from') }}"
-                                           class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm">
-                                </div>
-                                <div>
-                                    <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-                                    <input type="date" name="date_to" id="date_to" value="{{ request('date_to') }}"
-                                           class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm">
-                                </div>
+                            <div class="flex space-x-4">
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                    Apply Filters
+                                </button>
+                                @if(request()->hasAny(['product_id', 'vendor_id', 'condition_status', 'stock_status']))
+                                    <a href="{{ route('stock-management.stock-additions.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                        Clear
+                                    </a>
+                                @endif
                             </div>
-
-                            <!-- Hidden fields to preserve sorting -->
-                            <input type="hidden" name="sort_by" value="{{ request('sort_by', 'date') }}">
-                            <input type="hidden" name="sort_direction" value="{{ request('sort_direction', 'desc') }}">
                         </form>
                     </div>
 
-                    <!-- Results Summary -->
-                    <div class="mb-4 flex justify-between items-center">
-                        <div class="text-sm text-gray-700">
-                            Showing {{ $stockAdditions->firstItem() ?? 0 }} to {{ $stockAdditions->lastItem() ?? 0 }} of {{ $stockAdditions->total() }} results
-                        </div>
-                        @if(request()->hasAny(['search', 'product_id', 'vendor_id', 'condition_status', 'stock_status', 'date_from', 'date_to']))
-                            <div class="text-sm text-blue-600">
-                                <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"></path>
-                                </svg>
-                                Filters Applied
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                    <!-- DataTable -->
+                    <div class="table-responsive">
+                        <table id="stockAdditionsTable" class="table table-striped table-hover">
+                            <thead>
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'product', 'sort_direction' => request('sort_by') == 'product' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Product
-                                            @if(request('sort_by') == 'product')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'vendor', 'sort_direction' => request('sort_by') == 'vendor' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Vendor
-                                            @if(request('sort_by') == 'vendor')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stone</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size/Weight</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_pieces', 'sort_direction' => request('sort_by') == 'total_pieces' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Pieces
-                                            @if(request('sort_by') == 'total_pieces')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'total_sqft', 'sort_direction' => request('sort_by') == 'total_sqft' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Sqft
-                                            @if(request('sort_by') == 'total_sqft')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'available_pieces', 'sort_direction' => request('sort_by') == 'available_pieces' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Available
-                                            @if(request('sort_by') == 'available_pieces')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'date', 'sort_direction' => request('sort_by') == 'date' && request('sort_direction') == 'asc' ? 'desc' : 'asc']) }}" class="group inline-flex items-center hover:text-gray-700">
-                                            Date
-                                            @if(request('sort_by') == 'date')
-                                                @if(request('sort_direction') == 'asc')
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                                    </svg>
-                                                @else
-                                                    <svg class="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                                    </svg>
-                                                @endif
-                                            @else
-                                                <svg class="ml-1 h-4 w-4 text-gray-300 group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
-                                                </svg>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th>PID</th>
+                                    <th>Product</th>
+                                    <th>Vendor</th>
+                                    <th>Particulars</th>
+                                    <th>Size/Weight</th>
+                                    <th>Diameter</th>
+                                    <th>Pieces</th>
+                                    <th>Sqft</th>
+                                    <th>Available</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($stockAdditions as $addition)
+                            <tbody>
+                                @foreach($stockAdditions as $addition)
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {{ $addition->product->name }}
+                                        <td>
+                                            <span class="font-mono text-sm">{{ $addition->pid ?? 'N/A' }}</span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $addition->mineVendor->name }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $addition->stone }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @if(strtolower($addition->condition_status) === 'block')
-                                                @if($addition->weight)
-                                                    <span class="font-medium text-green-600">{{ number_format($addition->weight, 2) }} kg</span>
-                                                    <br>
-                                                    <span class="text-xs text-gray-400">Weight per piece</span>
-                                                @else
-                                                    <span class="text-gray-400">N/A</span>
-                                                @endif
+                                        <td>{{ $addition->product->name }}</td>
+                                        <td>{{ $addition->mineVendor->name }}</td>
+                                        <td>{{ $addition->stone ?? 'N/A' }}</td>
+                                        <td>
+                                            @if($addition->condition_status === 'Block')
+                                                <span class="text-sm text-gray-600">{{ number_format($addition->weight, 2) }} kg</span>
                                             @else
+                                                <div class="text-sm">
                                                 @if($addition->length && $addition->height)
-                                                    <span class="font-medium text-blue-600">{{ $addition->length }} × {{ $addition->height }} cm</span>
-                                                    <br>
-                                                    <span class="text-xs text-gray-400">{{ number_format($addition->length * $addition->height, 2) }} cm²</span>
+                                                        <div>{{ number_format($addition->length, 2) }} × {{ number_format($addition->height, 2) }} cm</div>
+                                                        <div class="text-xs text-gray-500">{{ number_format($addition->length * $addition->height, 2) }} cm²</div>
                                                 @else
-                                                    <span class="text-gray-400">{{ $addition->size_3d ?? 'N/A' }}</span>
+                                                        <span class="text-gray-500">N/A</span>
                                                 @endif
+                                                </div>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ number_format($addition->total_pieces) }}
+                                        <td>
+                                            @if($addition->diameter)
+                                                <span class="text-sm">{{ $addition->diameter }}</span>
+                                            @else
+                                                <span class="text-gray-500 text-sm">N/A</span>
+                                            @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ number_format($addition->total_sqft, 2) }}
+                                        <td>
+                                            <span class="font-semibold">{{ number_format($addition->total_pieces) }}</span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $addition->available_pieces > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                {{ number_format($addition->available_pieces) }}
-                                            </span>
+                                        <td>
+                                            <span class="text-sm">{{ number_format($addition->total_sqft, 2) }}</span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $addition->date->format('M d, Y') }}
+                                        <td>
+                                            <div class="text-sm">
+                                                <div>{{ number_format($addition->available_pieces) }} pcs</div>
+                                                <div class="text-xs text-gray-500">{{ number_format($addition->available_sqft, 2) }} sqft</div>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td>{{ $addition->date->format('M d, Y') }}</td>
+                                        <td>
                                             <div class="flex space-x-2">
-                                                <a href="{{ route('stock-management.stock-additions.show', $addition) }}" class="text-blue-600 hover:text-blue-900">View</a>
-                                                <a href="{{ route('stock-management.stock-additions.edit', $addition) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
+                                                <a href="{{ route('stock-management.stock-additions.show', $addition) }}" class="text-blue-600 hover:text-blue-900 text-sm">View</a>
+                                                <a href="{{ route('stock-management.stock-additions.edit', $addition) }}" class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</a>
                                                 <form method="POST" action="{{ route('stock-management.stock-additions.destroy', $addition) }}" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure you want to delete this stock addition?')">Delete</button>
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this stock addition?')">Delete</button>
                                                 </form>
                                             </div>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                            No stock additions found.
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
                     </div>
-
-                    <!-- Enhanced Pagination -->
-                    @if($stockAdditions->hasPages())
-                        <div class="mt-6 flex items-center justify-between">
-                            <div class="flex-1 flex justify-between sm:hidden">
-                                @if($stockAdditions->onFirstPage())
-                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">
-                                        Previous
-                                    </span>
-                                @else
-                                    <a href="{{ $stockAdditions->previousPageUrl() }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                        Previous
-                                    </a>
-                                @endif
-
-                                @if($stockAdditions->hasMorePages())
-                                    <a href="{{ $stockAdditions->nextPageUrl() }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                        Next
-                                    </a>
-                                @else
-                                    <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed">
-                                        Next
-                                    </span>
-                                @endif
-                            </div>
-                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                <div>
-                                    <p class="text-sm text-gray-700">
-                                        Showing
-                                        <span class="font-medium">{{ $stockAdditions->firstItem() }}</span>
-                                        to
-                                        <span class="font-medium">{{ $stockAdditions->lastItem() }}</span>
-                                        of
-                                        <span class="font-medium">{{ $stockAdditions->total() }}</span>
-                                        results
-                                    </p>
-                                </div>
-                                <div>
-                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                        {{-- Previous Page Link --}}
-                                        @if ($stockAdditions->onFirstPage())
-                                            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 cursor-not-allowed">
-                                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        @else
-                                            <a href="{{ $stockAdditions->previousPageUrl() }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </a>
-                                        @endif
-
-                                        {{-- Pagination Elements --}}
-                                        @foreach ($stockAdditions->getUrlRange(1, $stockAdditions->lastPage()) as $page => $url)
-                                            @if ($page == $stockAdditions->currentPage())
-                                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
-                                                    {{ $page }}
-                                                </span>
-                                            @else
-                                                <a href="{{ $url }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                                    {{ $page }}
-                                                </a>
-                                            @endif
-                                        @endforeach
-
-                                        {{-- Next Page Link --}}
-                                        @if ($stockAdditions->hasMorePages())
-                                            <a href="{{ $stockAdditions->nextPageUrl() }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </a>
-                                        @else
-                                            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 cursor-not-allowed">
-                                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        @endif
-                                    </nav>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(document).ready(function() {
+            // Check if required libraries are loaded
+            console.log('jQuery loaded:', typeof $ !== 'undefined');
+            console.log('DataTables loaded:', typeof $.fn.DataTable !== 'undefined');
+            console.log('Buttons loaded:', typeof $.fn.DataTable.Buttons !== 'undefined');
+            console.log('JSZip loaded:', typeof JSZip !== 'undefined');
+            
+            $('#stockAdditionsTable').DataTable({
+                responsive: true,
+                dom: '<"top"Blf>rtip',
+                autoWidth: false,
+                scrollX: false,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                buttons: [
+                    {
+                        extend: 'print',
+                        text: '🖨️ Print',
+                        className: 'btn btn-secondary',
+                        title: 'Stock Additions Report',
+                        messageTop: 'Generated on: {{ now()->format("d/m/Y H:i") }}',
+                        customize: function ( win ) {
+                            // Hide action column
+                            $(win.document.body).find('table th:last-child, table td:last-child').hide();
+                            
+                            // Style the table
+                            $(win.document.body).find('table')
+                                .addClass('compact')
+                                .css({
+                                    'font-size': '11px',
+                                    'width': '100%'
+                                });
+                                
+                            // Style headers
+                            $(win.document.body).find('table thead th')
+                                .css({
+                                    'background-color': '#f8f9fa',
+                                    'font-weight': 'bold',
+                                    'border': '1px solid #000'
+                                });
+                                
+                            // Style cells
+                            $(win.document.body).find('table tbody td')
+                                .css({
+                                    'border': '1px solid #000'
+                                });
+                                
+                            // Add page title
+                            $(win.document.head).find('title').text('Stock Additions Report');
+                        }
+                    },
+                    {
+                        extend: 'excel',
+                        text: '📊 Excel',
+                        className: 'btn btn-success',
+                        title: 'Stock Additions Report - {{ now()->format("d-m-Y H-i") }}',
+                        filename: 'Stock_Additions_{{ now()->format("d-m-Y_H-i") }}',
+                        exportOptions: {
+                            columns: ':not(:last-child)' // Exclude Actions column
+                        },
+                        customize: function ( xlsx ) {
+                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            
+                            // Add header row styling
+                            $('row:first c', sheet).attr('s', '2');
+                            
+                            // Set column widths
+                            var colWidths = [12, 20, 20, 15, 18, 12, 10, 12, 15, 12];
+                            $('col', sheet).each(function(index) {
+                                if (index < colWidths.length) {
+                                    $(this).attr('width', colWidths[index]);
+                                }
+                            });
+                        }
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '📄 PDF',
+                        className: 'btn btn-danger'
+                    }
+                ],
+                pageLength: 10,
+                order: [[9, 'desc']], // Sort by Date column (descending)
+                columnDefs: [
+                    { orderable: false, targets: 10 } // Disable sorting on Actions column
+                ],
+                language: {
+                    search: "Search:",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    }
+                },
+                initComplete: function() {
+                    console.log('DataTable initialized');
+                    console.log('Buttons container:', $('.dt-buttons').length);
+                    console.log('Button elements:', $('.dt-buttons button').length);
+                }
+            });
+
             // Auto-submit form when filter selects change
             const filterSelects = document.querySelectorAll('#product_id, #vendor_id, #condition_status, #stock_status');
             filterSelects.forEach(select => {
@@ -442,39 +291,6 @@
                     this.form.submit();
                 });
             });
-
-            // Auto-submit form when date inputs change
-            const dateInputs = document.querySelectorAll('#date_from, #date_to');
-            dateInputs.forEach(input => {
-                input.addEventListener('change', function() {
-                    this.form.submit();
-                });
-            });
-
-            // Add loading state to search button
-            const searchForm = document.querySelector('form[method="GET"]');
-            const searchButton = searchForm.querySelector('button[type="submit"]');
-
-            searchForm.addEventListener('submit', function() {
-                searchButton.innerHTML = `
-                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Searching...
-                `;
-                searchButton.disabled = true;
-            });
-
-            // Clear filters functionality
-            const clearButton = document.querySelector('a[href*="stock-additions"]');
-            if (clearButton) {
-                clearButton.addEventListener('click', function(e) {
-                    // Reset all form inputs
-                    const form = document.querySelector('form[method="GET"]');
-                    form.reset();
-                });
-            }
         });
     </script>
 </x-app-layout>

@@ -32,11 +32,11 @@ class ConditionStatus extends Model
     }
 
     /**
-     * Get the daily productions for this condition status.
+     * Get the daily production items for this condition status.
      */
-    public function dailyProductions(): HasMany
+    public function dailyProductionItems(): HasMany
     {
-        return $this->hasMany(DailyProduction::class, 'condition_status', 'name');
+        return $this->hasMany(DailyProductionItem::class, 'condition_status', 'name');
     }
 
     /**

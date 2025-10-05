@@ -59,8 +59,8 @@ class ChartOfAccountSeeder extends Seeder
             ],
             [
                 'account_code' => '1130',
-                'account_name' => 'Stone Inventory',
-                'description' => 'Raw stone materials inventory',
+                'account_name' => 'Particulars Inventory',
+                'description' => 'Raw particulars materials inventory',
                 'account_type' => 'ASSET',
                 'account_subtype' => 'INVENTORY',
                 'normal_balance' => 'DEBIT',
@@ -82,7 +82,7 @@ class ChartOfAccountSeeder extends Seeder
             [
                 'account_code' => '1150',
                 'account_name' => 'Work in Progress',
-                'description' => 'Stone materials in production process',
+                'description' => 'Particulars materials in production process',
                 'account_type' => 'ASSET',
                 'account_subtype' => 'INVENTORY',
                 'normal_balance' => 'DEBIT',
@@ -216,8 +216,8 @@ class ChartOfAccountSeeder extends Seeder
             ],
             [
                 'account_code' => '4100',
-                'account_name' => 'Stone Sales Revenue',
-                'description' => 'Revenue from stone product sales',
+                'account_name' => 'Particulars Sales Revenue',
+                'description' => 'Revenue from particulars product sales',
                 'account_type' => 'REVENUE',
                 'account_subtype' => 'SALES_REVENUE',
                 'normal_balance' => 'CREDIT',

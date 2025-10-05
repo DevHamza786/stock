@@ -39,9 +39,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Entry Details -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200 mb-8">
                         <div class="p-6">
                             <h3 class="text-lg font-medium text-gray-900 mb-4">Entry Information</h3>
@@ -159,54 +159,52 @@
                 </div>
 
                 <!-- Entry Summary -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="p-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Entry Summary</h3>
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="p-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Entry Summary</h3>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Total Debit</label>
-                                    <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($journalEntry->total_debit, 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Total Credit</label>
-                                    <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($journalEntry->total_credit, 2) }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Balance Status</label>
-                                    <p class="mt-1">
-                                        @if($journalEntry->isBalanced())
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                ✓ Balanced
-                                            </span>
-                                        @else
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                ✗ Unbalanced
-                                            </span>
-                                        @endif
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Number of Transactions</label>
-                                    <p class="mt-1 text-lg font-medium text-gray-900">{{ $journalEntry->transactions->count() }}</p>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-500">Created</label>
-                                    <p class="mt-1 text-sm text-gray-900">{{ $journalEntry->created_at->format('M d, Y H:i') }}</p>
-                                </div>
-
-                                @if($journalEntry->updated_at != $journalEntry->created_at)
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-500">Last Updated</label>
-                                        <p class="mt-1 text-sm text-gray-900">{{ $journalEntry->updated_at->format('M d, Y H:i') }}</p>
-                                    </div>
-                                @endif
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Debit</label>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($journalEntry->total_debit, 2) }}</p>
                             </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Total Credit</label>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">${{ number_format($journalEntry->total_credit, 2) }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Balance Status</label>
+                                <p class="mt-1">
+                                    @if($journalEntry->isBalanced())
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            ✓ Balanced
+                                        </span>
+                                    @else
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            ✗ Unbalanced
+                                        </span>
+                                    @endif
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Number of Transactions</label>
+                                <p class="mt-1 text-lg font-medium text-gray-900">{{ $journalEntry->transactions->count() }}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500">Created</label>
+                                <p class="mt-1 text-sm text-gray-900">{{ $journalEntry->created_at->format('M d, Y H:i') }}</p>
+                            </div>
+
+                            @if($journalEntry->updated_at != $journalEntry->created_at)
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-500">Last Updated</label>
+                                    <p class="mt-1 text-sm text-gray-900">{{ $journalEntry->updated_at->format('M d, Y H:i') }}</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

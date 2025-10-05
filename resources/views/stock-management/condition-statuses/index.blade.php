@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex justify-between items-center">
@@ -149,7 +149,7 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $status->stockAdditions()->count() + $status->dailyProductions()->count() }} records
+                                            {{ $status->stockAdditions()->count() + $status->dailyProductionItems()->count() }} records
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex space-x-2">

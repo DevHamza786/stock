@@ -65,7 +65,7 @@ class ConditionStatusSeeder extends Seeder
             ],
             [
                 'name' => 'Landscaping',
-                'description' => 'Stone pieces for landscaping',
+                'description' => 'Particulars pieces for landscaping',
                 'color' => '#84CC16',
                 'sort_order' => 8,
                 'is_active' => true,

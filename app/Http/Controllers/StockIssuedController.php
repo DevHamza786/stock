@@ -173,6 +173,8 @@ class StockIssuedController extends Controller
             'sqft_issued' => 'nullable|numeric|min:0',
             'weight_issued' => 'nullable|numeric|min:0',
             'purpose' => 'required|string|max:255',
+            'machine_id' => 'nullable|exists:machines,id',
+            'operator_id' => 'nullable|exists:operators,id',
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -210,7 +212,26 @@ class StockIssuedController extends Controller
             }
         }
 
-        $stockIssued = StockIssued::create($request->all());
+        // Prepare data for creation
+        $data = $request->all();
+        
+        // If machine_id is provided, get machine name
+        if (!empty($data['machine_id'])) {
+            $machine = Machine::find($data['machine_id']);
+            if ($machine) {
+                $data['machine_name'] = $machine->name;
+            }
+        }
+        
+        // If operator_id is provided, get operator name
+        if (!empty($data['operator_id'])) {
+            $operator = Operator::find($data['operator_id']);
+            if ($operator) {
+                $data['operator_name'] = $operator->name;
+            }
+        }
+
+        $stockIssued = StockIssued::create($data);
 
         // The model's boot method will automatically update available stock quantities
 
@@ -263,6 +284,8 @@ class StockIssuedController extends Controller
             'sqft_issued' => 'nullable|numeric|min:0',
             'weight_issued' => 'nullable|numeric|min:0',
             'purpose' => 'nullable|string|max:255',
+            'machine_id' => 'nullable|exists:machines,id',
+            'operator_id' => 'nullable|exists:operators,id',
             'machine_name' => 'nullable|string|max:255',
             'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -296,7 +319,26 @@ class StockIssuedController extends Controller
             ]);
         }
 
-        $stockIssued->update($request->all());
+        // Prepare data for update
+        $data = $request->all();
+        
+        // If machine_id is provided, get machine name
+        if (!empty($data['machine_id'])) {
+            $machine = Machine::find($data['machine_id']);
+            if ($machine) {
+                $data['machine_name'] = $machine->name;
+            }
+        }
+        
+        // If operator_id is provided, get operator name
+        if (!empty($data['operator_id'])) {
+            $operator = Operator::find($data['operator_id']);
+            if ($operator) {
+                $data['operator_name'] = $operator->name;
+            }
+        }
+
+        $stockIssued->update($data);
 
         return redirect()->route('stock-management.stock-issued.index')
             ->with('success', 'Stock issuance updated successfully.');
@@ -353,7 +395,7 @@ class StockIssuedController extends Controller
         try {
             // Get accounts
             $wipAccount = ChartOfAccount::where('account_code', '1150')->first(); // Work in Progress
-            $inventoryAccount = ChartOfAccount::where('account_code', '1130')->first(); // Stone Inventory
+            $inventoryAccount = ChartOfAccount::where('account_code', '1130')->first(); // Particulars Inventory
 
             if (!$wipAccount || !$inventoryAccount) {
                 \Log::warning('Required accounts not found for stock issued accounting entry');

@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center">
@@ -150,9 +150,9 @@
                                     @enderror
                                 </div>
 
-                                <!-- Stone -->
+                                <!-- Particulars -->
                                 <div>
-                                    <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Stone Type</label>
+                                    <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Particulars</label>
                                     <input type="text" id="stone" name="stone" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stone') border-red-500 @enderror" value="{{ old('stone', $dailyProduction->stone) }}" readonly>
                                     @error('stone')
                                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

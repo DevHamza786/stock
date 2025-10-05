@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center justify-between">
@@ -31,9 +31,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Main Stock Issuance Information -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Issuance Information</h2>
@@ -49,7 +49,7 @@
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->mineVendor->name }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
+                                    <dt class="text-sm font-medium text-gray-500">Particulars</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->stone }}</dd>
                                 </div>
                                 <div>
@@ -156,62 +156,22 @@
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="space-y-6">
-                    <!-- Quick Actions -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                        </div>
-                        <div class="p-6 space-y-3">
-                            <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                <!-- Quick Actions -->
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-wrap gap-4">
+                            <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Edit Issuance
                             </a>
-                            <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockIssued->stockAddition->id]) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                            <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockIssued->stockAddition->id]) }}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Record Production
                             </a>
-                            <a href="{{ route('stock-management.gate-pass.create', ['stock_issued_id' => $stockIssued->id]) }}" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                            <a href="{{ route('stock-management.gate-pass.create', ['stock_issued_id' => $stockIssued->id]) }}" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Create Gate Pass
                             </a>
-                        </div>
-                    </div>
-
-                    <!-- Issuance Status -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Issuance Status</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900">Issued</p>
-                                    <p class="text-sm text-gray-500">{{ number_format($stockIssued->quantity_issued) }} pieces issued</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Related Information -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Related Information</h3>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Product Category</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->product->category ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Contact</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->mineVendor->contact_person ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Phone</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->stockAddition->mineVendor->phone ?? 'N/A' }}</dd>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -322,7 +282,7 @@
                             <td class="print:py-1">{{ $stockIssued->stockAddition->mineVendor->name }}</td>
                         </tr>
                         <tr>
-                            <td class="print:font-semibold print:py-1 print:pr-4">Stone Type:</td>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Particulars:</td>
                             <td class="print:py-1">{{ $stockIssued->stockAddition->stone }}</td>
                         </tr>
                         <tr>
@@ -724,7 +684,7 @@
                                 <td style="padding: 2px 0;">${stockData.vendorName}</td>
                             </tr>
                             <tr>
-                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Stone Type:</td>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Particulars:</td>
                                 <td style="padding: 2px 0;">${stockData.stoneType}</td>
                             </tr>
                             <tr>

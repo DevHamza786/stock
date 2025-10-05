@@ -54,6 +54,15 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     // Stock Additions
     Route::resource('stock-additions', StockAdditionController::class);
     Route::post('stock-additions/calculate-sqft', [StockAdditionController::class, 'calculateSqft'])->name('stock-additions.calculate-sqft');
+    
+    // TEMPORARY TEST ROUTE
+    Route::get('stock-additions/{stockAddition}/edit-test', function ($stockAdditionId) {
+        $stockAddition = \App\Models\StockAddition::findOrFail($stockAdditionId);
+        $products = \App\Models\Product::where('is_active', true)->get();
+        $mineVendors = \App\Models\MineVendor::where('is_active', true)->get();
+        $conditionStatuses = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
+        return view('stock-management.stock-additions.edit-test', compact('stockAddition', 'products', 'mineVendors', 'conditionStatuses'));
+    })->name('stock-additions.edit-test');
 
     // Stock Issued
     Route::resource('stock-issued', StockIssuedController::class);

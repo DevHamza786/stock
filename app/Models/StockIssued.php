@@ -19,6 +19,8 @@ class StockIssued extends Model
         'sqft_issued',
         'weight_issued',
         'purpose',
+        'machine_id',
+        'operator_id',
         'machine_name',
         'operator_name',
         'notes',
@@ -62,6 +64,22 @@ class StockIssued extends Model
     public function dailyProduction(): HasMany
     {
         return $this->hasMany(DailyProduction::class);
+    }
+
+    /**
+     * Get the machine that owns the stock issued.
+     */
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class);
+    }
+
+    /**
+     * Get the operator that owns the stock issued.
+     */
+    public function operator(): BelongsTo
+    {
+        return $this->belongsTo(Operator::class);
     }
 
     /**

@@ -14,11 +14,11 @@ class MineVendorSeeder extends Seeder
     {
         $vendors = [
             [
-                'name' => 'ABC Stone Quarry',
+                'name' => 'ABC Quarry',
                 'contact_person' => 'John Smith',
                 'phone' => '+1-555-0123',
                 'email' => 'john@abcstone.com',
-                'address' => '123 Quarry Road, Stone City, SC 12345',
+                'address' => '123 Quarry Road, City, SC 12345',
                 'is_active' => true,
             ],
             [
@@ -38,11 +38,11 @@ class MineVendorSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'Natural Stone Ltd.',
+                'name' => 'Natural Materials Ltd.',
                 'contact_person' => 'Emily Davis',
                 'phone' => '+1-555-0321',
                 'email' => 'emily@naturalstone.com',
-                'address' => '321 Stone Avenue, Mineral Valley, MV 98765',
+                'address' => '321 Materials Avenue, Mineral Valley, MV 98765',
                 'is_active' => true,
             ],
             [

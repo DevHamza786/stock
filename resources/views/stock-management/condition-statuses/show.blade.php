@@ -25,9 +25,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Main Information -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="p-6">
                             <!-- Condition Status Header -->
@@ -91,7 +91,7 @@
                                                 </svg>
                                             </div>
                                             <div>
-                                                <div class="text-2xl font-bold text-green-900">{{ $conditionStatus->dailyProductions()->count() }}</div>
+                                                <div class="text-2xl font-bold text-green-900">{{ $conditionStatus->dailyProductionItems()->count() }}</div>
                                                 <div class="text-sm text-green-600">Daily Productions</div>
                                             </div>
                                         </div>
@@ -100,7 +100,7 @@
                             </div>
 
                             <!-- Recent Activity -->
-                            @if($conditionStatus->stockAdditions()->count() > 0 || $conditionStatus->dailyProductions()->count() > 0)
+                            @if($conditionStatus->stockAdditions()->count() > 0 || $conditionStatus->dailyProductionItems()->count() > 0)
                                 <div>
                                     <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
                                     <div class="space-y-3">
@@ -123,7 +123,7 @@
                                             </div>
                                         @endforeach
 
-                                        @foreach($conditionStatus->dailyProductions()->latest()->limit(3)->get() as $production)
+                                        @foreach($conditionStatus->dailyProductionItems()->with('dailyProduction')->latest()->limit(3)->get() as $productionItem)
                                             <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                 <div class="flex items-center">
                                                     <div class="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
@@ -133,10 +133,10 @@
                                                     </div>
                                                     <div>
                                                         <div class="text-sm font-medium text-gray-900">Daily Production</div>
-                                                        <div class="text-sm text-gray-500">{{ $production->machine_name }} - {{ $production->date->format('M d, Y') }}</div>
+                                                        <div class="text-sm text-gray-500">{{ $productionItem->dailyProduction->machine_name ?? 'N/A' }} - {{ $productionItem->dailyProduction->date->format('M d, Y') ?? 'N/A' }}</div>
                                                     </div>
                                                 </div>
-                                                <a href="{{ route('stock-management.daily-production.show', $production) }}" class="text-green-600 hover:text-green-900 text-sm">
+                                                <a href="{{ route('stock-management.daily-production.show', $productionItem->dailyProduction) }}" class="text-green-600 hover:text-green-900 text-sm">
                                                     View
                                                 </a>
                                             </div>
@@ -148,65 +148,34 @@
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="space-y-6">
-                    <!-- Quick Actions -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="p-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                            <div class="space-y-3">
-                                <a href="{{ route('stock-management.condition-statuses.edit', $conditionStatus) }}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center transition-colors duration-200">
-                                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                    Edit Condition Status
-                                </a>
+                <!-- Quick Actions -->
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-wrap gap-4">
+                            <a href="{{ route('stock-management.condition-statuses.edit', $conditionStatus) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+                                Edit Condition Status
+                            </a>
 
-                                <form method="POST" action="{{ route('stock-management.condition-statuses.toggle-status', $conditionStatus) }}" class="w-full">
+                            <form method="POST" action="{{ route('stock-management.condition-statuses.toggle-status', $conditionStatus) }}" class="inline">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+                                    {{ $conditionStatus->is_active ? 'Deactivate' : 'Activate' }}
+                                </button>
+                            </form>
+
+                            @if($conditionStatus->stockAdditions()->count() == 0 && $conditionStatus->dailyProductionItems()->count() == 0)
+                                <form method="POST" action="{{ route('stock-management.condition-statuses.destroy', $conditionStatus) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this condition status?')">
                                     @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center transition-colors duration-200">
-                                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
-                                        </svg>
-                                        {{ $conditionStatus->is_active ? 'Deactivate' : 'Activate' }}
+                                    @method('DELETE')
+                                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
+                                        Delete
                                     </button>
                                 </form>
-
-                                @if($conditionStatus->stockAdditions()->count() == 0 && $conditionStatus->dailyProductions()->count() == 0)
-                                    <form method="POST" action="{{ route('stock-management.condition-statuses.destroy', $conditionStatus) }}" class="w-full" onsubmit="return confirm('Are you sure you want to delete this condition status?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center transition-colors duration-200">
-                                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
-                                            Delete
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Information -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="p-6">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Information</h3>
-                            <dl class="space-y-3">
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Created</dt>
-                                    <dd class="text-sm text-gray-900">{{ $conditionStatus->created_at->format('M d, Y H:i') }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
-                                    <dd class="text-sm text-gray-900">{{ $conditionStatus->updated_at->format('M d, Y H:i') }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Total Usage</dt>
-                                    <dd class="text-sm text-gray-900">{{ $conditionStatus->stockAdditions()->count() + $conditionStatus->dailyProductions()->count() }} records</dd>
-                                </div>
-                            </dl>
+                            @endif
                         </div>
                     </div>
                 </div>

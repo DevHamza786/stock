@@ -5,11 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\StockAddition;
 use App\Models\Product;
 use App\Models\MineVendor;
-use App\Models\JournalEntry;
-use App\Models\AccountTransaction;
-use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class StockAdditionController extends Controller
 {
@@ -82,6 +78,8 @@ class StockAdditionController extends Controller
             $query->join('mine_vendors', 'stock_additions.mine_vendor_id', '=', 'mine_vendors.id')
                   ->orderBy('mine_vendors.name', $sortDirection)
                   ->select('stock_additions.*');
+        } elseif ($sortBy === 'pid') {
+            $query->orderBy('pid', $sortDirection);
         } elseif (in_array($sortBy, ['date', 'total_pieces', 'total_sqft', 'available_pieces'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -93,9 +91,9 @@ class StockAdditionController extends Controller
         // Get filter options
         $products = Product::where('is_active', true)->orderBy('name')->get();
         $vendors = MineVendor::where('is_active', true)->orderBy('name')->get();
-        $conditionStatuses = StockAddition::distinct()->pluck('condition_status')->filter();
+        $conditions = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
 
-        return view('stock-management.stock-additions.index', compact('stockAdditions', 'products', 'vendors', 'conditionStatuses'));
+        return view('stock-management.stock-additions.index', compact('stockAdditions', 'products', 'vendors', 'conditions'));
     }
 
     /**
@@ -116,6 +114,7 @@ class StockAdditionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'pid' => 'nullable|string|max:20|unique:stock_additions,pid',
             'product_id' => 'required|exists:products,id',
             'mine_vendor_id' => 'required|exists:mine_vendors,id',
             'stone' => 'required|string|max:255',
@@ -135,6 +134,7 @@ class StockAdditionController extends Controller
             $request->validate([
                 'weight' => 'required|numeric|min:0.1',
             ]);
+
         } else {
             // For other conditions, length and height are required
             $request->validate([
@@ -172,9 +172,6 @@ class StockAdditionController extends Controller
             'available_weight' => $availableWeight
         ]));
 
-        // Generate accounting journal entry
-        $this->generateAccountingEntry($stockAddition);
-
         return redirect()->route('stock-management.stock-additions.index')
             ->with('success', 'Stock addition created successfully.');
     }
@@ -203,78 +200,116 @@ class StockAdditionController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * NO VALIDATION FOR TESTING
      */
     public function update(Request $request, StockAddition $stockAddition)
     {
-        // Check if stock has been issued
-        if ($stockAddition->hasBeenIssued()) {
-            return redirect()->back()->with('error', 'Cannot update stock that has already been issued.');
-        }
-
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'mine_vendor_id' => 'required|exists:mine_vendors,id',
-            'stone' => 'required|string|max:255',
-            'length' => 'nullable|numeric|min:0.1',
-            'height' => 'nullable|numeric|min:0.1',
-            'diameter' => 'nullable|string|max:255',
-            'weight' => 'nullable|numeric|min:0.1',
-            'total_pieces' => 'required|integer|min:1',
-            'condition_status' => 'required|string|max:255',
-            'date' => 'required|date',
+        // Debug: Log everything about this request
+        \Log::info('=== STOCK UPDATE DEBUG START ===');
+        \Log::info('StockAddition Update - Request received (NO VALIDATION)', [
+            'stock_addition_id' => $stockAddition->id,
+            'method' => $request->method(),
+            'url' => $request->url(),
+            'all_request_data' => $request->all(),
+            'weight_value' => $request->input('weight'),
+            'total_pieces_value' => $request->input('total_pieces'),
+            'condition_status' => $request->input('condition_status'),
+            'has_been_issued' => $stockAddition->hasBeenIssued(),
+            'current_weight' => $stockAddition->weight,
+            'current_total_pieces' => $stockAddition->total_pieces,
         ]);
 
-        // Custom validation based on condition status
-        $conditionStatus = strtolower($request->condition_status);
-        if ($conditionStatus === 'block') {
-            // For block condition, weight is required, length/height are not
-            $request->validate([
-                'weight' => 'required|numeric|min:0.1',
-            ]);
-        } else {
-            // For other conditions, length and height are required
-            $request->validate([
-                'length' => 'required|numeric|min:0.1',
-                'height' => 'required|numeric|min:0.1',
-            ]);
-        }
-
-        // Calculate total_sqft and available_weight based on condition status
-        $totalSqft = 0;
-        $availableWeight = 0;
-        
-        if ($conditionStatus !== 'block') {
-            // For non-block conditions, calculate total_sqft
-            $length = $request->length ?? 0;
-            $height = $request->height ?? 0;
-            $totalPieces = $request->total_pieces ?? 0;
-            
-            if ($length > 0 && $height > 0 && $totalPieces > 0) {
-                // Convert cm to sqft (1 cm² = 0.00107639 sqft)
-                $cmToSqft = 0.00107639;
-                $singlePieceSizeCm = $length * $height;
-                $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
-                $totalSqft = $singlePieceSizeSqft * $totalPieces;
-            }
-        } else {
-            // For block condition, calculate available_weight
-            $weight = $request->weight ?? 0;
-            $totalPieces = $request->total_pieces ?? 0;
-            $availableWeight = $weight * $totalPieces;
-        }
-
         try {
-            $stockAddition->update(array_merge($request->all(), [
-                'total_sqft' => $totalSqft,
-                'available_weight' => $availableWeight
-            ]));
+            // Validate PID if provided
+            if ($request->filled('pid')) {
+                $request->validate([
+                    'pid' => 'string|max:20|unique:stock_additions,pid,' . $stockAddition->id,
+                ]);
+            }
+
+            // Show what data will be updated
+            $updateData = $request->all();
+            unset($updateData['_token'], $updateData['_method']);
+            
+            // Handle NULL values based on condition status
+            $conditionStatus = strtolower(trim($updateData['condition_status'] ?? ''));
+            
+            if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+                // For Block/Monuments condition: only keep weight and total_pieces, set others to NULL
+                $blockData = [
+                    'product_id' => $updateData['product_id'],
+                    'mine_vendor_id' => $updateData['mine_vendor_id'],
+                    'stone' => $updateData['stone'],
+                    'condition_status' => $updateData['condition_status'],
+                    'date' => $updateData['date'],
+                    'weight' => !empty($updateData['weight']) ? $updateData['weight'] : null,
+                    'total_pieces' => $updateData['total_pieces'],
+                    
+                    // Set dimension fields to NULL for Block/Monuments
+                    'length' => null,
+                    'height' => null,
+                    'diameter' => null,
+                    'total_sqft' => null,
+                    'available_sqft' => null,
+                    'size_3d' => null,
+                    
+                    // Calculate available_weight for Block/Monuments
+                    'available_weight' => !empty($updateData['weight']) && !empty($updateData['total_pieces']) 
+                        ? ($updateData['weight'] * $updateData['total_pieces']) 
+                        : null
+                ];
+                
+                $updateData = $blockData;
+            } else {
+                // For other conditions: keep dimension fields, set weight to NULL
+                $sizeData = [
+                    'product_id' => $updateData['product_id'],
+                    'mine_vendor_id' => $updateData['mine_vendor_id'],
+                    'stone' => $updateData['stone'],
+                    'condition_status' => $updateData['condition_status'],
+                    'date' => $updateData['date'],
+                    'total_pieces' => $updateData['total_pieces'],
+                    'length' => !empty($updateData['length']) ? $updateData['length'] : null,
+                    'height' => !empty($updateData['height']) ? $updateData['height'] : null,
+                    'diameter' => !empty($updateData['diameter']) ? $updateData['diameter'] : null,
+                    
+                    // Set weight to NULL for non-Block/Monuments conditions
+                    'weight' => null,
+                    'available_weight' => null
+                ];
+                
+                // Calculate total_sqft for non-Block/Monuments conditions
+                if (!empty($updateData['length']) && !empty($updateData['height'])) {
+                    $cmToSqft = 0.00107639;
+                    $totalPieces = $updateData['total_pieces'] ?? 0;
+                    $singlePieceSizeCm = $updateData['length'] * $updateData['height'];
+                    $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
+                    $sizeData['total_sqft'] = $singlePieceSizeSqft * $totalPieces;
+                    $sizeData['available_sqft'] = $singlePieceSizeSqft * $totalPieces;
+                }
+                
+                $updateData = $sizeData;
+            }
+            
+            \Log::info('Update data prepared:', $updateData);
+            
+            $stockAddition->update($updateData);
+
+            \Log::info('=== STOCK UPDATE DEBUG SUCCESS ===');
 
             return redirect()->route('stock-management.stock-additions.index')
-                ->with('success', 'Stock addition updated successfully.');
+                ->with('success', 'Stock addition updated successfully (NO VALIDATION - TEST MODE)');
         } catch (\Exception $e) {
+            \Log::error('=== STOCK UPDATE DEBUG ERROR ===', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->back()
                 ->withInput()
-                ->with('error', $e->getMessage());
+                ->with('error', 'Update failed: ' . $e->getMessage());
         }
     }
 
@@ -283,7 +318,6 @@ class StockAdditionController extends Controller
      */
     public function destroy(StockAddition $stockAddition)
     {
-        // Check if there are any stock issuances
         if ($stockAddition->stockIssued()->count() > 0) {
             return redirect()->route('stock-management.stock-additions.index')
                 ->with('error', 'Cannot delete stock addition with existing stock issuances.');
@@ -315,64 +349,5 @@ class StockAdditionController extends Controller
             'sqft_per_piece' => $sqft,
             'total_sqft' => $totalSqft
         ]);
-    }
-
-    /**
-     * Generate accounting journal entry for stock addition.
-     */
-    private function generateAccountingEntry(StockAddition $stockAddition)
-    {
-        try {
-            // Get accounts
-            $inventoryAccount = ChartOfAccount::where('account_code', '1130')->first(); // Stone Inventory
-            $payableAccount = ChartOfAccount::where('account_code', '2110')->first(); // Accounts Payable
-
-            if (!$inventoryAccount || !$payableAccount) {
-                \Log::warning('Required accounts not found for stock addition accounting entry');
-                return;
-            }
-
-            // Calculate cost per sqft (you might want to add cost fields to stock additions)
-            $costPerSqft = 100; // This should come from your stock addition data
-            $totalCost = $stockAddition->total_sqft * $costPerSqft;
-
-            // Create journal entry
-            $journalEntry = JournalEntry::create([
-                'entry_date' => $stockAddition->date,
-                'description' => "Stock addition: {$stockAddition->product->name} from {$stockAddition->mineVendor->name}",
-                'entry_type' => 'AUTO_STOCK_ADD',
-                'total_debit' => $totalCost,
-                'total_credit' => $totalCost,
-                'status' => 'DRAFT',
-                'created_by' => auth()->id(),
-                'notes' => "Auto-generated for stock addition #{$stockAddition->id}"
-            ]);
-
-            // Create transactions
-            AccountTransaction::create([
-                'journal_entry_id' => $journalEntry->id,
-                'account_id' => $inventoryAccount->id,
-                'debit_amount' => $totalCost,
-                'credit_amount' => 0,
-                'description' => "Inventory increase: {$stockAddition->product->name}",
-                'reference_type' => 'stock_addition',
-                'reference_id' => $stockAddition->id
-            ]);
-
-            AccountTransaction::create([
-                'journal_entry_id' => $journalEntry->id,
-                'account_id' => $payableAccount->id,
-                'debit_amount' => 0,
-                'credit_amount' => $totalCost,
-                'description' => "Amount payable to {$stockAddition->mineVendor->name}",
-                'reference_type' => 'stock_addition',
-                'reference_id' => $stockAddition->id
-            ]);
-
-            \Log::info("Accounting entry created for stock addition #{$stockAddition->id}");
-
-        } catch (\Exception $e) {
-            \Log::error("Failed to create accounting entry for stock addition #{$stockAddition->id}: " . $e->getMessage());
-        }
     }
 }

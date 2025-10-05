@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900">Add Stock</h1>
@@ -13,6 +13,14 @@
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Stock PID -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="pid" :value="__('Stock PID')" />
+                                <x-text-input id="pid" name="pid" type="text" class="mt-1 block w-full" :value="old('pid')" placeholder="e.g., STK-000001 (leave empty for auto-generation)" />
+                                <x-input-error :messages="$errors->get('pid')" class="mt-2" />
+                                <p class="mt-1 text-sm text-gray-500">Unique identifier for this stock. Leave empty for auto-generation.</p>
+                            </div>
+
                             <!-- Product -->
                             <div>
                                 <x-input-label for="product_id" :value="__('Product')" />
@@ -55,9 +63,9 @@
                                 <x-input-error :messages="$errors->get('condition_status')" class="mt-2" />
                             </div>
 
-                            <!-- Stone Type -->
+                            <!-- Particulars -->
                             <div>
-                                <x-input-label for="stone" :value="__('Stone Type')" />
+                                <x-input-label for="stone" :value="__('Particulars')" />
                                 <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full" :value="old('stone')" required />
                                 <x-input-error :messages="$errors->get('stone')" class="mt-2" />
                             </div>
@@ -203,7 +211,7 @@
 
             function toggleFields() {
                 const conditionStatus = conditionStatusSelect.value.toLowerCase();
-                const isBlock = conditionStatus === 'block';
+                const isBlock = conditionStatus === 'block' || conditionStatus === 'monuments';
 
                 if (isBlock) {
                     // Hide size fields and show weight field

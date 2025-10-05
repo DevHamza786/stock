@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center justify-between">
@@ -19,9 +19,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Main Stock Information -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Stock Information</h2>
@@ -37,7 +37,7 @@
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockAddition->mineVendor->name }}</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
+                                    <dt class="text-sm font-medium text-gray-500">Particulars</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockAddition->stone }}</dd>
                                 </div>
                                 <div>
@@ -56,8 +56,17 @@
                                                     Single piece: {{ number_format(($stockAddition->length * $stockAddition->height) * 0.00107639, 4) }} sqft
                                                 </div>
                                             </div>
+                                        @elseif($stockAddition->diameter)
+                                            <div class="space-y-1">
+                                                <div class="font-medium text-green-600">Thickness: {{ $stockAddition->diameter }}</div>
+                                                @if($stockAddition->size_3d)
+                                                    <div class="text-sm text-gray-600">Size (3D): {{ $stockAddition->size_3d }}</div>
+                                                @endif
+                                            </div>
+                                        @elseif($stockAddition->size_3d)
+                                            <span class="text-gray-600">{{ $stockAddition->size_3d }}</span>
                                         @else
-                                            <span class="text-gray-400">{{ $stockAddition->size_3d ?? 'N/A' }}</span>
+                                            <span class="text-gray-400">N/A</span>
                                         @endif
                                     </dd>
                                 </div>
@@ -67,13 +76,30 @@
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Total Sqft</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockAddition->total_sqft, 2) }} sqft</dd>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @if($stockAddition->total_sqft)
+                                            {{ number_format($stockAddition->total_sqft, 2) }} sqft
+                                        @else
+                                            <span class="text-gray-400">N/A</span>
+                                        @endif
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @if($stockAddition->weight)
+                                            {{ number_format($stockAddition->weight, 2) }} kg
+                                        @else
+                                            <span class="text-gray-400">N/A</span>
+                                        @endif
+                                    </dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Condition Status</dt>
                                     <dd class="mt-1">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                             @if($stockAddition->condition_status === 'Block') bg-blue-100 text-blue-800
+                                            @elseif($stockAddition->condition_status === 'Monuments') bg-indigo-100 text-indigo-800
                                             @elseif($stockAddition->condition_status === 'Slabs') bg-green-100 text-green-800
                                             @elseif($stockAddition->condition_status === 'Polished') bg-purple-100 text-purple-800
                                             @else bg-gray-100 text-gray-800 @endif">
@@ -95,20 +121,61 @@
                             <h2 class="text-xl font-semibold text-gray-900">Stock Usage Summary</h2>
                         </div>
                         <div class="p-6">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-blue-600">{{ number_format($stockAddition->total_pieces) }}</div>
-                                    <div class="text-sm text-gray-500">Total Pieces</div>
+                            @if($stockAddition->condition_status === 'Block' || $stockAddition->condition_status === 'Monuments')
+                                <!-- Weight-based summary for Block/Monuments -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-blue-600">
+                                            @if($stockAddition->weight)
+                                                {{ number_format($stockAddition->weight, 1) }} kg
+                                            @else
+                                                N/A
+                                            @endif
+                                        </div>
+                                        <div class="text-sm text-gray-500">Per Piece Weight</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-green-600">{{ number_format($stockAddition->available_pieces) }}</div>
+                                        <div class="text-sm text-gray-500">Available Pieces</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-red-600">{{ number_format($stockAddition->total_pieces - $stockAddition->available_pieces) }}</div>
+                                        <div class="text-sm text-gray-500">Issued Pieces</div>
+                                    </div>
                                 </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-600">{{ number_format($stockAddition->available_pieces) }}</div>
-                                    <div class="text-sm text-gray-500">Available Pieces</div>
+                                @if($stockAddition->available_weight)
+                                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="text-center">
+                                            <div class="text-lg font-bold text-indigo-600">
+                                                {{ number_format($stockAddition->available_weight, 1) }} kg
+                                            </div>
+                                            <div class="text-sm text-gray-500">Available Weight</div>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="text-lg font-bold text-orange-600">
+                                                {{ number_format(($stockAddition->weight * ($stockAddition->total_pieces - $stockAddition->available_pieces)), 1) }} kg
+                                            </div>
+                                            <div class="text-sm text-gray-500">Issued Weight</div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                <!-- Pieces-based summary for other conditions -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-blue-600">{{ number_format($stockAddition->total_pieces) }}</div>
+                                        <div class="text-sm text-gray-500">Total Pieces</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-green-600">{{ number_format($stockAddition->available_pieces) }}</div>
+                                        <div class="text-sm text-gray-500">Available Pieces</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-2xl font-bold text-red-600">{{ number_format($stockAddition->total_pieces - $stockAddition->available_pieces) }}</div>
+                                        <div class="text-sm text-gray-500">Issued Pieces</div>
+                                    </div>
                                 </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-red-600">{{ number_format($stockAddition->total_pieces - $stockAddition->available_pieces) }}</div>
-                                    <div class="text-sm text-gray-500">Issued Pieces</div>
-                                </div>
-                            </div>
+                            @endif
                             <div class="mt-6">
                                 <div class="flex justify-between text-sm text-gray-600 mb-1">
                                     <span>Stock Usage</span>
@@ -122,74 +189,24 @@
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="space-y-6">
-                    <!-- Quick Actions -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                        </div>
-                        <div class="p-6 space-y-3">
+                <!-- Quick Actions -->
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-wrap gap-4">
                             @if($stockAddition->available_pieces > 0)
-                                <a href="{{ route('stock-management.stock-issued.create', ['stock_addition_id' => $stockAddition->id]) }}" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                                <a href="{{ route('stock-management.stock-issued.create', ['stock_addition_id' => $stockAddition->id]) }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                     Issue Stock
                                 </a>
                             @endif
-                            <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockAddition->id]) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                            <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockAddition->id]) }}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Record Production
                             </a>
-                            <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                            <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Edit Stock
                             </a>
-                        </div>
-                    </div>
-
-                    <!-- Stock Status -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Stock Status</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="flex items-center">
-                                @if($stockAddition->available_pieces > 0)
-                                    <div class="flex-shrink-0">
-                                        <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-medium text-gray-900">In Stock</p>
-                                        <p class="text-sm text-gray-500">{{ number_format($stockAddition->available_pieces) }} pieces available</p>
-                                    </div>
-                                @else
-                                    <div class="flex-shrink-0">
-                                        <div class="w-3 h-3 bg-red-400 rounded-full"></div>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-medium text-gray-900">Out of Stock</p>
-                                        <p class="text-sm text-gray-500">All pieces have been issued</p>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Related Information -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Related Information</h3>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Product Category</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockAddition->product->category ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Contact</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockAddition->mineVendor->contact_person ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Phone</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $stockAddition->mineVendor->phone ?? 'N/A' }}</dd>
-                            </div>
                         </div>
                     </div>
                 </div>

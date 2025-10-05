@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex justify-between items-center">
@@ -31,25 +31,27 @@
                         </div>
                     @endif
 
-                    @if(isset($stockIssued) && $stockIssued->count() > 0)
+                    @if(isset($stockAdditions) && $stockAdditions->count() > 0)
                     <form method="POST" action="{{ route('stock-management.gate-pass.update', $gatePass) }}" class="space-y-6">
                         @csrf
                         @method('PUT')
 
                         <!-- Form Grid -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Stock Issued -->
+                            <!-- Stock Addition -->
                             <div>
-                                <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Stock Issued</label>
-                                <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
-                                    <option value="">Select stock issued...</option>
-                                    @foreach($stockIssued as $stock)
-                                        <option value="{{ $stock->id }}" {{ old('stock_issued_id', $gatePass->stock_issued_id) == $stock->id ? 'selected' : '' }}>
-                                            {{ $stock->stockAddition->product->name }} - {{ $stock->stockAddition->mineVendor->name }} ({{ number_format($stock->quantity_issued) }} pieces)
+                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Stock Addition</label>
+                                <select id="stock_addition_id" name="stock_addition_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" required>
+                                    <option value="">Select stock addition...</option>
+                                    @foreach($stockAdditions as $addition)
+                                        <option value="{{ $addition->id }}" {{ old('stock_addition_id', $gatePass->stockIssued->stock_addition_id) == $addition->id ? 'selected' : '' }}>
+                                            {{ $addition->product->name }} - {{ $addition->mineVendor->name }} 
+                                            ({{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft)
+                                            @if($addition->pid) - PID: {{ $addition->pid }} @endif
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('stock_issued_id')
+                                @error('stock_addition_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -126,7 +128,7 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->product->name }}</span>
@@ -136,12 +138,16 @@
                                     <span id="selected-vendor" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->mineVendor->name }}</span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Issued Pieces:</span>
-                                    <span id="issued-pieces" class="text-gray-900">{{ number_format($gatePass->stockIssued->quantity_issued) }}</span>
+                                    <span class="font-medium text-gray-700">PID:</span>
+                                    <span id="selected-pid" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->pid ?? 'N/A' }}</span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Issued Sqft:</span>
-                                    <span id="issued-sqft" class="text-gray-900">{{ number_format($gatePass->stockIssued->sqft_issued, 2) }}</span>
+                                    <span class="font-medium text-gray-700">Available Pieces:</span>
+                                    <span id="available-pieces" class="text-gray-900 text-green-600 font-semibold">{{ $gatePass->stockIssued->stockAddition->available_pieces }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Available Sqft:</span>
+                                    <span id="available-sqft" class="text-gray-900">{{ number_format($gatePass->stockIssued->stockAddition->available_sqft, 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -161,10 +167,10 @@
                         <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">No stock issued available</h3>
-                        <p class="text-gray-500 mb-4">You need to issue stock before creating gate passes.</p>
-                        <a href="{{ route('stock-management.stock-issued.create') }}" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                            Issue Stock First
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No stock additions available</h3>
+                        <p class="text-gray-500 mb-4">You need to add stock before creating gate passes.</p>
+                        <a href="{{ route('stock-management.stock-additions.create') }}" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                            Add Stock First
                         </a>
                     </div>
                     @endif
@@ -175,16 +181,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const stockSelect = document.getElementById('stock_issued_id');
+            const stockSelect = document.getElementById('stock_addition_id');
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
-            const issuedPieces = document.getElementById('issued-pieces');
-            const issuedSqft = document.getElementById('issued-sqft');
+            const selectedPid = document.getElementById('selected-pid');
+            const availablePieces = document.getElementById('available-pieces');
+            const availableSqft = document.getElementById('available-sqft');
             const quantityInput = document.getElementById('quantity_issued');
 
             // Stock data from the server
-            const stockData = @json(isset($stockIssued) ? $stockIssued->keyBy('id') : []);
+            const stockData = @json(isset($stockAdditions) ? $stockAdditions->keyBy('id') : []);
 
             stockSelect.addEventListener('change', function() {
                 const selectedId = this.value;
@@ -192,15 +199,16 @@
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
 
-                    selectedProduct.textContent = stock.stock_addition.product.name;
-                    selectedVendor.textContent = stock.stock_addition.mine_vendor.name;
-                    issuedPieces.textContent = stock.quantity_issued;
-                    issuedSqft.textContent = stock.sqft_issued;
+                    selectedProduct.textContent = stock.product.name;
+                    selectedVendor.textContent = stock.mine_vendor.name;
+                    selectedPid.textContent = stock.pid || 'N/A';
+                    availablePieces.textContent = stock.available_pieces;
+                    availableSqft.textContent = parseFloat(stock.available_sqft).toFixed(2);
 
                     stockInfo.classList.remove('hidden');
 
-                    // Set max value for quantity input
-                    quantityInput.max = stock.quantity_issued;
+                    // Set max value for quantity input based on available stock
+                    quantityInput.max = stock.available_pieces;
                 } else {
                     stockInfo.classList.add('hidden');
                 }

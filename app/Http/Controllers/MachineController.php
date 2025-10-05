@@ -34,7 +34,7 @@ class MachineController extends Controller
         }
 
         $machines = $query->orderBy('name')->paginate(15);
-
+        
         return view('master-data.machines.index', compact('machines'));
     }
 
@@ -116,6 +116,12 @@ class MachineController extends Controller
      */
     public function destroy(Machine $machine)
     {
+        // Check if machine is being used in stock_issued table
+        if ($machine->isBeingUsed()) {
+            return redirect()->route('master-data.machines.index')
+                ->with('error', 'Cannot delete machine that is being used in stock issued records. Please deactivate it instead.');
+        }
+
         $machine->delete();
 
         return redirect()->route('master-data.machines.index')

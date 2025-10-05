@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center">
@@ -18,15 +18,15 @@
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                 <div class="p-6">
-                    @if(!isset($stockIssued) || $stockIssued->count() == 0)
+                    @if(!isset($stockAdditions) || $stockAdditions->count() == 0)
                         <div class="text-center py-12">
                             <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                             </svg>
                             <h3 class="text-lg font-medium text-gray-900 mb-2">No Available Stock for Dispatch</h3>
                             <p class="text-gray-500 mb-4">You need to have stock with available pieces before you can create a gate pass.</p>
-                            <a href="{{ route('stock-management.stock-issued.create') }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                Issue Stock First
+                            <a href="{{ route('stock-management.stock-additions.create') }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Add Stock First
                             </a>
                         </div>
                     @else
@@ -34,19 +34,20 @@
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Stock Issued -->
+                            <!-- Stock Addition -->
                             <div class="md:col-span-2">
-                                <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued (Available for Dispatch)</label>
-                                <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
-                                    <option value="">Choose stock issued...</option>
-                                    @foreach($stockIssued as $issue)
-                                        <option value="{{ $issue->id }}" {{ old('stock_issued_id') == $issue->id ? 'selected' : '' }}>
-                                            {{ $issue->stockAddition->product->name }} - {{ $issue->stockAddition->mineVendor->name }}
-                                            ({{ $issue->quantity_issued }} pieces issued, {{ $issue->stockAddition->available_pieces }} available) - {{ $issue->date->format('M d, Y') }}
+                                <label for="stock_addition_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Addition (Available for Dispatch)</label>
+                                <select id="stock_addition_id" name="stock_addition_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" required>
+                                    <option value="">Choose stock addition...</option>
+                                    @foreach($stockAdditions as $addition)
+                                        <option value="{{ $addition->id }}" {{ old('stock_addition_id') == $addition->id ? 'selected' : '' }}>
+                                            {{ $addition->product->name }} - {{ $addition->mineVendor->name }}
+                                            ({{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft) - {{ $addition->date->format('M d, Y') }}
+                                            @if($addition->pid) - PID: {{ $addition->pid }} @endif
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('stock_issued_id')
+                                @error('stock_addition_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -133,16 +134,16 @@
                                     <span id="selected-vendor" class="text-gray-900"></span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Issued Pieces:</span>
-                                    <span id="issued-pieces" class="text-gray-900"></span>
+                                    <span class="font-medium text-gray-700">PID:</span>
+                                    <span id="selected-pid" class="text-gray-900"></span>
                                 </div>
                                 <div>
                                     <span class="font-medium text-gray-700">Available Pieces:</span>
                                     <span id="available-pieces" class="text-gray-900 text-green-600 font-semibold"></span>
                                 </div>
                                 <div>
-                                    <span class="font-medium text-gray-700">Issued Sqft:</span>
-                                    <span id="issued-sqft" class="text-gray-900"></span>
+                                    <span class="font-medium text-gray-700">Available Sqft:</span>
+                                    <span id="available-sqft" class="text-gray-900"></span>
                                 </div>
                             </div>
                         </div>
@@ -165,42 +166,35 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const stockSelect = document.getElementById('stock_issued_id');
+            const stockSelect = document.getElementById('stock_addition_id');
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
-            const issuedPieces = document.getElementById('issued-pieces');
+            const selectedPid = document.getElementById('selected-pid');
             const availablePieces = document.getElementById('available-pieces');
-            const issuedSqft = document.getElementById('issued-sqft');
+            const availableSqft = document.getElementById('available-sqft');
             const quantityInput = document.getElementById('quantity_issued');
 
             // Stock data from the server
-            const stockData = @json(isset($stockIssued) ? $stockIssued->keyBy('id') : []);
+            const stockData = @json(isset($stockAdditions) ? $stockAdditions->keyBy('id') : []);
 
             stockSelect.addEventListener('change', function() {
                 const selectedId = this.value;
 
                 if (selectedId && stockData[selectedId]) {
                     const stock = stockData[selectedId];
-                    const stockAddition = stock.stock_addition;
 
-                    selectedProduct.textContent = stockAddition.product.name;
-                    selectedVendor.textContent = stockAddition.mine_vendor.name;
-                    issuedPieces.textContent = stock.quantity_issued;
-                    availablePieces.textContent = stockAddition.available_pieces;
-                    issuedSqft.textContent = stock.sqft_issued;
+                    selectedProduct.textContent = stock.product.name;
+                    selectedVendor.textContent = stock.mine_vendor.name;
+                    selectedPid.textContent = stock.pid || 'N/A';
+                    availablePieces.textContent = stock.available_pieces;
+                    availableSqft.textContent = parseFloat(stock.available_sqft).toFixed(2);
 
                     stockInfo.classList.remove('hidden');
 
                     // Set max value for quantity input based on available stock
-                    quantityInput.max = stockAddition.available_pieces;
-
-                    // Auto-fill quantity with available pieces if it's less than issued pieces
-                    if (stockAddition.available_pieces < stock.quantity_issued) {
-                        quantityInput.value = stockAddition.available_pieces;
-                    } else {
-                        quantityInput.value = stock.quantity_issued;
-                    }
+                    quantityInput.max = stock.available_pieces;
+                    quantityInput.value = Math.min(quantityInput.value || 1, stock.available_pieces);
                 } else {
                     stockInfo.classList.add('hidden');
                 }

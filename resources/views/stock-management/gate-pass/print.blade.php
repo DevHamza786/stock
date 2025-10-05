@@ -196,7 +196,7 @@
                 <span class="info-value">{{ $gatePass->stockIssued->stockAddition->product->name }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Stone Type:</span>
+                <span class="info-label">Particulars:</span>
                 <span class="info-value">{{ $gatePass->stockIssued->stockAddition->stone }}</span>
             </div>
             <div class="info-row">

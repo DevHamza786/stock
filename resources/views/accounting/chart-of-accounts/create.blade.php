@@ -34,7 +34,7 @@
                             <!-- Account Name -->
                             <div>
                                 <label for="account_name" class="block text-sm font-medium text-gray-700 mb-2">Account Name *</label>
-                                <input type="text" id="account_name" name="account_name" value="{{ old('account_name') }}" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('account_name') border-red-500 @enderror" placeholder="e.g., Stone Inventory" required>
+                                <input type="text" id="account_name" name="account_name" value="{{ old('account_name') }}" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('account_name') border-red-500 @enderror" placeholder="e.g., Particulars Inventory" required>
                                 @error('account_name')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror

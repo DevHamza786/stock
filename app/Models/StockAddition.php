@@ -12,6 +12,7 @@ class StockAddition extends Model
     use HasFactory;
 
     protected $fillable = [
+        'pid',
         'product_id',
         'mine_vendor_id',
         'stone',
@@ -132,6 +133,11 @@ class StockAddition extends Model
         parent::boot();
 
         static::creating(function ($stockAddition) {
+            // Generate PID if not provided
+            if (empty($stockAddition->pid)) {
+                $stockAddition->pid = self::generateUniquePid();
+            }
+
             if (empty($stockAddition->total_sqft)) {
                 // Use new 2D method if length and height are provided
                 if (!empty($stockAddition->length) && !empty($stockAddition->height)) {
@@ -246,4 +252,16 @@ class StockAddition extends Model
 
         return ($this->available_pieces / $this->total_pieces) * 100;
     }
+
+    /**
+     * Generate a unique PID for new stock additions
+     */
+    public static function generateUniquePid(): string
+    {
+        $lastStock = self::orderBy('id', 'desc')->first();
+        $nextId = $lastStock ? $lastStock->id + 1 : 1;
+        
+        return 'STK-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
+    }
+
 }

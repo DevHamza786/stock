@@ -97,7 +97,7 @@ class ConditionStatusController extends Controller
      */
     public function show(ConditionStatus $conditionStatus)
     {
-        $conditionStatus->load(['stockAdditions.product', 'dailyProductions']);
+        $conditionStatus->load(['stockAdditions.product', 'dailyProductionItems']);
 
         return view('stock-management.condition-statuses.show', compact('conditionStatus'));
     }
@@ -139,12 +139,12 @@ class ConditionStatusController extends Controller
     {
         // Check if condition status is being used
         $stockAdditionsCount = $conditionStatus->stockAdditions()->count();
-        $dailyProductionsCount = $conditionStatus->dailyProductions()->count();
+        $dailyProductionItemsCount = $conditionStatus->dailyProductionItems()->count();
 
-        if ($stockAdditionsCount > 0 || $dailyProductionsCount > 0) {
+        if ($stockAdditionsCount > 0 || $dailyProductionItemsCount > 0) {
             return redirect()->route('stock-management.condition-statuses.index')
                 ->with('error', 'Cannot delete condition status that is being used in ' .
-                      ($stockAdditionsCount + $dailyProductionsCount) . ' records. Please deactivate it instead.');
+                      ($stockAdditionsCount + $dailyProductionItemsCount) . ' records. Please deactivate it instead.');
         }
 
         $conditionStatus->delete();

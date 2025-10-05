@@ -117,6 +117,12 @@ class OperatorController extends Controller
      */
     public function destroy(Operator $operator)
     {
+        // Check if operator is being used in stock_issued table
+        if ($operator->isBeingUsed()) {
+            return redirect()->route('master-data.operators.index')
+                ->with('error', 'Cannot delete operator that is being used in stock issued records. Please deactivate it instead.');
+        }
+
         $operator->delete();
 
         return redirect()->route('master-data.operators.index')

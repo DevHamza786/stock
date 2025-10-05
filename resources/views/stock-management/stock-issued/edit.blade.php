@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900">Edit Stock Issuance</h1>
@@ -104,9 +104,9 @@
                                 <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                             </div>
 
-                            <!-- Stone -->
+                            <!-- Particulars -->
                             <div>
-                                <x-input-label for="stone" :value="__('Stone Type')" />
+                                <x-input-label for="stone" :value="__('Particulars')" />
                                 <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full bg-gray-100" :value="old('stone', $stockIssued->stone)" readonly />
                                 <p class="mt-1 text-sm text-gray-500">Automatically filled from stock addition</p>
                                 <x-input-error :messages="$errors->get('stone')" class="mt-2" />

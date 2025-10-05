@@ -122,9 +122,9 @@
                                 @enderror
                                 </div>
 
-                                <!-- Stone -->
+                                <!-- Particulars -->
                                 <div>
-                                    <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Stone Type (Auto-filled)</label>
+                                    <label for="stone" class="block text-sm font-medium text-gray-700 mb-2">Particulars (Auto-filled)</label>
                                     <input type="text" id="stone" name="stone" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stone') border-red-500 @enderror" placeholder="Will be auto-filled from stock addition..." readonly>
                                     @error('stone')
                                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

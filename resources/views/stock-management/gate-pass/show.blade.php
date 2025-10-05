@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
             <!-- Page Header -->
             <div class="mb-8">
                 <div class="flex items-center justify-between">
@@ -22,9 +22,9 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="w-full">
                 <!-- Main Gate Pass Information -->
-                <div class="lg:col-span-2">
+                <div class="w-full">
                     <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                         <div class="px-6 py-4 border-b border-gray-200">
                             <h2 class="text-xl font-semibold text-gray-900">Gate Pass Information</h2>
@@ -114,122 +114,29 @@
                     </div>
                 </div>
 
-                <!-- Sidebar -->
-                <div class="space-y-6">
-                    <!-- Quick Actions -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                        </div>
-                        <div class="p-6 space-y-3">
-                            <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                <!-- Quick Actions -->
+                <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-wrap gap-4">
+                            <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Edit Gate Pass
                             </a>
-                            <a href="{{ route('stock-management.gate-pass.print', $gatePass) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block" target="_blank">
+                            <a href="{{ route('stock-management.gate-pass.print', $gatePass) }}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200" target="_blank">
                                 Print Gate Pass
                             </a>
-                            <a href="{{ route('stock-management.gate-pass.create') }}" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block">
+                            <a href="{{ route('stock-management.gate-pass.create') }}" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 Create New Gate Pass
                             </a>
-                            <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" class="w-full" onsubmit="return confirm('Are you sure you want to delete this gate pass?')">
+                            <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" class="inline" onsubmit="return confirm('Are you sure you want to delete this gate pass?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                     Delete Gate Pass
                                 </button>
                             </form>
-                        </div>
-                    </div>
-
-                    <!-- Source Stock Information -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Source Stock</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="space-y-4">
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stock Issued</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">
-                                        <a href="{{ route('stock-management.stock-issued.show', $gatePass->stockIssued) }}" class="text-blue-600 hover:text-blue-900">
-                                            {{ $gatePass->stockIssued->stockAddition->product->name }}
-                                        </a>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Stone Type</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->stone }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Mine Vendor</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->mineVendor->name }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Size (3D)</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->size_3d }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Total Issued</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($gatePass->stockIssued->quantity_issued) }} pieces</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Total Sqft Issued</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($gatePass->stockIssued->sqft_issued, 2) }} sqft</dd>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Dispatch Status -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Dispatch Status</h3>
-                        </div>
-                        <div class="p-6">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    @if($gatePass->status === 'Dispatched')
-                                        <div class="w-3 h-3 bg-green-400 rounded-full"></div>
-                                    @elseif($gatePass->status === 'Approved')
-                                        <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
-                                    @else
-                                        <div class="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                                    @endif
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900">{{ $gatePass->status ?? 'Pending' }}</p>
-                                    <p class="text-sm text-gray-500">
-                                        @if($gatePass->status === 'Dispatched')
-                                            Successfully dispatched
-                                        @elseif($gatePass->status === 'Approved')
-                                            Ready for dispatch
-                                        @else
-                                            Awaiting approval
-                                        @endif
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Related Information -->
-                    <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-gray-900">Related Information</h3>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Product Category</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->product->category ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Contact</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->mineVendor->contact_person ?? 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">Vendor Phone</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->mineVendor->phone ?? 'N/A' }}</dd>
-                            </div>
                         </div>
                     </div>
                 </div>

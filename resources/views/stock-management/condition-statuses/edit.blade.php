@@ -100,10 +100,10 @@
                                 </div>
                                 <div>
                                     <span class="font-medium text-blue-700">Daily Production:</span>
-                                    <span class="text-blue-600">{{ $conditionStatus->dailyProductions()->count() }} records</span>
+                                    <span class="text-blue-600">{{ $conditionStatus->dailyProductionItems()->count() }} records</span>
                                 </div>
                             </div>
-                            @if($conditionStatus->stockAdditions()->count() > 0 || $conditionStatus->dailyProductions()->count() > 0)
+                            @if($conditionStatus->stockAdditions()->count() > 0 || $conditionStatus->dailyProductionItems()->count() > 0)
                                 <p class="text-blue-600 text-sm mt-2">
                                     <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>

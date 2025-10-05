@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Operator extends Model
 {
@@ -34,7 +36,7 @@ class Operator extends Model
     /**
      * Get the user who created the operator
      */
-    public function creator()
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
@@ -42,8 +44,24 @@ class Operator extends Model
     /**
      * Get the user who last updated the operator
      */
-    public function updater()
+    public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Get the stock issued records for this operator
+     */
+    public function stockIssued(): HasMany
+    {
+        return $this->hasMany(StockIssued::class);
+    }
+
+    /**
+     * Check if operator is being used in stock_issued table
+     */
+    public function isBeingUsed(): bool
+    {
+        return $this->stockIssued()->count() > 0;
     }
 }
