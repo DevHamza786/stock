@@ -13,12 +13,12 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
-        
+
         <!-- DataTables CSS and JS -->
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
         <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
         <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-        
+
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
@@ -29,12 +29,12 @@
         <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
-        
+
         <!-- Excel Export Libraries -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-        
+
         <!-- DataTables Custom Styles -->
         <style>
             /* Enhanced button styling */
@@ -46,7 +46,7 @@
                 visibility: visible !important;
                 opacity: 1 !important;
             }
-            
+
             .dt-buttons .btn {
                 padding: 8px 16px;
                 border-radius: 6px;
@@ -60,60 +60,60 @@
                 align-items: center;
                 gap: 6px;
             }
-            
+
             .dt-buttons .btn:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             }
-            
+
             .dt-buttons .btn-secondary {
                 background-color: #6c757d;
                 color: white;
                 border-color: #6c757d;
             }
-            
+
             .dt-buttons .btn-secondary:hover {
                 background-color: #5a6268;
                 border-color: #545b62;
                 color: white;
             }
-            
+
             .dt-buttons .btn-success {
                 background-color: #28a745;
                 color: white;
                 border-color: #28a745;
             }
-            
+
             .dt-buttons .btn-success:hover {
                 background-color: #218838;
                 border-color: #1e7e34;
                 color: white;
             }
-            
+
             .dt-buttons .btn-danger {
                 background-color: #dc3545;
                 color: white;
                 border-color: #dc3545;
             }
-            
+
             .dt-buttons .btn-danger:hover {
                 background-color: #c82333;
                 border-color: #bd2130;
                 color: white;
             }
-            
+
             /* Force button visibility */
             .dt-button {
                 display: inline-block !important;
                 visibility: visible !important;
                 opacity: 1 !important;
             }
-            
+
             /* Clean buttons area */
             .dt-buttons {
                 min-height: 40px !important;
             }
-            
+
             /* Top container styling */
             .dataTables_wrapper .top {
                 display: flex !important;
@@ -123,28 +123,28 @@
                 flex-wrap: wrap !important;
                 gap: 15px !important;
             }
-            
+
             .dataTables_wrapper .top .dt-buttons {
                 order: 1 !important;
                 margin-bottom: 0 !important;
             }
-            
+
             .dataTables_wrapper .top .dataTables_length {
                 order: 2 !important;
                 margin-bottom: 0 !important;
             }
-            
+
             .dataTables_wrapper .top .dataTables_filter {
                 order: 3 !important;
                 margin-bottom: 0 !important;
             }
-            
+
             /* Professional pagination styling */
             .dataTables_paginate {
                 margin-top: 1rem;
                 text-align: right;
             }
-            
+
             .dataTables_paginate .paginate_button {
                 padding: 8px 12px;
                 margin: 0 2px;
@@ -158,20 +158,20 @@
                 cursor: pointer;
                 display: inline-block;
             }
-            
+
             .dataTables_paginate .paginate_button:hover {
                 background-color: #f3f4f6;
                 border-color: #9ca3af;
                 color: #1f2937;
             }
-            
+
             .dataTables_paginate .paginate_button.current {
                 background-color: #3b82f6;
                 border-color: #3b82f6;
                 color: #ffffff;
                 font-weight: 600;
             }
-            
+
             .dataTables_paginate .paginate_button.disabled {
                 color: #9ca3af;
                 background-color: #f9fafb;
@@ -179,18 +179,18 @@
                 cursor: not-allowed;
                 opacity: 0.5;
             }
-            
+
             .dataTables_paginate .paginate_button.disabled:hover {
                 background-color: #f9fafb;
                 border-color: #e5e7eb;
                 color: #9ca3af;
             }
-            
+
             /* Hide print-only content by default */
             .print-only-content {
                 display: none !important;
             }
-            
+
             /* Professional DataTables Styling */
             .dataTables_wrapper {
                 width: 100% !important;
@@ -200,11 +200,11 @@
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
                 border: 1px solid #e5e7eb !important;
             }
-            
+
             .dataTables_wrapper .dataTables_scroll {
                 width: 100% !important;
             }
-            
+
             /* Professional table styling */
             .dataTables_wrapper .dataTable {
                 width: 100% !important;
@@ -213,7 +213,7 @@
                 background-color: #ffffff !important;
                 color: #374151 !important;
             }
-            
+
             .dataTables_wrapper .dataTable thead th {
                 background-color: #f8f9fa !important;
                 color: #374151 !important;
@@ -226,11 +226,11 @@
                 text-transform: uppercase !important;
                 letter-spacing: 0.5px !important;
             }
-            
+
             .dataTables_wrapper .dataTable thead th:last-child {
                 border-right: none !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody td {
                 background-color: #ffffff !important;
                 color: #374151 !important;
@@ -240,34 +240,34 @@
                 border-right: 1px solid #e5e7eb !important;
                 font-size: 14px !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody td:last-child {
                 border-right: none !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody tr:nth-child(even) {
                 background-color: #f8f9fa !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody tr:nth-child(odd) {
                 background-color: #ffffff !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody tr:hover {
                 background-color: #f3f4f6 !important;
             }
-            
+
             .dataTables_wrapper .dataTable tbody tr:hover td {
                 background-color: #f3f4f6 !important;
             }
-            
+
             /* Professional dropdown styling */
             .dataTables_length,
             .dataTables_filter {
                 color: #374151 !important;
                 margin-bottom: 15px !important;
             }
-            
+
             .dataTables_length select {
                 background-color: #ffffff !important;
                 color: #374151 !important;
@@ -285,13 +285,13 @@
                 background-size: 16px !important;
                 padding-right: 32px !important;
             }
-            
+
             .dataTables_length select:focus {
                 border-color: #3b82f6 !important;
                 box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
                 outline: none !important;
             }
-            
+
             .dataTables_filter input {
                 background-color: #ffffff !important;
                 color: #374151 !important;
@@ -300,45 +300,45 @@
                 padding: 8px 12px !important;
                 font-size: 14px !important;
             }
-            
+
             .dataTables_filter input:focus {
                 border-color: #3b82f6 !important;
                 box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
                 outline: none !important;
             }
-            
+
             /* Professional info styling */
             .dataTables_info {
                 color: #6b7280 !important;
                 margin-top: 15px !important;
                 font-size: 14px !important;
             }
-            
+
             /* Full width container */
             .table-responsive {
                 width: 100% !important;
                 background-color: #ffffff !important;
                 border-radius: 8px !important;
             }
-            
+
             /* Remove default table styling overrides */
             .table.table-striped.table-hover {
                 border: 1px solid #e5e7eb !important;
                 background-color: #ffffff !important;
             }
-            
+
             .table.table-striped.table-hover thead th {
                 border: 1px solid #e5e7eb !important;
                 background-color: #f8f9fa !important;
                 color: #374151 !important;
             }
-            
+
             .table.table-striped.table-hover tbody td {
                 border: 1px solid #e5e7eb !important;
                 background-color: #ffffff !important;
                 color: #374151 !important;
             }
-            
+
             /* Dark theme action buttons */
             .table tbody td a {
                 color: #007bff !important;
@@ -346,49 +346,49 @@
                 font-weight: 500;
                 transition: color 0.2s ease;
             }
-            
+
             .table tbody td a:hover {
                 color: #0056b3 !important;
                 text-decoration: underline;
             }
-            
+
             .table tbody td .text-indigo-600 {
                 color: #6f42c1 !important;
             }
-            
+
             .table tbody td .text-indigo-600:hover {
                 color: #5a2d91 !important;
             }
-            
+
             .table tbody td .text-red-600 {
                 color: #dc3545 !important;
             }
-            
+
             .table tbody td .text-red-600:hover {
                 color: #c82333 !important;
             }
-            
+
             .table tbody td .text-green-600 {
                 color: #28a745 !important;
             }
-            
+
             .table tbody td .text-green-600:hover {
                 color: #218838 !important;
             }
-            
+
             /* Print-specific styles */
             @media print {
                 @page {
                     size: A4 landscape;
                     margin: 0.5in;
                 }
-                
+
                 /* Hide action columns in print */
                 .dataTable th:last-child,
                 .dataTable td:last-child {
                     display: none !important;
                 }
-                
+
                 /* Hide DataTables controls in print */
                 .dt-buttons,
                 .dataTables_length,
@@ -398,18 +398,18 @@
                 .dataTables_processing {
                     display: none !important;
                 }
-                
+
                 /* Ensure table is full width in print */
                 .dataTable {
                     width: 100% !important;
                     font-size: 11px !important;
                 }
-                
+
                 .dataTable th,
                 .dataTable td {
                     padding: 4px 6px !important;
                 }
-                
+
                 /* Print header */
                 .dataTables_wrapper::before {
                     content: "Stock Management Report - Generated on: " attr(data-print-date);
@@ -524,6 +524,13 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>
                                     Reports
+                                </a>
+
+                                <a href="{{ route('database-viewer.index') }}" class="inline-flex items-center px-3 py-2 border-b-2 {{ request()->routeIs('database-viewer.*') ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} text-sm font-medium transition-colors duration-200">
+                                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                                    </svg>
+                                    Database Viewer
                                 </a>
                             </div>
                         </div>

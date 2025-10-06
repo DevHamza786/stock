@@ -14,6 +14,7 @@ use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\OperatorController;
+use App\Http\Controllers\DatabaseViewController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -54,7 +55,7 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     // Stock Additions
     Route::resource('stock-additions', StockAdditionController::class);
     Route::post('stock-additions/calculate-sqft', [StockAdditionController::class, 'calculateSqft'])->name('stock-additions.calculate-sqft');
-    
+
     // TEMPORARY TEST ROUTE
     Route::get('stock-additions/{stockAddition}/edit-test', function ($stockAdditionId) {
         $stockAddition = \App\Models\StockAddition::findOrFail($stockAdditionId);
@@ -114,6 +115,15 @@ Route::middleware(['auth', 'verified'])->prefix('accounting')->name('accounting.
 
     // Auto-generate entries for ERM transactions
     Route::post('/generate-auto-entries', [AccountingController::class, 'generateAutoEntries'])->name('generate-auto-entries');
+});
+
+// Database Viewer Routes (Protected with auth middleware)
+Route::middleware(['auth', 'verified'])->prefix('database-viewer')->name('database-viewer.')->group(function () {
+    Route::get('/', [DatabaseViewController::class, 'index'])->name('index');
+    Route::get('/table/{tableName}', [DatabaseViewController::class, 'viewTable'])->name('table.view');
+    Route::post('/execute-query', [DatabaseViewController::class, 'executeQuery'])->name('execute-query');
+    Route::get('/table/{tableName}/schema', [DatabaseViewController::class, 'getTableSchema'])->name('table.schema');
+    Route::get('/table/{tableName}/export', [DatabaseViewController::class, 'exportTable'])->name('table.export');
 });
 
 require __DIR__.'/auth.php';
