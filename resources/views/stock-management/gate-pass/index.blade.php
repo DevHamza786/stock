@@ -107,11 +107,10 @@
                             <thead>
                                 <tr>
                                     <th>Gate Pass #</th>
-                                    <th>Product</th>
-                                    <th>PID</th>
-                                    <th>Diameter</th>
-                                    <th>Quantity</th>
-                                    <th>Sqft Issued</th>
+                                    <th>Client</th>
+                                    <th>Items</th>
+                                    <th>Total Quantity</th>
+                                    <th>Total Sqft</th>
                                     <th>Destination</th>
                                     <th>Vehicle</th>
                                     <th>Status</th>
@@ -125,13 +124,31 @@
                                         <td>
                                             <span class="font-mono text-sm font-semibold">{{ $gatePass->gate_pass_number }}</span>
                                         </td>
-                                        <td>{{ $gatePass->stockIssued->stockAddition->product->name ?? 'N/A' }}</td>
                                         <td>
-                                            <span class="font-mono text-sm">{{ $gatePass->stockIssued->stockAddition->pid ?? 'N/A' }}</span>
+                                            @if($gatePass->client_name)
+                                                <div class="text-sm">
+                                                    <div class="font-medium">{{ $gatePass->client_name }}</div>
+                                                    @if($gatePass->client_number)
+                                                        <div class="text-gray-500 text-xs">{{ $gatePass->client_number }}</div>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-gray-500 text-sm">N/A</span>
+                                            @endif
                                         </td>
                                         <td>
-                                            @if($gatePass->stockIssued && $gatePass->stockIssued->stockAddition && $gatePass->stockIssued->stockAddition->diameter)
-                                                <span class="text-sm">{{ $gatePass->stockIssued->stockAddition->diameter }}</span>
+                                            @if($gatePass->items->count() > 0)
+                                                <div class="text-sm">
+                                                    <div class="font-medium">{{ $gatePass->items->count() }} items</div>
+                                                    <div class="text-gray-500 text-xs">
+                                                        @foreach($gatePass->items->take(2) as $item)
+                                                            {{ $item->stockAddition->product->name ?? 'N/A' }}{{ !$loop->last ? ', ' : '' }}
+                                                        @endforeach
+                                                        @if($gatePass->items->count() > 2)
+                                                            +{{ $gatePass->items->count() - 2 }} more
+                                                        @endif
+                                                    </div>
+                                                </div>
                                             @else
                                                 <span class="text-gray-500 text-sm">N/A</span>
                                             @endif
@@ -142,9 +159,9 @@
                                         <td>
                                             <span class="font-semibold">{{ number_format($gatePass->sqft_issued, 2) }}</span>
                                         </td>
-                                        <td>{{ $gatePass->destination }}</td>
+                                        <td>{{ $gatePass->destination ?? 'N/A' }}</td>
                                         <td>
-                                            <span class="font-mono text-sm">{{ $gatePass->vehicle_number }}</span>
+                                            <span class="font-mono text-sm">{{ $gatePass->vehicle_number ?? 'N/A' }}</span>
                                         </td>
                                         <td>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $gatePass->status === 'Dispatched' ? 'bg-green-100 text-green-800' : ($gatePass->status === 'Approved' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800') }}">
@@ -191,7 +208,7 @@
                         customize: function ( win ) {
                             // Hide action column
                             $(win.document.body).find('table th:last-child, table td:last-child').hide();
-                            
+
                             // Style the table
                             $(win.document.body).find('table')
                                 .addClass('compact')
@@ -199,7 +216,7 @@
                                     'font-size': '11px',
                                     'width': '100%'
                                 });
-                                
+
                             // Style headers
                             $(win.document.body).find('table thead th')
                                 .css({
@@ -207,13 +224,13 @@
                                     'font-weight': 'bold',
                                     'border': '1px solid #000'
                                 });
-                                
+
                             // Style cells
                             $(win.document.body).find('table tbody td')
                                 .css({
                                     'border': '1px solid #000'
                                 });
-                                
+
                             // Add page title
                             $(win.document.head).find('title').text('Gate Pass Report');
                         }
@@ -229,10 +246,10 @@
                         },
                         customize: function ( xlsx ) {
                             var sheet = xlsx.xl.worksheets['sheet1.xml'];
-                            
+
                             // Add header row styling
                             $('row:first c', sheet).attr('s', '2');
-                            
+
                             // Set column widths
                             var colWidths = [15, 20, 12, 12, 20, 15, 12, 12];
                             $('col', sheet).each(function(index) {
@@ -249,9 +266,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[7, 'desc']], // Sort by Date column (descending)
+                order: [[8, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 8 } // Disable sorting on Actions column
+                    { orderable: false, targets: 9 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",

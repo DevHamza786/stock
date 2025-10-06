@@ -193,19 +193,19 @@
             <div class="section-title">Product Information</div>
             <div class="info-row">
                 <span class="info-label">Product:</span>
-                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->product->name }}</span>
+                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->product?->name ?? 'N/A' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Particulars:</span>
-                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->stone }}</span>
+                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->stone ?? 'N/A' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Size (3D):</span>
-                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->size_3d }}</span>
+                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->size_3d ?? 'N/A' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Mine Vendor:</span>
-                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->mineVendor->name }}</span>
+                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->name ?? 'N/A' }}</span>
             </div>
         </div>
 
@@ -259,27 +259,27 @@
         <div class="section-title">Source Stock Details</div>
         <div class="info-row">
             <span class="info-label">Stock Addition ID:</span>
-            <span class="info-value">SA-{{ str_pad($gatePass->stockIssued->stockAddition->id, 4, '0', STR_PAD_LEFT) }}</span>
+            <span class="info-value">SA-{{ $gatePass->stockIssued?->stockAddition?->id ? str_pad($gatePass->stockIssued->stockAddition->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Stock Issued ID:</span>
-            <span class="info-value">SI-{{ str_pad($gatePass->stockIssued->id, 4, '0', STR_PAD_LEFT) }}</span>
+            <span class="info-value">SI-{{ $gatePass->stockIssued?->id ? str_pad($gatePass->stockIssued->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Total Stock Issued:</span>
-            <span class="info-value">{{ number_format($gatePass->stockIssued->quantity_issued) }} pieces</span>
+            <span class="info-value">{{ $gatePass->stockIssued?->quantity_issued ? number_format($gatePass->stockIssued->quantity_issued) . ' pieces' : 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Total Sqft Issued:</span>
-            <span class="info-value">{{ number_format($gatePass->stockIssued->sqft_issued, 2) }} sqft</span>
+            <span class="info-value">{{ $gatePass->stockIssued?->sqft_issued ? number_format($gatePass->stockIssued->sqft_issued, 2) . ' sqft' : 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Vendor Contact:</span>
-            <span class="info-value">{{ $gatePass->stockIssued->stockAddition->mineVendor->contact_person ?? 'N/A' }}</span>
+            <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->contact_person ?? 'N/A' }}</span>
         </div>
         <div class="info-row">
             <span class="info-label">Vendor Phone:</span>
-            <span class="info-value">{{ $gatePass->stockIssued->stockAddition->mineVendor->phone ?? 'N/A' }}</span>
+            <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->phone ?? 'N/A' }}</span>
         </div>
     </div>
 

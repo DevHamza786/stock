@@ -47,16 +47,28 @@
                                         </span>
                                     </dd>
                                 </div>
+                                @if($gatePass->client_name)
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Product</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->stockIssued->stockAddition->product->name ?? 'N/A' }}</dd>
+                                    <dt class="text-sm font-medium text-gray-500">Client Name</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->client_name }}</dd>
+                                </div>
+                                @endif
+                                @if($gatePass->client_number)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Client Number</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->client_number }}</dd>
+                                </div>
+                                @endif
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Items</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $gatePass->items->count() }} items</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Quantity Dispatched</dt>
+                                    <dt class="text-sm font-medium text-gray-500">Total Quantity Dispatched</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($gatePass->quantity_issued) }} pieces</dd>
                                 </div>
                                 <div>
-                                    <dt class="text-sm font-medium text-gray-500">Square Feet Dispatched</dt>
+                                    <dt class="text-sm font-medium text-gray-500">Total Square Feet Dispatched</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($gatePass->sqft_issued, 2) }} sqft</dd>
                                 </div>
                                 <div>
@@ -90,6 +102,55 @@
                             </dl>
                         </div>
                     </div>
+
+                    <!-- Items Details -->
+                    @if($gatePass->items->count() > 0)
+                    <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-xl font-semibold text-gray-900">Items Details</h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PID</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sqft</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($gatePass->items as $item)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {{ $item->stockAddition->product->name ?? 'N/A' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ $item->stockAddition->mineVendor->name ?? 'N/A' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ $item->stockAddition->pid ?? 'N/A' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ number_format($item->quantity_issued) }} pieces
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ number_format($item->sqft_issued, 2) }} sqft
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ $item->stone ?? 'N/A' }}
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Dispatch Details -->
                     <div class="mt-8 bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">

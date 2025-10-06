@@ -36,40 +36,24 @@
                         @csrf
                         @method('PUT')
 
-                        <!-- Form Grid -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Stock Addition -->
-                            <div>
-                                <label for="stock_addition_search" class="block text-sm font-medium text-gray-700 mb-2">Stock Addition</label>
-                                <div class="relative">
-                                    <input type="text" id="stock_addition_search" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('stock_addition_id') border-red-500 @enderror" placeholder="Search stock addition..." autocomplete="off">
-                                    <input type="hidden" id="stock_addition_id" name="stock_addition_id" value="{{ old('stock_addition_id', $gatePass->stockIssued->stock_addition_id) }}" required>
-                                    <div id="stock_dropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
-                                        <div class="p-2 text-gray-500 text-sm">Select stock addition...</div>
-                                        @foreach($stockAdditions as $addition)
-                                            <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" data-value="{{ $addition->id }}" data-text="{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }} ({{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft)@if($addition->pid) - PID: {{ $addition->pid }}@endif">
-                                                <div class="font-medium text-gray-900">{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }}</div>
-                                                <div class="text-sm text-gray-600">
-                                                    {{ $addition->available_pieces }} pieces available, {{ number_format($addition->available_sqft, 2) }} sqft
-                                                    @if($addition->pid) | PID: {{ $addition->pid }} @endif
-                                                </div>
-                                            </div>
-                                    @endforeach
-                                    </div>
-                                </div>
-                                @error('stock_addition_id')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
+                        <!-- Stock Items Section -->
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Stock Items</h3>
+                                <button type="button" id="add-item-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Add Item
+                                </button>
                             </div>
 
-                            <!-- Quantity Issued -->
-                            <div>
-                                <label for="quantity_issued" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Dispatch</label>
-                                <input type="number" id="quantity_issued" name="quantity_issued" min="1" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('quantity_issued') border-red-500 @enderror" value="{{ old('quantity_issued', $gatePass->quantity_issued) }}" required>
-                                @error('quantity_issued')
-                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
-                                @enderror
+                            <div id="items-container">
+                                <!-- Items will be added dynamically here -->
                             </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                             <!-- Destination -->
                             <div>
@@ -94,6 +78,24 @@
                                 <label for="driver_name" class="block text-sm font-medium text-gray-700 mb-2">Driver Name</label>
                                 <input type="text" id="driver_name" name="driver_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('driver_name') border-red-500 @enderror" value="{{ old('driver_name', $gatePass->driver_name) }}" placeholder="Enter driver name">
                                 @error('driver_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Client Name -->
+                            <div>
+                                <label for="client_name" class="block text-sm font-medium text-gray-700 mb-2">Client Name</label>
+                                <input type="text" id="client_name" name="client_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('client_name') border-red-500 @enderror" value="{{ old('client_name', $gatePass->client_name) }}" placeholder="Enter client name">
+                                @error('client_name')
+                                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Client Number -->
+                            <div>
+                                <label for="client_number" class="block text-sm font-medium text-gray-700 mb-2">Client Number</label>
+                                <input type="text" id="client_number" name="client_number" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent @error('client_number') border-red-500 @enderror" value="{{ old('client_number', $gatePass->client_number) }}" placeholder="Enter client number">
+                                @error('client_number')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -131,32 +133,6 @@
                             </div>
                         </div>
 
-                        <!-- Stock Info Display -->
-                        <div id="stock-info" class="mt-6 p-4 bg-gray-50 rounded-lg">
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                                <div>
-                                    <span class="font-medium text-gray-700">Product:</span>
-                                    <span id="selected-product" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->product->name ?? 'N/A' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Vendor:</span>
-                                    <span id="selected-vendor" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->mineVendor->name ?? 'N/A' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">PID:</span>
-                                    <span id="selected-pid" class="text-gray-900">{{ $gatePass->stockIssued->stockAddition->pid ?? 'N/A' }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Available Pieces:</span>
-                                    <span id="available-pieces" class="text-gray-900 text-green-600 font-semibold">{{ $gatePass->stockIssued->stockAddition->available_pieces }}</span>
-                                </div>
-                                <div>
-                                    <span class="font-medium text-gray-700">Available Sqft:</span>
-                                    <span id="available-sqft" class="text-gray-900">{{ number_format($gatePass->stockIssued->stockAddition->available_sqft, 2) }}</span>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Form Actions -->
                         <div class="flex justify-end space-x-4 mt-8">
@@ -187,106 +163,213 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const stockSearch = document.getElementById('stock_addition_search');
-            const stockSelect = document.getElementById('stock_addition_id');
-            const stockDropdown = document.getElementById('stock_dropdown');
-            const stockOptions = document.querySelectorAll('.stock-option');
-            const stockInfo = document.getElementById('stock-info');
-            const selectedProduct = document.getElementById('selected-product');
-            const selectedVendor = document.getElementById('selected-vendor');
-            const selectedPid = document.getElementById('selected-pid');
-            const availablePieces = document.getElementById('available-pieces');
-            const availableSqft = document.getElementById('available-sqft');
-            const quantityInput = document.getElementById('quantity_issued');
-
-            // Stock data from the server
+            let itemCounter = 0;
             const stockData = @json(isset($stockAdditions) ? $stockAdditions->keyBy('id') : []);
+            const addItemBtn = document.getElementById('add-item-btn');
+            const itemsContainer = document.getElementById('items-container');
+            const existingItems = @json($gatePass->items ?? []);
 
-            // Show dropdown when input is focused
-            stockSearch.addEventListener('focus', function() {
-                stockDropdown.classList.remove('hidden');
-                filterOptions();
+            // Add existing items first
+            if (existingItems.length > 0) {
+                existingItems.forEach(function(item) {
+                    addItem(item);
+                });
+            } else {
+                // Add first item by default if no existing items
+                addItem();
+            }
+
+            // Add item button click handler
+            addItemBtn.addEventListener('click', function() {
+                addItem();
             });
 
-            // Hide dropdown when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!stockSearch.contains(e.target) && !stockDropdown.contains(e.target)) {
-                    stockDropdown.classList.add('hidden');
+            function addItem(existingItem = null) {
+                const itemIndex = itemCounter++;
+                const itemHtml = `
+                    <div class="item-row border border-gray-200 rounded-lg p-4 mb-4 bg-gray-50" data-index="${itemIndex}">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-md font-medium text-gray-900">Item ${itemIndex + 1}</h4>
+                            <button type="button" class="remove-item-btn text-red-600 hover:text-red-800 font-semibold" ${itemCounter === 1 ? 'style="display: none;"' : ''}>
+                                <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Remove
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Stock Addition Selection -->
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Stock Addition</label>
+                                <div class="relative">
+                                    <input type="text" class="stock-search block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Search stock addition..." autocomplete="off">
+                                    <input type="hidden" class="stock-addition-id" name="items[${itemIndex}][stock_addition_id]" value="${existingItem ? existingItem.stock_addition_id : ''}" required>
+                                    <div class="stock-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
+                                        <div class="p-2 text-gray-500 text-sm">Choose stock addition...</div>
+                                        ${generateStockOptions()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quantity -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Quantity to Dispatch</label>
+                                <input type="number" class="quantity-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" name="items[${itemIndex}][quantity_issued]" value="${existingItem ? existingItem.quantity_issued : ''}" min="1" required>
+                            </div>
+
+                            <!-- Stock Info Display -->
+                            <div class="stock-info hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Stock Information</label>
+                                <div class="bg-white p-3 rounded border text-sm">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><span class="font-medium">Product:</span> <span class="selected-product"></span></div>
+                                        <div><span class="font-medium">Vendor:</span> <span class="selected-vendor"></span></div>
+                                        <div><span class="font-medium">PID:</span> <span class="selected-pid"></span></div>
+                                        <div><span class="font-medium">Available:</span> <span class="available-pieces text-green-600 font-semibold"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                itemsContainer.insertAdjacentHTML('beforeend', itemHtml);
+                initializeItemEvents(itemIndex, existingItem);
+                updateRemoveButtons();
+            }
+
+            function generateStockOptions() {
+                let options = '';
+                Object.values(stockData).forEach(stock => {
+                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
+                    options += `
+                        <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" data-value="${stock.id}" data-text="${displayText}">
+                            <div class="font-medium text-gray-900">${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'}</div>
+                            <div class="text-sm text-gray-600">
+                                ${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft
+                                ${stock.pid ? ` | PID: ${stock.pid}` : ''}
+                            </div>
+                            <div class="text-xs text-gray-500">${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</div>
+                        </div>
+                    `;
+                });
+                return options;
+            }
+
+            function initializeItemEvents(itemIndex, existingItem = null) {
+                const itemRow = document.querySelector(`[data-index="${itemIndex}"]`);
+                const stockSearch = itemRow.querySelector('.stock-search');
+                const stockSelect = itemRow.querySelector('.stock-addition-id');
+                const stockDropdown = itemRow.querySelector('.stock-dropdown');
+                const stockOptions = itemRow.querySelectorAll('.stock-option');
+                const stockInfo = itemRow.querySelector('.stock-info');
+                const quantityInput = itemRow.querySelector('.quantity-input');
+                const removeBtn = itemRow.querySelector('.remove-item-btn');
+
+                // Initialize with existing item data if provided
+                if (existingItem && stockData[existingItem.stock_addition_id]) {
+                    const stock = stockData[existingItem.stock_addition_id];
+                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
+                    stockSearch.value = displayText;
+                    updateStockInfo(existingItem.stock_addition_id);
                 }
-            });
 
-            // Search functionality
-            stockSearch.addEventListener('input', function() {
-                filterOptions();
-                stockDropdown.classList.remove('hidden');
-            });
+                // Show dropdown when input is focused
+                stockSearch.addEventListener('focus', function() {
+                    stockDropdown.classList.remove('hidden');
+                    filterOptions();
+                });
 
-            // Filter options based on search term
-            function filterOptions() {
-                const searchTerm = stockSearch.value.toLowerCase();
-                let hasVisibleOptions = false;
-
-                stockOptions.forEach(function(option) {
-                    const optionText = option.dataset.text.toLowerCase();
-                    if (optionText.includes(searchTerm)) {
-                        option.style.display = 'block';
-                        hasVisibleOptions = true;
-                    } else {
-                        option.style.display = 'none';
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!stockSearch.contains(e.target) && !stockDropdown.contains(e.target)) {
+                        stockDropdown.classList.add('hidden');
                     }
                 });
 
-                // Show/hide the placeholder based on search results
-                const placeholder = stockDropdown.querySelector('.p-2');
-                if (placeholder) {
-                    placeholder.style.display = hasVisibleOptions ? 'none' : 'block';
-                }
-            }
-
-            // Handle option selection
-            stockOptions.forEach(function(option) {
-                option.addEventListener('click', function() {
-                    const value = this.dataset.value;
-                    const text = this.dataset.text;
-                    
-                    stockSelect.value = value;
-                    stockSearch.value = text;
-                    stockDropdown.classList.add('hidden');
-
-                    // Update stock info
-                    updateStockInfo(value);
+                // Search functionality
+                stockSearch.addEventListener('input', function() {
+                    filterOptions();
+                    stockDropdown.classList.remove('hidden');
                 });
-            });
 
-            // Update stock information display
-            function updateStockInfo(selectedId) {
-                if (selectedId && stockData[selectedId]) {
-                    const stock = stockData[selectedId];
+                // Filter options based on search term
+                function filterOptions() {
+                    const searchTerm = stockSearch.value.toLowerCase();
+                    let hasVisibleOptions = false;
 
-                    selectedProduct.textContent = stock.product?.name || 'N/A';
-                    selectedVendor.textContent = stock.mine_vendor?.name || 'N/A';
-                    selectedPid.textContent = stock.pid || 'N/A';
-                    availablePieces.textContent = stock.available_pieces || 0;
-                    availableSqft.textContent = stock.available_sqft ? parseFloat(stock.available_sqft).toFixed(2) : '0.00';
+                    stockOptions.forEach(function(option) {
+                        const optionText = option.dataset.text.toLowerCase();
+                        if (optionText.includes(searchTerm)) {
+                            option.style.display = 'block';
+                            hasVisibleOptions = true;
+                        } else {
+                            option.style.display = 'none';
+                        }
+                    });
 
-                    stockInfo.classList.remove('hidden');
-
-                    // Set max value for quantity input based on available stock + current issued
-                    const currentIssued = {{ $gatePass->quantity_issued ?? 0 }};
-                    const maxAllowed = (stock.available_pieces || 0) + currentIssued;
-                    quantityInput.max = maxAllowed;
-                } else {
-                    stockInfo.classList.add('hidden');
+                    // Show/hide the placeholder based on search results
+                    const placeholder = stockDropdown.querySelector('.p-2');
+                    if (placeholder) {
+                        placeholder.style.display = hasVisibleOptions ? 'none' : 'block';
+                    }
                 }
+
+                // Handle option selection
+                stockOptions.forEach(function(option) {
+                    option.addEventListener('click', function() {
+                        const value = this.dataset.value;
+                        const text = this.dataset.text;
+
+                        stockSelect.value = value;
+                        stockSearch.value = text;
+                        stockDropdown.classList.add('hidden');
+
+                        // Update stock info
+                        updateStockInfo(value);
+                    });
+                });
+
+                // Update stock information display
+                function updateStockInfo(selectedId) {
+                    if (selectedId && stockData[selectedId]) {
+                        const stock = stockData[selectedId];
+
+                        itemRow.querySelector('.selected-product').textContent = stock.product?.name || 'N/A';
+                        itemRow.querySelector('.selected-vendor').textContent = stock.mine_vendor?.name || 'N/A';
+                        itemRow.querySelector('.selected-pid').textContent = stock.pid || 'N/A';
+                        itemRow.querySelector('.available-pieces').textContent = stock.available_pieces || 0;
+
+                        stockInfo.classList.remove('hidden');
+
+                        // Set max value for quantity input based on available stock + current issued quantity
+                        const currentIssued = existingItem ? existingItem.quantity_issued : 0;
+                        const maxAllowed = (stock.available_pieces || 0) + currentIssued;
+                        quantityInput.max = maxAllowed;
+
+                        // Set current value if not already set
+                        if (!quantityInput.value) {
+                            quantityInput.value = Math.min(1, maxAllowed);
+                        }
+                    } else {
+                        stockInfo.classList.add('hidden');
+                    }
+                }
+
+                // Remove item button
+                removeBtn.addEventListener('click', function() {
+                    itemRow.remove();
+                    updateRemoveButtons();
+                });
             }
 
-            // Initialize with current value
-            const currentValue = stockSelect.value;
-            if (currentValue && stockData[currentValue]) {
-                const stock = stockData[currentValue];
-                const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft)${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
-                stockSearch.value = displayText;
-                updateStockInfo(currentValue);
+            function updateRemoveButtons() {
+                const itemRows = document.querySelectorAll('.item-row');
+                itemRows.forEach((row, index) => {
+                    const removeBtn = row.querySelector('.remove-item-btn');
+                    removeBtn.style.display = itemRows.length > 1 ? 'block' : 'none';
+                });
             }
         });
     </script>

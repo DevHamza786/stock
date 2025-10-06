@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AccountTransaction;
 use App\Models\ChartOfAccount;
 use App\Models\GatePass;
+use App\Models\GatePassItem;
 use App\Models\JournalEntry;
 use App\Models\StockAddition;
 use App\Models\StockIssued;
@@ -20,8 +21,7 @@ class GatePassController extends Controller
      */
     public function index(Request $request)
     {
-        $query = GatePass::with(['stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor'])
-            ->whereNotNull('stock_issued_id');
+        $query = GatePass::with(['items.stockAddition.product', 'items.stockAddition.mineVendor', 'stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor']);
         // Search functionality
         if ($request->filled('search')) {
             $search = $request->get('search');
@@ -29,8 +29,21 @@ class GatePassController extends Controller
                 $q->where('destination', 'like', "%{$search}%")
                     ->orWhere('vehicle_number', 'like', "%{$search}%")
                     ->orWhere('driver_name', 'like', "%{$search}%")
+                    ->orWhere('client_name', 'like', "%{$search}%")
+                    ->orWhere('client_number', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%")
                     ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('items.stockAddition.product', function ($productQuery) use ($search) {
+                        $productQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('items.stockAddition.mineVendor', function ($vendorQuery) use ($search) {
+                        $vendorQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('items.stockAddition', function ($stockQuery) use ($search) {
+                        $stockQuery->where('stone', 'like', "%{$search}%")
+                            ->orWhere('size_3d', 'like', "%{$search}%")
+                            ->orWhere('condition_status', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('stockIssued.stockAddition.product', function ($productQuery) use ($search) {
                         $productQuery->where('name', 'like', "%{$search}%");
                     })
@@ -178,65 +191,103 @@ class GatePassController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'stock_addition_id' => 'required|exists:stock_additions,id',
-            'quantity_issued' => 'required|integer|min:1',
+            'items' => 'required|array|min:1',
+            'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
+            'items.*.quantity_issued' => 'required|integer|min:1',
             'destination' => 'nullable|string|max:255',
             'vehicle_number' => 'nullable|string|max:255',
             'driver_name' => 'nullable|string|max:255',
+            'client_name' => 'nullable|string|max:255',
+            'client_number' => 'nullable|string|max:255',
             'status' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
         ]);
 
-        $stockAddition = StockAddition::findOrFail($request->stock_addition_id);
-
-        // Check if requested quantity is available
-        if ($request->quantity_issued > $stockAddition->available_pieces) {
+        // Validate stock availability for all items
+        foreach ($request->items as $index => $item) {
+            $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
+            if ($item['quantity_issued'] > $stockAddition->available_pieces) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Requested quantity exceeds available stock.');
+                    ->with('error', "Item " . ($index + 1) . ": Requested quantity ({$item['quantity_issued']}) exceeds available stock ({$stockAddition->available_pieces} pieces).");
+            }
         }
 
-        // Create stock issued record first
+        // Create gate pass first
+        $gatePass = GatePass::create([
+            'stock_issued_id' => null, // We'll handle this differently now
+            'quantity_issued' => 0, // Will be calculated from items
+            'sqft_issued' => 0, // Will be calculated from items
+            'destination' => $request->destination,
+            'vehicle_number' => $request->vehicle_number,
+            'driver_name' => $request->driver_name,
+            'client_name' => $request->client_name,
+            'client_number' => $request->client_number,
+            'status' => $request->status,
+            'notes' => $request->notes,
+            'date' => $request->date,
+        ]);
+
+        $totalQuantity = 0;
+        $totalSqft = 0;
+
+        // Create gate pass items and stock issued records
+        foreach ($request->items as $item) {
+            $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
+
+            // Create stock issued record
         $stockIssued = StockIssued::create([
             'stock_addition_id' => $stockAddition->id,
-            'quantity_issued' => $request->quantity_issued,
-            'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $request->quantity_issued,
-            'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $request->quantity_issued,
+                'quantity_issued' => $item['quantity_issued'],
+                'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
+                'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
             'purpose' => 'Gate Pass Dispatch',
             'notes' => 'Auto-created for gate pass dispatch',
             'stone' => $stockAddition->stone,
             'date' => $request->date,
         ]);
 
-        // Create gate pass with stock_issued_id
-        $gatePassData = $request->all();
-        $gatePassData['stock_issued_id'] = $stockIssued->id;
-        $gatePass = GatePass::create($gatePassData);
+            // Create gate pass item
+            GatePassItem::create([
+                'gate_pass_id' => $gatePass->id,
+                'stock_addition_id' => $stockAddition->id,
+                'quantity_issued' => $item['quantity_issued'],
+                'sqft_issued' => $stockIssued->sqft_issued,
+                'weight_issued' => $stockIssued->weight_issued,
+                'stone' => $stockAddition->stone,
+            ]);
 
-        // StockIssued model observer will automatically update available pieces
-        // No manual update needed here
+            $totalQuantity += $item['quantity_issued'];
+            $totalSqft += $stockIssued->sqft_issued;
 
-        // Generate accounting journal entry
-        $this->generateAccountingEntry($gatePass);
-
-        // Log stock activity (refresh to get updated values from observer)
+            // Log stock activity
         $stockAddition->refresh();
         StockLog::logActivity(
             'dispatched',
-            "Gate pass created - {$request->quantity_issued} pieces dispatched to {$request->destination}",
+                "Gate pass created - {$item['quantity_issued']} pieces dispatched to {$request->destination}",
             $stockAddition->id,
             $stockIssued->id,
             $gatePass->id,
             null,
-            ['available_pieces' => $stockAddition->available_pieces + $request->quantity_issued, 'available_sqft' => $stockAddition->available_sqft + $stockIssued->sqft_issued],
+                ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + $stockIssued->sqft_issued],
             ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
-            -$request->quantity_issued,
+                -$item['quantity_issued'],
             -$stockIssued->sqft_issued
         );
+        }
+
+        // Update gate pass with totals
+        $gatePass->update([
+            'quantity_issued' => $totalQuantity,
+            'sqft_issued' => $totalSqft,
+        ]);
+
+        // Generate accounting journal entry
+        $this->generateAccountingEntry($gatePass);
 
         return redirect()->route('stock-management.gate-pass.index')
-            ->with('success', 'Gate pass created successfully.');
+            ->with('success', 'Gate pass created successfully with ' . count($request->items) . ' items.');
     }
 
     /**
@@ -244,7 +295,7 @@ class GatePassController extends Controller
      */
     public function show(GatePass $gatePass)
     {
-        $gatePass->load(['stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor']);
+        $gatePass->load(['items.stockAddition.product', 'items.stockAddition.mineVendor', 'stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor']);
 
         return view('stock-management.gate-pass.show', compact('gatePass'));
     }
@@ -256,8 +307,10 @@ class GatePassController extends Controller
     {
         $stockAdditions = StockAddition::with(['product', 'mineVendor', 'stockIssued'])
             ->where(function($query) use ($gatePass) {
-                $query->where('available_pieces', '>', 0)
-                      ->orWhere('id', $gatePass->stockIssued->stock_addition_id);
+                $query->where('available_pieces', '>', 0);
+                if ($gatePass->stockIssued?->stock_addition_id) {
+                    $query->orWhere('id', $gatePass->stockIssued->stock_addition_id);
+                }
             })
             ->whereHas('product')
             ->whereHas('mineVendor')
@@ -266,7 +319,7 @@ class GatePassController extends Controller
             ->filter(function ($stockAddition) use ($gatePass) {
                 // Show stock with available pieces OR the currently selected stock
                 return $stockAddition->hasAvailableStock() ||
-                       $stockAddition->id == $gatePass->stockIssued->stock_addition_id;
+                       ($gatePass->stockIssued?->stock_addition_id && $stockAddition->id == $gatePass->stockIssued->stock_addition_id);
             });
 
         return view('stock-management.gate-pass.edit', compact('gatePass', 'stockAdditions'));
@@ -278,85 +331,200 @@ class GatePassController extends Controller
     public function update(Request $request, GatePass $gatePass)
     {
         $request->validate([
-            'stock_addition_id' => 'required|exists:stock_additions,id',
-            'quantity_issued' => 'required|integer|min:1',
+            'items' => 'required|array|min:1',
+            'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
+            'items.*.quantity_issued' => 'required|integer|min:1',
             'destination' => 'nullable|string|max:255',
             'vehicle_number' => 'nullable|string|max:255',
             'driver_name' => 'nullable|string|max:255',
+            'client_name' => 'nullable|string|max:255',
+            'client_number' => 'nullable|string|max:255',
             'status' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'date' => 'required|date',
         ]);
 
-        $stockAddition = StockAddition::findOrFail($request->stock_addition_id);
-        $oldStockIssued = $gatePass->stockIssued;
+        // Validate stock availability for all items
+        foreach ($request->items as $index => $item) {
+            $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
 
-        // If changing stock addition, check availability
-        if ($oldStockIssued->stock_addition_id != $request->stock_addition_id) {
-            // Check if requested quantity is available in new stock addition
-            if ($request->quantity_issued > $stockAddition->available_pieces) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', "Requested quantity ({$request->quantity_issued}) exceeds available stock in selected stock addition. Available: {$stockAddition->available_pieces} pieces.");
-            }
-        } else {
-            // Same stock addition, check if new quantity is within available + current issued
-            $currentIssued = $oldStockIssued->quantity_issued;
+            // Check if this item already exists in the gate pass
+            $existingItem = $gatePass->items()->where('stock_addition_id', $item['stock_addition_id'])->first();
+            $currentIssued = $existingItem ? $existingItem->quantity_issued : 0;
             $availableForIncrease = $stockAddition->available_pieces + $currentIssued;
 
-            if ($request->quantity_issued > $availableForIncrease) {
+            if ($item['quantity_issued'] > $availableForIncrease) {
                 return redirect()->back()
                     ->withInput()
-                    ->with('error', "Requested quantity ({$request->quantity_issued}) exceeds available stock. Available: {$stockAddition->available_pieces} pieces + Current issued: {$currentIssued} pieces = {$availableForIncrease} pieces total.");
+                    ->with('error', "Item " . ($index + 1) . ": Requested quantity ({$item['quantity_issued']}) exceeds available stock. Available: {$stockAddition->available_pieces} pieces + Current issued: {$currentIssued} pieces = {$availableForIncrease} pieces total.");
             }
         }
 
-        // Store old values for logging
-        $oldQuantity = $oldStockIssued->quantity_issued;
-        $oldSqft = $oldStockIssued->sqft_issued;
-        $oldStockAdditionId = $oldStockIssued->stock_addition_id;
+        // Get existing items for comparison
+        $existingItems = $gatePass->items()->with('stockAddition')->get();
+        $existingItemsMap = $existingItems->keyBy('stock_addition_id');
 
-        // Update the existing StockIssued record instead of deleting and recreating
-        $newSqft = ($stockAddition->total_sqft / $stockAddition->total_pieces) * $request->quantity_issued;
-        $newWeight = ($stockAddition->weight / $stockAddition->total_pieces) * $request->quantity_issued;
+        $totalQuantity = 0;
+        $totalSqft = 0;
+        $processedStockAdditionIds = [];
 
-        $oldStockIssued->update([
+        // Process each item in the request
+        foreach ($request->items as $item) {
+            $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
+            $processedStockAdditionIds[] = $stockAddition->id;
+
+            $existingItem = $existingItemsMap->get($stockAddition->id);
+
+            if ($existingItem) {
+                // Item exists - check if quantity changed
+                if ($existingItem->quantity_issued != $item['quantity_issued']) {
+                    // Quantity changed - update the item
+                    $quantityDifference = $item['quantity_issued'] - $existingItem->quantity_issued;
+                    $sqftDifference = (($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued']) - $existingItem->sqft_issued;
+
+                    // Update the gate pass item
+                    $existingItem->update([
+                        'quantity_issued' => $item['quantity_issued'],
+                        'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
+                        'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
+                    ]);
+
+                    // Update the corresponding stock issued record
+                    $stockIssued = StockIssued::where('stock_addition_id', $stockAddition->id)
+                        ->where('purpose', 'Gate Pass Dispatch')
+                        ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
+                        ->first();
+
+                    if ($stockIssued) {
+                        $stockIssued->update([
+                            'quantity_issued' => $item['quantity_issued'],
+                            'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
+                            'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
+                        ]);
+                    }
+
+                    // Adjust stock quantities
+                    $stockAddition->available_pieces -= $quantityDifference;
+                    $stockAddition->available_sqft -= $sqftDifference;
+                    $stockAddition->save();
+
+                    // Log the update
+                    StockLog::logActivity(
+                        'updated',
+                        "Gate pass item updated - {$quantityDifference} pieces change",
+                        $stockAddition->id,
+                        $stockIssued->id,
+                        $gatePass->id,
+                        null,
+                        ['available_pieces' => $stockAddition->available_pieces + $quantityDifference, 'available_sqft' => $stockAddition->available_sqft + $sqftDifference],
+                        ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                        -$quantityDifference,
+                        -$sqftDifference
+                    );
+                }
+            } else {
+                // New item - create it
+                $stockIssued = StockIssued::create([
             'stock_addition_id' => $stockAddition->id,
-            'quantity_issued' => $request->quantity_issued,
-            'sqft_issued' => $newSqft,
-            'weight_issued' => $newWeight,
+                    'quantity_issued' => $item['quantity_issued'],
+                    'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
+                    'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
+                    'purpose' => 'Gate Pass Dispatch',
+                    'notes' => 'Auto-created for gate pass dispatch',
             'stone' => $stockAddition->stone,
             'date' => $request->date,
         ]);
 
-        // Update gate pass
-        $gatePassData = $request->all();
-        $gatePass->update($gatePassData);
+                // Create gate pass item
+                GatePassItem::create([
+                    'gate_pass_id' => $gatePass->id,
+                    'stock_addition_id' => $stockAddition->id,
+                    'quantity_issued' => $item['quantity_issued'],
+                    'sqft_issued' => $stockIssued->sqft_issued,
+                    'weight_issued' => $stockIssued->weight_issued,
+                    'stone' => $stockAddition->stone,
+                ]);
 
-        // Log the update activity
+                // Adjust stock quantities
+                $stockAddition->available_pieces -= $item['quantity_issued'];
+                $stockAddition->available_sqft -= $stockIssued->sqft_issued;
+                $stockAddition->save();
+
+                // Log the addition
+                StockLog::logActivity(
+                    'dispatched',
+                    "Gate pass item added - {$item['quantity_issued']} pieces dispatched",
+                    $stockAddition->id,
+                    $stockIssued->id,
+                    $gatePass->id,
+                    null,
+                    ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + $stockIssued->sqft_issued],
+                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                    -$item['quantity_issued'],
+                    -$stockIssued->sqft_issued
+                );
+            }
+
+            $totalQuantity += $item['quantity_issued'];
+            $totalSqft += ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'];
+        }
+
+        // Remove items that are no longer in the request
+        $itemsToRemove = $existingItems->whereNotIn('stock_addition_id', $processedStockAdditionIds);
+        foreach ($itemsToRemove as $itemToRemove) {
+            // Find and delete the corresponding stock issued record
+            $stockIssued = StockIssued::where('stock_addition_id', $itemToRemove->stock_addition_id)
+                ->where('purpose', 'Gate Pass Dispatch')
+                ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
+                ->first();
+
+            if ($stockIssued) {
+                // Restore stock
+                $stockAddition = $stockIssued->stockAddition;
+                if ($stockAddition) {
+                    $stockAddition->available_pieces += $stockIssued->quantity_issued;
+                    $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                    $stockAddition->save();
+
+                    // Log the removal
         StockLog::logActivity(
-            'updated',
-            "Gate pass updated - quantity changed from {$oldQuantity} to {$request->quantity_issued} pieces",
+                        'restored',
+                        "Gate pass item removed - {$stockIssued->quantity_issued} pieces restored",
             $stockAddition->id,
-            $oldStockIssued->id,
+                        $stockIssued->id,
             $gatePass->id,
             null,
-            [
-                'stock_addition_id' => $oldStockAdditionId,
-                'quantity_issued' => $oldQuantity,
-                'sqft_issued' => $oldSqft
-            ],
-            [
-                'stock_addition_id' => $stockAddition->id,
-                'quantity_issued' => $request->quantity_issued,
-                'sqft_issued' => $newSqft
-            ],
-            $request->quantity_issued - $oldQuantity,
-            $newSqft - $oldSqft
-        );
+                        ['available_pieces' => $stockAddition->available_pieces - $stockIssued->quantity_issued, 'available_sqft' => $stockAddition->available_sqft - $stockIssued->sqft_issued],
+                        ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                        $stockIssued->quantity_issued,
+                        $stockIssued->sqft_issued
+                    );
+                }
+
+                // Delete the stock issued record
+                $stockIssued->deleteQuietly();
+            }
+
+            // Delete the gate pass item
+            $itemToRemove->delete();
+        }
+
+        // Update gate pass with new totals and other fields
+        $gatePass->update([
+            'quantity_issued' => $totalQuantity,
+            'sqft_issued' => $totalSqft,
+            'destination' => $request->destination,
+            'vehicle_number' => $request->vehicle_number,
+            'driver_name' => $request->driver_name,
+            'client_name' => $request->client_name,
+            'client_number' => $request->client_number,
+            'status' => $request->status,
+            'notes' => $request->notes,
+            'date' => $request->date,
+        ]);
 
         return redirect()->route('stock-management.gate-pass.index')
-            ->with('success', 'Gate pass updated successfully.');
+            ->with('success', 'Gate pass updated successfully with ' . count($request->items) . ' items.');
     }
 
     /**

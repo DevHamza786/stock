@@ -194,6 +194,11 @@ class StockIssued extends Model
             }
         });
 
+        static::deleting(function ($stockIssued) {
+            // Store gate pass ID before deletion
+            $stockIssued->gate_pass_id_for_log = $stockIssued->gatePasses()->first()?->id;
+        });
+
         static::deleted(function ($stockIssued) {
             // Check if this deletion is coming from a gatepass deletion
             // If so, stock restoration is already handled in the GatePass model
@@ -216,6 +221,7 @@ class StockIssued extends Model
             $stockAdditionId = $stockIssued->stock_addition_id;
             $quantityIssued = $stockIssued->quantity_issued;
             $sqftIssued = $stockIssued->sqft_issued;
+            $gatePassId = $stockIssued->gate_pass_id_for_log ?? null;
 
             // Log stock issued deletion (don't reference the deleted record)
             \App\Models\StockLog::logActivity(
@@ -223,7 +229,7 @@ class StockIssued extends Model
                 "Stock issued deleted - {$quantityIssued} pieces restored",
                 $stockAdditionId,
                 $stockIssuedId,
-                null,
+                $gatePassId,
                 null,
                 [
                     'quantity_issued' => $quantityIssued,
