@@ -22,7 +22,6 @@ class GatePassController extends Controller
     {
         $query = GatePass::with(['stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor'])
             ->whereNotNull('stock_issued_id');
-
         // Search functionality
         if ($request->filled('search')) {
             $search = $request->get('search');
