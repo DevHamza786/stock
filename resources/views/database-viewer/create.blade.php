@@ -40,7 +40,7 @@
                             @php
                                 $columnName = $column->name;
                                 $isRequired = $column->notnull && $column->dflt_value === null;
-                                $fieldType = $this->getFieldType($column);
+                                $fieldType = getFieldType($column);
                             @endphp
 
                             <div class="space-y-2">

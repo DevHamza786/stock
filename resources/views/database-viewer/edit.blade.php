@@ -41,7 +41,7 @@
                             @php
                                 $columnName = $column->name;
                                 $isRequired = $column->notnull && $column->dflt_value === null;
-                                $fieldType = $this->getFieldType($column);
+                                $fieldType = getFieldType($column);
                                 $currentValue = old($columnName, $record->$columnName);
                             @endphp
 
