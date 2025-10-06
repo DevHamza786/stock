@@ -22,10 +22,14 @@
                                         <strong>{{ $stockIssued->stockAddition->product->name }}</strong><br>
                                         <span class="text-gray-600">{{ $stockIssued->stockAddition->mineVendor->name }}</span><br>
                                         <span class="text-gray-500">{{ $stockIssued->stockAddition->stone }} - 
-                                            @if($stockIssued->stockAddition->length && $stockIssued->stockAddition->height)
-                                                {{ $stockIssued->stockAddition->length }} × {{ $stockIssued->stockAddition->height }} cm
+                                            @if(in_array(strtolower(trim($stockIssued->stockAddition->condition_status)), ['block', 'monuments']))
+                                                Weight: {{ number_format($stockIssued->stockAddition->weight, 2) }} kg
                                             @else
-                                                {{ $stockIssued->stockAddition->size_3d }}
+                                                @if($stockIssued->stockAddition->length && $stockIssued->stockAddition->height)
+                                                    {{ $stockIssued->stockAddition->length }} × {{ $stockIssued->stockAddition->height }} cm
+                                                @else
+                                                    {{ $stockIssued->stockAddition->size_3d }}
+                                                @endif
                                             @endif
                                         </span>
                                     </div>
@@ -41,53 +45,70 @@
                                 <x-input-error :messages="$errors->get('quantity_issued')" class="mt-2" />
                             </div>
 
-                            <!-- Square Footage Issued (Auto-calculated) -->
-                            <div>
+                            <!-- Square Footage Issued (for non-block/monuments conditions) -->
+                            <div id="sqft-field" style="display: {{ in_array(strtolower(trim($stockIssued->stockAddition->condition_status)), ['block', 'monuments']) ? 'none' : 'block' }};">
                                 <x-input-label for="sqft_issued" :value="__('Square Footage Issued')" />
                                 <x-text-input id="sqft_issued" name="sqft_issued" type="number" class="mt-1 block w-full bg-gray-100" :value="old('sqft_issued', $stockIssued->sqft_issued)" readonly />
                                 <p class="mt-1 text-sm text-gray-500">Auto-calculated based on quantity and size</p>
                                 <x-input-error :messages="$errors->get('sqft_issued')" class="mt-2" />
                             </div>
 
+                            <!-- Weight Issued (for Block and Monuments conditions) -->
+                            <div id="weight-field" style="display: {{ in_array(strtolower(trim($stockIssued->stockAddition->condition_status)), ['block', 'monuments']) ? 'block' : 'none' }};">
+                                <x-input-label for="weight_issued" :value="__('Weight Issued (kg)')" />
+                                <x-text-input id="weight_issued" name="weight_issued" type="number" step="0.01" class="mt-1 block w-full bg-gray-100" :value="old('weight_issued', $stockIssued->weight_issued)" readonly />
+                                <p class="mt-1 text-sm text-gray-500">Auto-calculated based on quantity and weight per piece</p>
+                                <x-input-error :messages="$errors->get('weight_issued')" class="mt-2" />
+                            </div>
+
                             <!-- Purpose -->
                             <div>
                                 <x-input-label for="purpose" :value="__('Purpose')" />
                                 <select id="purpose" name="purpose" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
-                                    <option value="">Select Purpose</option>
+                                    <option value="">Select purpose...</option>
                                     <option value="Production" {{ old('purpose', $stockIssued->purpose) == 'Production' ? 'selected' : '' }}>Production</option>
-                                    <option value="Sale" {{ old('purpose', $stockIssued->purpose) == 'Sale' ? 'selected' : '' }}>Sale</option>
-                                    <option value="Transfer" {{ old('purpose', $stockIssued->purpose) == 'Transfer' ? 'selected' : '' }}>Transfer</option>
+                                    <option value="Processing" {{ old('purpose', $stockIssued->purpose) == 'Processing' ? 'selected' : '' }}>Processing</option>
+                                    <option value="Cutting" {{ old('purpose', $stockIssued->purpose) == 'Cutting' ? 'selected' : '' }}>Cutting</option>
+                                    <option value="Polishing" {{ old('purpose', $stockIssued->purpose) == 'Polishing' ? 'selected' : '' }}>Polishing</option>
                                     <option value="Other" {{ old('purpose', $stockIssued->purpose) == 'Other' ? 'selected' : '' }}>Other</option>
                                 </select>
                                 <x-input-error :messages="$errors->get('purpose')" class="mt-2" />
                             </div>
 
-                            <!-- Machine Name -->
+                            <!-- Machine -->
                             <div>
-                                <x-input-label for="machine_name" :value="__('Machine Name')" />
-                                <select id="machine_name" name="machine_name" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <x-input-label for="machine_id" :value="__('Machine')" />
+                                <select id="machine_id" name="machine_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select machine...</option>
                                     @foreach($machines as $machine)
-                                        <option value="{{ $machine->name }}" {{ old('machine_name', $stockIssued->machine_name) == $machine->name ? 'selected' : '' }}>
+                                        <option value="{{ $machine->id }}" {{ old('machine_id', $stockIssued->machine_id) == $machine->id ? 'selected' : '' }}>
                                             {{ $machine->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <x-input-error :messages="$errors->get('machine_name')" class="mt-2" />
+                                <x-input-error :messages="$errors->get('machine_id')" class="mt-2" />
                             </div>
 
-                            <!-- Operator Name -->
+                            <!-- Operator -->
                             <div>
-                                <x-input-label for="operator_name" :value="__('Operator Name')" />
-                                <select id="operator_name" name="operator_name" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <x-input-label for="operator_id" :value="__('Operator')" />
+                                <select id="operator_id" name="operator_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
                                     <option value="">Select operator...</option>
                                     @foreach($operators as $operator)
-                                        <option value="{{ $operator->name }}" {{ old('operator_name', $stockIssued->operator_name) == $operator->name ? 'selected' : '' }}>
+                                        <option value="{{ $operator->id }}" {{ old('operator_id', $stockIssued->operator_id) == $operator->id ? 'selected' : '' }}>
                                             {{ $operator->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <x-input-error :messages="$errors->get('operator_name')" class="mt-2" />
+                                <x-input-error :messages="$errors->get('operator_id')" class="mt-2" />
+                            </div>
+
+                            <!-- Particulars -->
+                            <div>
+                                <x-input-label for="stone" :value="__('Particulars')" />
+                                <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full bg-gray-100" :value="old('stone', $stockIssued->stone)" readonly />
+                                <p class="mt-1 text-sm text-gray-500">Automatically filled from stock addition</p>
+                                <x-input-error :messages="$errors->get('stone')" class="mt-2" />
                             </div>
 
                             <!-- Date -->
@@ -103,14 +124,6 @@
                                 <textarea id="notes" name="notes" rows="3" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('notes', $stockIssued->notes) }}</textarea>
                                 <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                             </div>
-
-                            <!-- Particulars -->
-                            <div>
-                                <x-input-label for="stone" :value="__('Particulars')" />
-                                <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full bg-gray-100" :value="old('stone', $stockIssued->stone)" readonly />
-                                <p class="mt-1 text-sm text-gray-500">Automatically filled from stock addition</p>
-                                <x-input-error :messages="$errors->get('stone')" class="mt-2" />
-                            </div>
                         </div>
 
                         <!-- Stock Information Display -->
@@ -125,10 +138,17 @@
                                     <dt class="text-sm font-medium text-blue-700">Available Pieces</dt>
                                     <dd class="text-sm text-blue-900">{{ number_format($stockIssued->stockAddition->available_pieces + $stockIssued->quantity_issued) }}</dd>
                                 </div>
-                                <div>
-                                    <dt class="text-sm font-medium text-blue-700">Available Sqft</dt>
-                                    <dd class="text-sm text-blue-900">{{ number_format($stockIssued->stockAddition->available_sqft + $stockIssued->sqft_issued, 2) }}</dd>
-                                </div>
+                                @if(in_array(strtolower(trim($stockIssued->stockAddition->condition_status)), ['block', 'monuments']))
+                                    <div>
+                                        <dt class="text-sm font-medium text-blue-700">Available Weight</dt>
+                                        <dd class="text-sm text-blue-900">{{ number_format($stockIssued->stockAddition->available_weight + $stockIssued->weight_issued, 2) }} kg</dd>
+                                    </div>
+                                @else
+                                    <div>
+                                        <dt class="text-sm font-medium text-blue-700">Available Sqft</dt>
+                                        <dd class="text-sm text-blue-900">{{ number_format($stockIssued->stockAddition->available_sqft + $stockIssued->sqft_issued, 2) }}</dd>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
@@ -150,34 +170,50 @@
         document.addEventListener('DOMContentLoaded', function() {
             const quantityInput = document.getElementById('quantity_issued');
             const sqftInput = document.getElementById('sqft_issued');
+            const weightInput = document.getElementById('weight_issued');
             const stockAddition = @json($stockIssued->stockAddition);
+            const conditionStatus = stockAddition.condition_status.toLowerCase().trim();
 
-            function calculateSqft() {
+            function calculateValues() {
                 const quantity = parseInt(quantityInput.value) || 0;
 
-                if (quantity > 0 && stockAddition.size_3d) {
-                    // Extract dimensions from size_3d (e.g., 20143 = 20x14x3)
-                    const size3d = stockAddition.size_3d;
-                    if (size3d.length >= 3) {
-                        const length = parseInt(size3d.substring(0, 2));
-                        const width = parseInt(size3d.substring(2, 4));
-                        const height = parseInt(size3d.substring(4, 5));
+                if (quantity > 0) {
+                    if (conditionStatus === 'block' || conditionStatus === 'monuments') {
+                        // Calculate weight for Block and Monuments conditions
+                        const weightPerPiece = parseFloat(stockAddition.weight) || 0;
+                        const totalWeight = weightPerPiece * quantity;
+                        if (weightInput) {
+                            weightInput.value = totalWeight.toFixed(2);
+                        }
+                    } else {
+                        // Calculate sqft for regular conditions
+                        if (sqftInput && stockAddition.size_3d) {
+                            // Extract dimensions from size_3d (e.g., 20143 = 20x14x3)
+                            const size3d = stockAddition.size_3d;
+                            if (size3d.length >= 3) {
+                                const length = parseInt(size3d.substring(0, 2));
+                                const width = parseInt(size3d.substring(2, 4));
+                                const height = parseInt(size3d.substring(4, 5));
 
-                        if (length && width) {
-                            const sqftPerPiece = length * width;
-                            const totalSqft = sqftPerPiece * quantity;
-                            sqftInput.value = totalSqft.toFixed(2);
+                                if (length && width) {
+                                    const sqftPerPiece = length * width;
+                                    const totalSqft = sqftPerPiece * quantity;
+                                    sqftInput.value = totalSqft.toFixed(2);
+                                }
+                            }
                         }
                     }
                 } else {
-                    sqftInput.value = '';
+                    // Clear values when quantity is 0
+                    if (sqftInput) sqftInput.value = '';
+                    if (weightInput) weightInput.value = '';
                 }
             }
 
-            quantityInput.addEventListener('input', calculateSqft);
+            quantityInput.addEventListener('input', calculateValues);
 
             // Calculate on page load
-            calculateSqft();
+            calculateValues();
         });
     </script>
 </x-app-layout>

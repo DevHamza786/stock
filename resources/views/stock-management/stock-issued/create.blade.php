@@ -46,7 +46,7 @@
                                         @foreach($stockAdditions as $addition)
                                                 <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" 
                                                      data-value="{{ $addition->id }}" 
-                                                     data-text="{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($addition->condition_status) }}@if(strtolower($addition->condition_status) === 'block') - Weight: {{ number_format($addition->weight, 2) }} kg @else @if($addition->length && $addition->height) - Size: {{ $addition->length }} × {{ $addition->height }} cm @else - Size: {{ $addition->size_3d }} @endif @endif - ({{ $addition->available_pieces }} pieces available)@if($addition->pid) - PID: {{ $addition->pid }}@endif"
+                                                     data-text="{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($addition->condition_status) }}@if(in_array(strtolower($addition->condition_status), ['block', 'monuments'])) - Weight: {{ number_format($addition->weight, 2) }} kg @else @if($addition->length && $addition->height) - Size: {{ $addition->length }} × {{ $addition->height }} cm @else - Size: {{ $addition->size_3d }} @endif @endif - ({{ $addition->available_pieces }} pieces available)@if($addition->pid) - PID: {{ $addition->pid }}@endif"
                                                     data-length="{{ $addition->length }}"
                                                     data-height="{{ $addition->height }}"
                                                     data-size-3d="{{ $addition->size_3d }}"
@@ -60,7 +60,7 @@
                                                     <div class="font-medium text-gray-900">{{ $addition->product->name ?? 'N/A' }} - {{ $addition->mineVendor->name ?? 'N/A' }}</div>
                                                     <div class="text-sm text-gray-600">
                                                 {{ ucfirst($addition->condition_status) }} - 
-                                                @if(strtolower($addition->condition_status) === 'block')
+                                                @if(in_array(strtolower($addition->condition_status), ['block', 'monuments']))
                                                     Weight: {{ number_format($addition->weight, 2) }} kg
                                                 @else
                                                     @if($addition->length && $addition->height)
@@ -102,7 +102,7 @@
                                 @enderror
                             </div>
 
-                            <!-- Weight Issued (for Block condition) -->
+                            <!-- Weight Issued (for Block and Monuments conditions) -->
                             <div id="weight-field" style="display: none;">
                                 <label for="weight_issued" class="block text-sm font-medium text-gray-700 mb-2">Weight to Issue (kg)</label>
                                 <input type="number" id="weight_issued" name="weight_issued" step="0.01" min="0" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('weight_issued') border-red-500 @enderror" value="{{ old('weight_issued') }}">
@@ -128,34 +128,34 @@
                                 @enderror
                             </div>
 
-                            <!-- Machine Name -->
+                            <!-- Machine -->
                             <div>
-                                <label for="machine_name" class="block text-sm font-medium text-gray-700 mb-2">Machine Name</label>
-                                <select id="machine_name" name="machine_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('machine_name') border-red-500 @enderror">
+                                <label for="machine_id" class="block text-sm font-medium text-gray-700 mb-2">Machine</label>
+                                <select id="machine_id" name="machine_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('machine_id') border-red-500 @enderror">
                                     <option value="">Select machine...</option>
                                     @foreach($machines as $machine)
-                                        <option value="{{ $machine->name }}" {{ old('machine_name') == $machine->name ? 'selected' : '' }}>
+                                        <option value="{{ $machine->id }}" {{ old('machine_id') == $machine->id ? 'selected' : '' }}>
                                             {{ $machine->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('machine_name')
+                                @error('machine_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
 
-                            <!-- Operator Name -->
+                            <!-- Operator -->
                             <div>
-                                <label for="operator_name" class="block text-sm font-medium text-gray-700 mb-2">Operator Name</label>
-                                <select id="operator_name" name="operator_name" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('operator_name') border-red-500 @enderror">
+                                <label for="operator_id" class="block text-sm font-medium text-gray-700 mb-2">Operator</label>
+                                <select id="operator_id" name="operator_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('operator_id') border-red-500 @enderror">
                                     <option value="">Select operator...</option>
                                     @foreach($operators as $operator)
-                                        <option value="{{ $operator->name }}" {{ old('operator_name') == $operator->name ? 'selected' : '' }}>
+                                        <option value="{{ $operator->id }}" {{ old('operator_id') == $operator->id ? 'selected' : '' }}>
                                             {{ $operator->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('operator_name')
+                                @error('operator_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -332,7 +332,7 @@
                     const sqftInfo = document.getElementById('sqft-info');
                     const selectedWeight = document.getElementById('selected-weight');
 
-                    if (conditionStatus === 'block') {
+                    if (conditionStatus === 'block' || conditionStatus === 'monuments') {
                         // Show weight field, hide sqft field
                         sqftField.style.display = 'none';
                         weightField.style.display = 'block';
@@ -380,7 +380,7 @@
 
                     // Set max values for inputs
                     quantityInput.max = stock.available_pieces;
-                    if (conditionStatus !== 'block') {
+                    if (conditionStatus !== 'block' && conditionStatus !== 'monuments') {
                         sqftInput.max = stock.available_sqft;
                     }
                 } else {
@@ -395,8 +395,8 @@
                     const stock = stockData[selectedId];
                     const conditionStatus = stock.condition_status.toLowerCase();
                     
-                    if (conditionStatus === 'block') {
-                        // Calculate total weight for blocks
+                    if (conditionStatus === 'block' || conditionStatus === 'monuments') {
+                        // Calculate total weight for blocks and monuments
                         const weightPerPiece = stock.weight;
                         const totalWeight = this.value * weightPerPiece;
                         document.getElementById('weight_issued').value = totalWeight.toFixed(2);

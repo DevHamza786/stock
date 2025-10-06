@@ -21,8 +21,6 @@ class StockIssued extends Model
         'purpose',
         'machine_id',
         'operator_id',
-        'machine_name',
-        'operator_name',
         'notes',
         'stone',
         'date'
@@ -203,21 +201,28 @@ class StockIssued extends Model
             $stockAddition->available_sqft += $stockIssued->sqft_issued;
             $stockAddition->save();
             
-            // Log stock issued deletion
+            // Get the ID before deletion for logging
+            $stockIssuedId = $stockIssued->id;
+            $stockAdditionId = $stockIssued->stock_addition_id;
+            $quantityIssued = $stockIssued->quantity_issued;
+            $sqftIssued = $stockIssued->sqft_issued;
+            
+            // Log stock issued deletion (don't reference the deleted record)
             \App\Models\StockLog::logActivity(
                 'deleted',
-                "Stock issued deleted - {$stockIssued->quantity_issued} pieces restored",
-                $stockIssued->stock_addition_id,
-                $stockIssued->id,
+                "Stock issued deleted - {$quantityIssued} pieces restored",
+                $stockAdditionId,
+                $stockIssuedId,
                 null,
                 null,
                 [
-                    'quantity_issued' => $stockIssued->quantity_issued,
-                    'sqft_issued' => $stockIssued->sqft_issued
+                    'quantity_issued' => $quantityIssued,
+                    'sqft_issued' => $sqftIssued
                 ],
                 null,
-                $stockIssued->quantity_issued,
-                $stockIssued->sqft_issued
+                $quantityIssued,
+                $sqftIssued,
+                0
             );
         });
     }

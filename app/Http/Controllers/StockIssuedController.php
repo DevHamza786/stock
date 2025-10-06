@@ -18,7 +18,7 @@ class StockIssuedController extends Controller
      */
     public function index(Request $request)
     {
-        $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+        $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->whereDoesntHave('dailyProduction', function ($dailyQuery) {
                 $dailyQuery->where('status', 'close');
             });
@@ -28,8 +28,12 @@ class StockIssuedController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('purpose', 'like', "%{$search}%")
-                  ->orWhere('machine_name', 'like', "%{$search}%")
-                  ->orWhere('operator_name', 'like', "%{$search}%")
+                  ->orWhereHas('machine', function ($machineQuery) use ($search) {
+                      $machineQuery->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('operator', function ($operatorQuery) use ($search) {
+                      $operatorQuery->where('name', 'like', "%{$search}%");
+                  })
                   ->orWhere('notes', 'like', "%{$search}%")
                   ->orWhereHas('stockAddition.product', function ($productQuery) use ($search) {
                       $productQuery->where('name', 'like', "%{$search}%");
@@ -75,12 +79,16 @@ class StockIssuedController extends Controller
 
         // Filter by machine name
         if ($request->filled('machine_name')) {
-            $query->where('machine_name', 'like', "%{$request->get('machine_name')}%");
+            $query->whereHas('machine', function ($machineQuery) use ($request) {
+                $machineQuery->where('name', 'like', "%{$request->get('machine_name')}%");
+            });
         }
 
         // Filter by operator name
         if ($request->filled('operator_name')) {
-            $query->where('operator_name', 'like', "%{$request->get('operator_name')}%");
+            $query->whereHas('operator', function ($operatorQuery) use ($request) {
+                $operatorQuery->where('name', 'like', "%{$request->get('operator_name')}%");
+            });
         }
 
         // Filter by date range
@@ -130,8 +138,8 @@ class StockIssuedController extends Controller
         $vendors = \App\Models\MineVendor::where('is_active', true)->orderBy('name')->get();
         $conditions = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
         $purposes = StockIssued::distinct()->pluck('purpose')->filter()->sort()->values();
-        $machines = StockIssued::whereNotNull('machine_name')->distinct()->pluck('machine_name')->filter()->sort()->values();
-        $operators = StockIssued::whereNotNull('operator_name')->distinct()->pluck('operator_name')->filter()->sort()->values();
+        $machines = \App\Models\Machine::where('is_active', true)->orderBy('name')->get();
+        $operators = \App\Models\Operator::where('is_active', true)->orderBy('name')->get();
 
         return view('stock-management.stock-issued.index', compact('stockIssued', 'products', 'vendors', 'conditions', 'purposes', 'machines', 'operators'));
     }
@@ -175,8 +183,6 @@ class StockIssuedController extends Controller
             'purpose' => 'required|string|max:255',
             'machine_id' => 'nullable|exists:machines,id',
             'operator_id' => 'nullable|exists:operators,id',
-            'machine_name' => 'nullable|string|max:255',
-            'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
@@ -193,8 +199,8 @@ class StockIssuedController extends Controller
 
         // Custom validation based on condition status
         $conditionStatus = strtolower($stockAddition->condition_status);
-        if ($conditionStatus === 'block') {
-            // For block condition, weight_issued is required
+        if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+            // For block and monuments conditions, weight_issued is required
             $request->validate([
                 'weight_issued' => 'required|numeric|min:0.1',
             ]);
@@ -214,22 +220,6 @@ class StockIssuedController extends Controller
 
         // Prepare data for creation
         $data = $request->all();
-        
-        // If machine_id is provided, get machine name
-        if (!empty($data['machine_id'])) {
-            $machine = Machine::find($data['machine_id']);
-            if ($machine) {
-                $data['machine_name'] = $machine->name;
-            }
-        }
-        
-        // If operator_id is provided, get operator name
-        if (!empty($data['operator_id'])) {
-            $operator = Operator::find($data['operator_id']);
-            if ($operator) {
-                $data['operator_name'] = $operator->name;
-            }
-        }
 
         $stockIssued = StockIssued::create($data);
 
@@ -286,8 +276,6 @@ class StockIssuedController extends Controller
             'purpose' => 'nullable|string|max:255',
             'machine_id' => 'nullable|exists:machines,id',
             'operator_id' => 'nullable|exists:operators,id',
-            'machine_name' => 'nullable|string|max:255',
-            'operator_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
@@ -307,8 +295,8 @@ class StockIssuedController extends Controller
 
         // Custom validation based on condition status
         $conditionStatus = strtolower($stockAddition->condition_status);
-        if ($conditionStatus === 'block') {
-            // For block condition, weight_issued is required
+        if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+            // For block and monuments conditions, weight_issued is required
             $request->validate([
                 'weight_issued' => 'required|numeric|min:0.1',
             ]);
@@ -321,22 +309,6 @@ class StockIssuedController extends Controller
 
         // Prepare data for update
         $data = $request->all();
-        
-        // If machine_id is provided, get machine name
-        if (!empty($data['machine_id'])) {
-            $machine = Machine::find($data['machine_id']);
-            if ($machine) {
-                $data['machine_name'] = $machine->name;
-            }
-        }
-        
-        // If operator_id is provided, get operator name
-        if (!empty($data['operator_id'])) {
-            $operator = Operator::find($data['operator_id']);
-            if ($operator) {
-                $data['operator_name'] = $operator->name;
-            }
-        }
 
         $stockIssued->update($data);
 

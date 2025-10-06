@@ -112,7 +112,7 @@
                                     <th>Machine</th>
                                     <th>Operator</th>
                                     <th>Pieces Issued</th>
-                                    <th>Sqft Issued</th>
+                                    <th>Weight/Sqft Issued</th>
                                     <th>Purpose</th>
                                     <th>Date</th>
                                     <th>Actions</th>
@@ -135,10 +135,14 @@
                                         <td>{{ $issue->machine->name ?? 'N/A' }}</td>
                                         <td>{{ $issue->operator->name ?? 'N/A' }}</td>
                                         <td>
-                                            <span class="font-semibold">{{ number_format($issue->pieces_issued) }}</span>
+                                            <span class="font-semibold">{{ number_format($issue->quantity_issued) }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-sm">{{ number_format($issue->sqft_issued, 2) }}</span>
+                                            @if(in_array(strtolower(trim($issue->stockAddition->condition_status)), ['block', 'monuments']))
+                                                <span class="text-sm font-medium text-blue-600">{{ number_format($issue->weight_issued, 2) }} kg</span>
+                                            @else
+                                                <span class="text-sm">{{ number_format($issue->sqft_issued, 2) }} sqft</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
