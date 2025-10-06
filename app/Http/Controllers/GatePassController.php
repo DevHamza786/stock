@@ -544,7 +544,12 @@ class GatePassController extends Controller
      */
     public function print(GatePass $gatePass)
     {
-        $gatePass->load(['stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor']);
+        $gatePass->load([
+            'items.stockAddition.product',
+            'items.stockAddition.mineVendor',
+            'stockIssued.stockAddition.product',
+            'stockIssued.stockAddition.mineVendor'
+        ]);
 
         return view('stock-management.gate-pass.print', compact('gatePass'));
     }

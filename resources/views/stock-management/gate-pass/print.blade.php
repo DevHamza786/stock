@@ -188,26 +188,24 @@
             </div>
         </div>
 
-        <!-- Product Information -->
+        <!-- Client Information -->
+        @if($gatePass->client_name || $gatePass->client_number)
         <div class="section">
-            <div class="section-title">Product Information</div>
+            <div class="section-title">Client Information</div>
+            @if($gatePass->client_name)
             <div class="info-row">
-                <span class="info-label">Product:</span>
-                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->product?->name ?? 'N/A' }}</span>
+                <span class="info-label">Client Name:</span>
+                <span class="info-value">{{ $gatePass->client_name }}</span>
             </div>
+            @endif
+            @if($gatePass->client_number)
             <div class="info-row">
-                <span class="info-label">Particulars:</span>
-                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->stone ?? 'N/A' }}</span>
+                <span class="info-label">Client Number:</span>
+                <span class="info-value">{{ $gatePass->client_number }}</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Size (3D):</span>
-                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->size_3d ?? 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Mine Vendor:</span>
-                <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->name ?? 'N/A' }}</span>
-            </div>
+            @endif
         </div>
+        @endif
 
         <!-- Dispatch Information -->
         <div class="section">
@@ -254,33 +252,80 @@
         </div>
     </div>
 
-    <!-- Stock Details -->
+    <!-- Stock Items Details -->
     <div class="section" style="margin-bottom: 30px;">
-        <div class="section-title">Source Stock Details</div>
-        <div class="info-row">
-            <span class="info-label">Stock Addition ID:</span>
-            <span class="info-value">SA-{{ $gatePass->stockIssued?->stockAddition?->id ? str_pad($gatePass->stockIssued->stockAddition->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Stock Issued ID:</span>
-            <span class="info-value">SI-{{ $gatePass->stockIssued?->id ? str_pad($gatePass->stockIssued->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Total Stock Issued:</span>
-            <span class="info-value">{{ $gatePass->stockIssued?->quantity_issued ? number_format($gatePass->stockIssued->quantity_issued) . ' pieces' : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Total Sqft Issued:</span>
-            <span class="info-value">{{ $gatePass->stockIssued?->sqft_issued ? number_format($gatePass->stockIssued->sqft_issued, 2) . ' sqft' : 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Vendor Contact:</span>
-            <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->contact_person ?? 'N/A' }}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Vendor Phone:</span>
-            <span class="info-value">{{ $gatePass->stockIssued?->stockAddition?->mineVendor?->phone ?? 'N/A' }}</span>
-        </div>
+        <div class="section-title">Stock Items Details</div>
+
+        @if($gatePass->items && $gatePass->items->count() > 0)
+            <!-- Multi-item gate pass -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr style="background: #f3f4f6; border-bottom: 2px solid #d1d5db;">
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">#</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Product</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Vendor</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Particulars</th>
+                        <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Pieces</th>
+                        <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Sqft</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">PID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($gatePass->items as $index => $item)
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center;">{{ $index + 1 }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->product->name ?? 'N/A' }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->mineVendor->name ?? 'N/A' }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stone ?? 'N/A' }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->quantity_issued) }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->sqft_issued, 2) }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->pid ?? 'N/A' }}</td>
+                    </tr>
+                    @endforeach
+                    <tr style="background: #f9fafb; font-weight: bold; border-top: 2px solid #d1d5db;">
+                        <td colspan="4" style="padding: 12px; border: 1px solid #d1d5db; text-align: right;">TOTAL:</td>
+                        <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->quantity_issued) }}</td>
+                        <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->sqft_issued, 2) }}</td>
+                        <td style="padding: 12px; border: 1px solid #d1d5db;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        @elseif($gatePass->stockIssued)
+            <!-- Old single-item gate pass -->
+            <div class="info-row">
+                <span class="info-label">Product:</span>
+                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->product->name ?? 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Vendor:</span>
+                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->mineVendor->name ?? 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Particulars:</span>
+                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->stone ?? 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Size (3D):</span>
+                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->size_3d ?? 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Stock Addition ID:</span>
+                <span class="info-value">SA-{{ $gatePass->stockIssued->stockAddition->id ? str_pad($gatePass->stockIssued->stockAddition->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Stock Issued ID:</span>
+                <span class="info-value">SI-{{ $gatePass->stockIssued->id ? str_pad($gatePass->stockIssued->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">PID:</span>
+                <span class="info-value">{{ $gatePass->stockIssued->stockAddition->pid ?? 'N/A' }}</span>
+            </div>
+        @else
+            <div class="info-row">
+                <span class="info-label">No stock details available</span>
+                <span class="info-value">N/A</span>
+            </div>
+        @endif
     </div>
 
     <!-- Signatures -->
