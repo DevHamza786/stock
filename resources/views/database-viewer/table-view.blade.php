@@ -11,14 +11,17 @@
                         <h1 class="text-2xl font-bold text-gray-900">Table: {{ $tableName }}</h1>
                         <p class="text-gray-600 mt-1">{{ $totalCount }} total records</p>
                     </div>
-                    <div class="flex space-x-3">
-                        <a href="{{ route('database-viewer.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                            Back to Tables
-                        </a>
-                        <a href="{{ route('database-viewer.table.export', $tableName) }}" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
-                            Export CSV
-                        </a>
-                    </div>
+                                <div class="flex space-x-3">
+                                    <a href="{{ route('database-viewer.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                                        Back to Tables
+                                    </a>
+                                    <a href="{{ route('database-viewer.table.create', $tableName) }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                        Create New
+                                    </a>
+                                    <a href="{{ route('database-viewer.table.export', $tableName) }}" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
+                                        Export CSV
+                                    </a>
+                                </div>
                 </div>
 
                 <!-- Flash Messages -->
@@ -87,6 +90,9 @@
                                                 @endif
                                             </th>
                                         @endforeach
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -106,6 +112,24 @@
                                                     @endphp
                                                 </td>
                                             @endforeach
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div class="flex space-x-2">
+                                                    <a href="{{ route('database-viewer.table.edit', [$tableName, $row->id]) }}"
+                                                       class="text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-xs">
+                                                        Edit
+                                                    </a>
+                                                    <form method="POST" action="{{ route('database-viewer.table.delete', [$tableName, $row->id]) }}"
+                                                          class="inline-block"
+                                                          onsubmit="return confirm('Are you sure you want to delete this record? This action cannot be undone.')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit"
+                                                                class="text-red-600 hover:text-red-900 bg-red-100 hover:bg-red-200 px-2 py-1 rounded text-xs">
+                                                            Delete
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

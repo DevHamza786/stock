@@ -224,4 +224,181 @@ class DatabaseViewController extends Controller
             return redirect()->back()->with('error', 'Export failed: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Show create form for new record
+     */
+    public function createRecord($tableName)
+    {
+        try {
+            // Get column information
+            $columns = DB::select("PRAGMA table_info($tableName)");
+
+            // Filter out auto-increment columns
+            $editableColumns = array_filter($columns, function($column) {
+                return !$column->pk || $column->type !== 'INTEGER' || !$column->notnull;
+            });
+
+            return view('database-viewer.create', compact('tableName', 'columns', 'editableColumns'));
+
+        } catch (\Exception $e) {
+            return redirect()->route('database-viewer.index')
+                           ->with('error', 'Error loading create form: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Store new record
+     */
+    public function storeRecord(Request $request, $tableName)
+    {
+        try {
+            // Get column information
+            $columns = DB::select("PRAGMA table_info($tableName)");
+
+            // Prepare data for insertion
+            $data = [];
+            foreach ($columns as $column) {
+                $columnName = $column->name;
+
+                // Skip auto-increment primary keys
+                if ($column->pk && $column->type === 'INTEGER' && $column->notnull) {
+                    continue;
+                }
+
+                // Get value from request
+                $value = $request->input($columnName);
+
+                // Handle empty values
+                if ($value === null || $value === '') {
+                    if ($column->notnull && $column->dflt_value === null) {
+                        return redirect()->back()
+                                       ->withInput()
+                                       ->with('error', "Field '{$columnName}' is required.");
+                    }
+                    $data[$columnName] = null;
+                } else {
+                    $data[$columnName] = $value;
+                }
+            }
+
+            // Insert the record
+            $id = DB::table($tableName)->insertGetId($data);
+
+            return redirect()->route('database-viewer.table.view', $tableName)
+                           ->with('success', 'Record created successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->withInput()
+                           ->with('error', 'Error creating record: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Show edit form for existing record
+     */
+    public function editRecord($tableName, $id)
+    {
+        try {
+            // Get the record
+            $record = DB::table($tableName)->where('id', $id)->first();
+
+            if (!$record) {
+                return redirect()->route('database-viewer.table.view', $tableName)
+                               ->with('error', 'Record not found.');
+            }
+
+            // Get column information
+            $columns = DB::select("PRAGMA table_info($tableName)");
+
+            return view('database-viewer.edit', compact('tableName', 'columns', 'record', 'id'));
+
+        } catch (\Exception $e) {
+            return redirect()->route('database-viewer.table.view', $tableName)
+                           ->with('error', 'Error loading edit form: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update existing record
+     */
+    public function updateRecord(Request $request, $tableName, $id)
+    {
+        try {
+            // Check if record exists
+            $record = DB::table($tableName)->where('id', $id)->first();
+
+            if (!$record) {
+                return redirect()->route('database-viewer.table.view', $tableName)
+                               ->with('error', 'Record not found.');
+            }
+
+            // Get column information
+            $columns = DB::select("PRAGMA table_info($tableName)");
+
+            // Prepare data for update
+            $data = [];
+            foreach ($columns as $column) {
+                $columnName = $column->name;
+
+                // Skip primary key
+                if ($column->pk) {
+                    continue;
+                }
+
+                // Get value from request
+                $value = $request->input($columnName);
+
+                // Handle empty values
+                if ($value === null || $value === '') {
+                    if ($column->notnull && $column->dflt_value === null) {
+                        return redirect()->back()
+                                       ->withInput()
+                                       ->with('error', "Field '{$columnName}' is required.");
+                    }
+                    $data[$columnName] = null;
+                } else {
+                    $data[$columnName] = $value;
+                }
+            }
+
+            // Update the record
+            DB::table($tableName)->where('id', $id)->update($data);
+
+            return redirect()->route('database-viewer.table.view', $tableName)
+                           ->with('success', 'Record updated successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                           ->withInput()
+                           ->with('error', 'Error updating record: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete record
+     */
+    public function deleteRecord($tableName, $id)
+    {
+        try {
+            // Check if record exists
+            $record = DB::table($tableName)->where('id', $id)->first();
+
+            if (!$record) {
+                return redirect()->route('database-viewer.table.view', $tableName)
+                               ->with('error', 'Record not found.');
+            }
+
+            // Delete the record
+            DB::table($tableName)->where('id', $id)->delete();
+
+            return redirect()->route('database-viewer.table.view', $tableName)
+                           ->with('success', 'Record deleted successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->route('database-viewer.table.view', $tableName)
+                           ->with('error', 'Error deleting record: ' . $e->getMessage());
+        }
+    }
 }

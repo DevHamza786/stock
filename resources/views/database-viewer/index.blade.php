@@ -97,8 +97,12 @@
                                        class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded">
                                         View Data
                                     </a>
+                                    <a href="{{ route('database-viewer.table.create', $table['name']) }}"
+                                       class="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-3 rounded">
+                                        Create
+                                    </a>
                                     <button onclick="showTableSchema('{{ $table['name'] }}')"
-                                            class="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-3 rounded">
+                                            class="bg-gray-500 hover:bg-gray-700 text-white text-sm font-bold py-2 px-3 rounded">
                                         Schema
                                     </button>
                                     <a href="{{ route('database-viewer.table.export', $table['name']) }}"

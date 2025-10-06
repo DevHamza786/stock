@@ -124,6 +124,13 @@ Route::middleware(['auth', 'verified'])->prefix('database-viewer')->name('databa
     Route::post('/execute-query', [DatabaseViewController::class, 'executeQuery'])->name('execute-query');
     Route::get('/table/{tableName}/schema', [DatabaseViewController::class, 'getTableSchema'])->name('table.schema');
     Route::get('/table/{tableName}/export', [DatabaseViewController::class, 'exportTable'])->name('table.export');
+
+    // CRUD Operations
+    Route::get('/table/{tableName}/create', [DatabaseViewController::class, 'createRecord'])->name('table.create');
+    Route::post('/table/{tableName}/store', [DatabaseViewController::class, 'storeRecord'])->name('table.store');
+    Route::get('/table/{tableName}/edit/{id}', [DatabaseViewController::class, 'editRecord'])->name('table.edit');
+    Route::put('/table/{tableName}/update/{id}', [DatabaseViewController::class, 'updateRecord'])->name('table.update');
+    Route::delete('/table/{tableName}/delete/{id}', [DatabaseViewController::class, 'deleteRecord'])->name('table.delete');
 });
 
 require __DIR__.'/auth.php';
