@@ -39,22 +39,44 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Stock Issued -->
                             <div class="md:col-span-2">
-                                    <label for="stock_issued_id" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued for Production</label>
-                                    <select id="stock_issued_id" name="stock_issued_id" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" required>
-                                        <option value="">Choose stock issued for production...</option>
-                                        @foreach($availableStockIssued as $issued)
-                                            <option value="{{ $issued->id }}" {{ old('stock_issued_id') == $issued->id ? 'selected' : '' }}>
-                                                {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - 
-                                                {{ ucfirst($issued->stockAddition->condition_status) }} - 
-                                                @if(strtolower($issued->stockAddition->condition_status) === 'block')
-                                                    Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
-                                                @else
-                                                    Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
-                                                @endif
-                                        </option>
-                                    @endforeach
-                                </select>
-                                    @error('stock_issued_id')
+                                <label for="stock_issued_search" class="block text-sm font-medium text-gray-700 mb-2">Select Stock Issued for Production</label>
+                                <div class="relative">
+                                    <input type="text" id="stock_issued_search" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent @error('stock_issued_id') border-red-500 @enderror" placeholder="Search stock issued for production..." autocomplete="off">
+                                    <input type="hidden" id="stock_issued_id" name="stock_issued_id" value="{{ old('stock_issued_id') }}" required>
+                                    <div id="stock_issued_dropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto hidden">
+                                        <div class="p-2 text-gray-500 text-sm">Choose stock issued for production...</div>
+                                        @if(isset($availableStockIssued) && $availableStockIssued->count() > 0)
+                                            @foreach($availableStockIssued as $issued)
+                                                <div class="stock-issued-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                                     data-value="{{ $issued->id }}"
+                                                     data-text="{{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($issued->stockAddition->condition_status) }}@if(strtolower($issued->stockAddition->condition_status) === 'block') - Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg @else - Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm @endif - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})"
+                                                     data-product="{{ $issued->stockAddition->product->name ?? 'N/A' }}"
+                                                     data-vendor="{{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}"
+                                                     data-condition="{{ $issued->stockAddition->condition_status }}"
+                                                     data-quantity="{{ $issued->quantity_issued }}"
+                                                     data-sqft="{{ $issued->sqft_issued }}"
+                                                     data-date="{{ $issued->date->format('M d, Y') }}"
+                                                     data-stone="{{ $issued->stone }}"
+                                                     data-machine="{{ $issued->machine_name }}"
+                                                     data-operator="{{ $issued->operator_name }}">
+                                                    <div class="font-medium text-gray-900">{{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}</div>
+                                                    <div class="text-sm text-gray-600">
+                                                        {{ ucfirst($issued->stockAddition->condition_status) }} -
+                                                        @if(strtolower($issued->stockAddition->condition_status) === 'block')
+                                                            Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg
+                                                        @else
+                                                            Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm
+                                                        @endif
+                                                    </div>
+                                                    <div class="text-xs text-gray-500">{{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})</div>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <div class="p-3 text-gray-500 text-sm">No available stock issued for production</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @error('stock_issued_id')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -352,7 +374,9 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const stockSearch = document.getElementById('stock_issued_search');
             const stockSelect = document.getElementById('stock_issued_id');
+            const stockDropdown = document.getElementById('stock_issued_dropdown');
             const stockInfo = document.getElementById('stock-info');
             const selectedProduct = document.getElementById('selected-product');
             const selectedVendor = document.getElementById('selected-vendor');
@@ -375,10 +399,65 @@
             let stockIssuedData = @json(isset($availableStockIssued) ? $availableStockIssued->keyBy('id') : []);
             let currentStockIssued = null;
 
-            // Stock selection handler
-            stockSelect.addEventListener('change', function() {
-                const selectedId = this.value;
+            // Initialize search field if there's an old value
+            @if(old('stock_issued_id'))
+                const oldValue = '{{ old("stock_issued_id") }}';
+                if (stockIssuedData[oldValue]) {
+                    const stockIssued = stockIssuedData[oldValue];
+                    const displayText = `${stockIssued.stock_addition.product.name} - ${stockIssued.stock_addition.mine_vendor.name} - ${stockIssued.stock_addition.condition_status} - ${stockIssued.quantity_issued} pieces issued (${stockIssued.date})`;
+                    stockSearch.value = displayText;
+                    stockSelect.value = oldValue;
+                    handleStockSelection(oldValue);
+                }
+            @endif
 
+            // Search functionality
+            stockSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const options = stockDropdown.querySelectorAll('.stock-issued-option');
+
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        option.style.display = 'block';
+                    } else {
+                        option.style.display = 'none';
+                    }
+                });
+
+                stockDropdown.classList.remove('hidden');
+            });
+
+            // Show dropdown on focus
+            stockSearch.addEventListener('focus', function() {
+                stockDropdown.classList.remove('hidden');
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!stockSearch.contains(e.target) && !stockDropdown.contains(e.target)) {
+                    stockDropdown.classList.add('hidden');
+                }
+            });
+
+            // Handle option selection
+            stockDropdown.addEventListener('click', function(e) {
+                const option = e.target.closest('.stock-issued-option');
+                if (option) {
+                    const value = option.dataset.value;
+                    const text = option.dataset.text;
+
+                    stockSelect.value = value;
+                    stockSearch.value = text;
+                    stockDropdown.classList.add('hidden');
+
+                    // Trigger the stock selection logic
+                    handleStockSelection(value);
+                }
+            });
+
+            // Stock selection handler
+            function handleStockSelection(selectedId) {
                 if (selectedId && stockIssuedData[selectedId]) {
                     currentStockIssued = stockIssuedData[selectedId];
                     const stockAddition = currentStockIssued.stock_addition;
@@ -388,7 +467,7 @@
                     availablePieces.textContent = currentStockIssued.quantity_issued;
                     availableSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
                     issuedSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
-                    
+
                     // Auto-fill stone field
                     const stoneField = document.getElementById('stone');
                     if (stoneField) {
@@ -464,7 +543,7 @@
                         operatorSelect.selectedIndex = 0; // Select the first option (placeholder)
                     }
                 }
-            });
+            }
 
             // Helper function to get total pieces used
             function getTotalPiecesUsed() {
@@ -786,26 +865,26 @@
             if (size) {
                 // Parse size (e.g., "21*60" or "21×60")
                 const sizeMatch = size.match(/(\d+(?:\.\d+)?)\s*[×*x]\s*(\d+(?:\.\d+)?)/i);
-                
+
                 if (sizeMatch) {
                     const height = parseFloat(sizeMatch[1]);
                     const length = parseFloat(sizeMatch[2]);
-                    
+
                     // Convert cm² to sqft (1 cm² = 1/929.0304 sqft)
                     const areaCm = height * length;
                     const areaSqft = areaCm / 929.0304;
-                    
+
                     // Calculate total sqft and per piece sqft
                     const totalSqft = areaSqft * totalPieces;
                     const perPieceSqft = areaSqft;
-                    
+
                     // Update the fields
                     totalSqftInput.value = totalSqft.toFixed(2);
                     pieceSizeDisplay.textContent = perPieceSqft.toFixed(4);
-                    
+
                     // Update total summary
                     updateTotalSummary();
-                    
+
                     // Check if total exceeds issued sqft
                     checkSqftLimit();
                 } else {
@@ -817,10 +896,10 @@
                 // Clear calculations if size is empty
                 totalSqftInput.value = '';
                 pieceSizeDisplay.textContent = '0.0000';
-                
+
                 // Update total summary
                 updateTotalSummary();
-                
+
                 // Check if total exceeds issued sqft
                 checkSqftLimit();
             }
@@ -831,29 +910,29 @@
             const totalSummary = document.getElementById('total-summary');
             const totalSqftDisplay = document.getElementById('total-sqft-display');
             const totalPiecesDisplay = document.getElementById('total-pieces-display');
-            
+
             let totalSqft = 0;
             let totalPieces = 0;
-            
+
             // Calculate totals from all production items
             const productionItems = document.querySelectorAll('.production-item');
             productionItems.forEach(item => {
                 const sqftInput = item.querySelector('.total-sqft-input');
                 const piecesInput = item.querySelector('.total-pieces-input');
-                
+
                 if (sqftInput && piecesInput) {
                     const sqft = parseFloat(sqftInput.value) || 0;
                     const pieces = parseInt(piecesInput.value) || 0;
-                    
+
                     totalSqft += sqft;
                     totalPieces += pieces;
                 }
             });
-            
+
             // Update display
             totalSqftDisplay.textContent = totalSqft.toFixed(2);
             totalPiecesDisplay.textContent = totalPieces;
-            
+
             // Show/hide summary based on whether there are items
             if (productionItems.length > 0) {
                 totalSummary.classList.remove('hidden');
@@ -876,23 +955,23 @@
 
             if (totalSqftDisplay && totalSummary) {
                 const currentTotal = parseFloat(totalSqftDisplay.textContent) || 0;
-                
+
                 if (currentTotal > issuedSqft) {
                     // Show warning by changing background color
                     totalSummary.classList.remove('bg-blue-50', 'border-blue-200');
                     totalSummary.classList.add('bg-red-50', 'border-red-200');
-                    
+
                     // Update text colors
                     const title = totalSummary.querySelector('h3');
                     const subtitle = totalSummary.querySelector('p');
                     const sqftDisplay = totalSummary.querySelector('.text-2xl');
                     const piecesDisplay = totalSummary.querySelector('.text-sm');
-                    
+
                     if (title) title.classList.remove('text-blue-900');
                     if (subtitle) subtitle.classList.remove('text-blue-700');
                     if (sqftDisplay) sqftDisplay.classList.remove('text-blue-900');
                     if (piecesDisplay) piecesDisplay.classList.remove('text-blue-700');
-                    
+
                     if (title) title.classList.add('text-red-900');
                     if (subtitle) subtitle.classList.add('text-red-700');
                     if (sqftDisplay) sqftDisplay.classList.add('text-red-900');
@@ -901,18 +980,18 @@
                     // Reset to normal colors
                     totalSummary.classList.remove('bg-red-50', 'border-red-200');
                     totalSummary.classList.add('bg-blue-50', 'border-blue-200');
-                    
+
                     // Reset text colors
                     const title = totalSummary.querySelector('h3');
                     const subtitle = totalSummary.querySelector('p');
                     const sqftDisplay = totalSummary.querySelector('.text-2xl');
                     const piecesDisplay = totalSummary.querySelector('.text-sm');
-                    
+
                     if (title) title.classList.remove('text-red-900');
                     if (subtitle) subtitle.classList.remove('text-red-700');
                     if (sqftDisplay) sqftDisplay.classList.remove('text-red-900');
                     if (piecesDisplay) piecesDisplay.classList.remove('text-red-700');
-                    
+
                     if (title) title.classList.add('text-blue-900');
                     if (subtitle) subtitle.classList.add('text-blue-700');
                     if (sqftDisplay) sqftDisplay.classList.add('text-blue-900');

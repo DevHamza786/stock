@@ -21,7 +21,8 @@ class StockIssuedController extends Controller
         $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->whereDoesntHave('dailyProduction', function ($dailyQuery) {
                 $dailyQuery->where('status', 'close');
-            });
+            })
+            ->where('purpose', '!=', 'Gate Pass Dispatch'); // Exclude gate pass dispatched stock
 
         // Search functionality
         if ($request->filled('search')) {
@@ -156,11 +157,17 @@ class StockIssuedController extends Controller
             $availableStock = StockAddition::with(['product', 'mineVendor'])
                 ->where('id', $stockAdditionId)
                 ->where('available_pieces', '>', 0)
+                ->whereDoesntHave('stockIssued', function ($query) {
+                    $query->where('purpose', 'Gate Pass Dispatch');
+                })
                 ->first();
         }
 
         $stockAdditions = StockAddition::with(['product', 'mineVendor'])
             ->where('available_pieces', '>', 0)
+            ->whereDoesntHave('stockIssued', function ($query) {
+                $query->where('purpose', 'Gate Pass Dispatch');
+            })
             ->orderBy('date', 'asc')
             ->get();
 
@@ -209,7 +216,7 @@ class StockIssuedController extends Controller
             $request->validate([
                 'sqft_issued' => 'required|numeric|min:0.1',
             ]);
-            
+
             // Check if requested sqft is available
             if ($request->sqft_issued > $stockAddition->available_sqft) {
                 return redirect()->back()
@@ -245,7 +252,12 @@ class StockIssuedController extends Controller
     public function edit(StockIssued $stockIssued)
     {
         $availableStockAdditions = StockAddition::with(['product', 'mineVendor'])
-            ->where('available_pieces', '>', 0)
+            ->where(function($query) use ($stockIssued) {
+                $query->where('available_pieces', '>', 0)
+                      ->whereDoesntHave('stockIssued', function ($subQuery) {
+                          $subQuery->where('purpose', 'Gate Pass Dispatch');
+                      });
+            })
             ->orWhere('id', $stockIssued->stock_addition_id)
             ->orderBy('date', 'asc')
             ->get();

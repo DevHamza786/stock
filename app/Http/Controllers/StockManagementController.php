@@ -20,7 +20,7 @@ class StockManagementController extends Controller
     {
         // Get summary statistics
         $totalStockAdditions = StockAddition::count();
-        $totalStockIssued = StockIssued::sum('quantity_issued');
+        $totalStockIssued = StockIssued::where('purpose', '!=', 'Gate Pass Dispatch')->sum('quantity_issued');
         $totalDailyProduction = DailyProduction::with('items')->get()->sum(function($production) {
             return $production->items->sum('total_pieces');
         });
@@ -37,6 +37,7 @@ class StockManagementController extends Controller
             ->get();
 
         $recentStockIssued = StockIssued::with(['stockAddition.product'])
+            ->where('purpose', '!=', 'Gate Pass Dispatch') // Exclude gate pass dispatched stock
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
@@ -202,6 +203,9 @@ class StockManagementController extends Controller
                 return $query->where('product_id', $productId);
             })
             ->where('available_pieces', '>', 0)
+            ->whereDoesntHave('stockIssued', function ($query) {
+                $query->where('purpose', 'Gate Pass Dispatch');
+            })
             ->orderBy('date', 'desc')
             ->get();
 
@@ -218,6 +222,9 @@ class StockManagementController extends Controller
         $availableStock = StockAddition::with(['product', 'mineVendor'])
             ->where('product_id', $productId)
             ->where('available_pieces', '>', 0)
+            ->whereDoesntHave('stockIssued', function ($query) {
+                $query->where('purpose', 'Gate Pass Dispatch');
+            })
             ->orderBy('date', 'asc') // FIFO - First In First Out
             ->get();
 
