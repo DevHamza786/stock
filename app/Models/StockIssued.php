@@ -110,7 +110,7 @@ class StockIssued extends Model
             $stockAddition->available_pieces -= $stockIssued->quantity_issued;
             $stockAddition->available_sqft -= $stockIssued->sqft_issued;
             $stockAddition->save();
-            
+
             // Log stock issued creation
             \App\Models\StockLog::logActivity(
                 'issued',
@@ -139,7 +139,7 @@ class StockIssued extends Model
                 $newQuantity = $stockIssued->quantity_issued;
                 $newSqft = $stockIssued->sqft_issued;
                 $newStockAdditionId = $stockIssued->stock_addition_id;
-                
+
                 // If stock addition changed, restore to old stock addition first
                 if ($originalStockAdditionId != $newStockAdditionId) {
                     $oldStockAddition = StockAddition::find($originalStockAdditionId);
@@ -148,7 +148,7 @@ class StockIssued extends Model
                         $oldStockAddition->available_sqft += $originalSqft;
                         $oldStockAddition->save();
                     }
-                    
+
                     // Then subtract from new stock addition
                     $newStockAddition = $stockIssued->stockAddition;
                     $newStockAddition->available_pieces -= $newQuantity;
@@ -159,7 +159,7 @@ class StockIssued extends Model
                     $stockAddition = $stockIssued->stockAddition;
                     $quantityDiff = $newQuantity - $originalQuantity;
                     $sqftDiff = $newSqft - $originalSqft;
-                    
+
                     $stockAddition->available_pieces -= $quantityDiff;
                     $stockAddition->available_sqft -= $sqftDiff;
                     $stockAddition->save();
@@ -172,7 +172,7 @@ class StockIssued extends Model
             if ($stockIssued->wasChanged(['quantity_issued', 'sqft_issued', 'stock_addition_id'])) {
                 $originalQuantity = $stockIssued->getOriginal('quantity_issued');
                 $newQuantity = $stockIssued->quantity_issued;
-                
+
                 \App\Models\StockLog::logActivity(
                     'updated',
                     "Stock issued updated - quantity changed from {$originalQuantity} to {$newQuantity} pieces",
@@ -195,18 +195,28 @@ class StockIssued extends Model
         });
 
         static::deleted(function ($stockIssued) {
-            // Restore available quantities in stock addition
-            $stockAddition = $stockIssued->stockAddition;
-            $stockAddition->available_pieces += $stockIssued->quantity_issued;
-            $stockAddition->available_sqft += $stockIssued->sqft_issued;
-            $stockAddition->save();
-            
+            // Check if this deletion is coming from a gatepass deletion
+            // If so, stock restoration is already handled in the GatePass model
+            $isGatePassDeletion = request()->route() &&
+                str_contains(request()->route()->getName(), 'gate-pass') &&
+                request()->isMethod('DELETE');
+
+            if (!$isGatePassDeletion) {
+                // Only restore stock if this is not a gatepass deletion
+                $stockAddition = $stockIssued->stockAddition;
+                if ($stockAddition) {
+                    $stockAddition->available_pieces += $stockIssued->quantity_issued;
+                    $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                    $stockAddition->save();
+                }
+            }
+
             // Get the ID before deletion for logging
             $stockIssuedId = $stockIssued->id;
             $stockAdditionId = $stockIssued->stock_addition_id;
             $quantityIssued = $stockIssued->quantity_issued;
             $sqftIssued = $stockIssued->sqft_issued;
-            
+
             // Log stock issued deletion (don't reference the deleted record)
             \App\Models\StockLog::logActivity(
                 'deleted',

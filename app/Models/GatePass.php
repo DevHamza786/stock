@@ -39,7 +39,7 @@ class GatePass extends Model
     }
 
     /**
-     * Boot method to auto-calculate square footage.
+     * Boot method to auto-calculate square footage and handle stock restoration.
      */
     protected static function boot()
     {
@@ -53,6 +53,37 @@ class GatePass extends Model
                     $sqftPerPiece = $stockIssued->sqft_issued / $stockIssued->quantity_issued;
                     $gatePass->sqft_issued = $sqftPerPiece * $gatePass->quantity_issued;
                 }
+            }
+        });
+
+        static::deleting(function ($gatePass) {
+            // Store the stock issued data before deletion for stock restoration
+            $stockIssued = $gatePass->stockIssued;
+            if ($stockIssued && $stockIssued->stockAddition) {
+                $stockAddition = $stockIssued->stockAddition;
+
+                // Store current values for logging
+                $oldAvailablePieces = $stockAddition->available_pieces;
+                $oldAvailableSqft = $stockAddition->available_sqft;
+
+                // Restore stock quantities
+                $stockAddition->available_pieces += $stockIssued->quantity_issued;
+                $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                $stockAddition->save();
+
+                // Log the stock restoration activity
+                \App\Models\StockLog::logActivity(
+                    'restored',
+                    "Gate pass deleted - {$stockIssued->quantity_issued} pieces restored to stock",
+                    $stockAddition->id,
+                    $stockIssued->id,
+                    $gatePass->id,
+                    null,
+                    ['available_pieces' => $oldAvailablePieces, 'available_sqft' => $oldAvailableSqft],
+                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                    $stockIssued->quantity_issued,
+                    $stockIssued->sqft_issued
+                );
             }
         });
     }
