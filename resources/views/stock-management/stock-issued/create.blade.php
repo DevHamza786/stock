@@ -30,7 +30,7 @@
                             </a>
                         </div>
                     @else
-                    <form method="POST" action="{{ route('stock-management.stock-issued.store') }}">
+                    <form method="POST" action="{{ route('stock-management.stock-issued.store') }}" id="stock-issued-form">
                         @csrf
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -419,6 +419,26 @@
                     updateStockInfo(oldValue);
                 }
             @endif
+
+            // Clear unused field before form submission
+            const form = document.getElementById('stock-issued-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const selectedId = stockSelect.value;
+                    if (selectedId && stockData[selectedId]) {
+                        const stock = stockData[selectedId];
+                        const conditionStatus = stock.condition_status.toLowerCase();
+                        
+                        if (conditionStatus === 'block' || conditionStatus === 'monuments') {
+                            // For block/monuments, clear sqft_issued
+                            sqftInput.value = '';
+                        } else {
+                            // For other conditions, clear weight_issued
+                            document.getElementById('weight_issued').value = '';
+                        }
+                    }
+                });
+            }
         });
     </script>
 </x-app-layout>

@@ -25,6 +25,44 @@ class GatePassItem extends Model
     ];
 
     /**
+     * Set the sqft_issued attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setSqftIssuedAttribute($value)
+    {
+        $this->attributes['sqft_issued'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the weight_issued attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWeightIssuedAttribute($value)
+    {
+        $this->attributes['weight_issued'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Clean a decimal value by removing non-numeric characters (except decimal point)
+     */
+    private function cleanDecimalValue($value)
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        
+        if (is_numeric($value)) {
+            return $value;
+        }
+        
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        if ($cleaned !== '' && is_numeric($cleaned)) {
+            return $cleaned;
+        }
+        
+        return null;
+    }
+
+    /**
      * Get the gate pass that owns the item.
      */
     public function gatePass(): BelongsTo

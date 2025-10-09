@@ -41,9 +41,17 @@
                                         <div><span class="font-medium">Diameter:</span> {{ $item->diameter }}</div>
                                         @endif
                                         <div><span class="font-medium">Pieces:</span> {{ $item->total_pieces }}</div>
+                                        @if($item->total_sqft > 0)
                                         <div><span class="font-medium">Sqft:</span> {{ number_format($item->total_sqft, 2) }}</div>
-                                        @if($item->size && $item->total_pieces > 0)
+                                        @endif
+                                        @if($item->total_weight > 0)
+                                        <div><span class="font-medium">Weight:</span> {{ number_format($item->total_weight, 2) }} kg</div>
+                                        @endif
+                                        @if($item->size && $item->total_pieces > 0 && $item->total_sqft > 0)
                                         <div><span class="font-medium">Per Piece:</span> {{ number_format($item->total_sqft / $item->total_pieces, 4) }} sqft</div>
+                                        @endif
+                                        @if($item->total_weight > 0 && $item->total_pieces > 0)
+                                        <div><span class="font-medium">Per Piece:</span> {{ number_format($item->total_weight / $item->total_pieces, 2) }} kg</div>
                                         @endif
                                     </div>
                                 </div>
@@ -54,7 +62,12 @@
                                     <span class="font-medium text-green-900">Total Production:</span>
                                     <div class="text-right">
                                         <div class="font-bold text-green-900">{{ $dailyProduction->items->sum('total_pieces') }} pieces</div>
+                                        @if($dailyProduction->items->sum('total_sqft') > 0)
                                         <div class="text-sm text-green-700">{{ number_format($dailyProduction->items->sum('total_sqft'), 2) }} sqft</div>
+                                        @endif
+                                        @if($dailyProduction->items->sum('total_weight') > 0)
+                                        <div class="text-sm text-green-700">{{ number_format($dailyProduction->items->sum('total_weight'), 2) }} kg</div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -74,7 +87,7 @@
                                             <option value="{{ $issued->id }}" {{ old('stock_issued_id', $dailyProduction->stock_issued_id) == $issued->id ? 'selected' : '' }}>
                                                 {{ $issued->stockAddition->product->name }} - {{ $issued->stockAddition->mineVendor->name }} - 
                                                 {{ ucfirst($issued->stockAddition->condition_status) }} - 
-                                                @if(strtolower($issued->stockAddition->condition_status) === 'block')
+                                                @if(in_array(strtolower($issued->stockAddition->condition_status), ['block', 'monuments']))
                                                     Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
                                                 @else
                                                     Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})
@@ -178,13 +191,21 @@
                                     <span class="font-medium text-gray-700">Issued Pieces:</span>
                                     <span id="available-pieces" class="text-gray-900">{{ $dailyProduction->stockIssued->quantity_issued ?? 0 }}</span>
                                 </div>
-                                <div>
+                                <div id="sqft-info">
                                     <span class="font-medium text-gray-700">Issued Sqft:</span>
                                     <span id="available-sqft" class="text-gray-900">{{ number_format($dailyProduction->stockIssued->sqft_issued ?? 0, 2) }}</span>
                                 </div>
-                                <div>
+                                <div id="weight-info" style="display: none;">
+                                    <span class="font-medium text-gray-700">Issued Weight:</span>
+                                    <span id="available-weight" class="text-gray-900">{{ number_format($dailyProduction->stockIssued->weight_issued ?? 0, 2) }} kg</span>
+                                </div>
+                                <div id="sqft-per-piece-info">
                                     <span class="font-medium text-gray-700">Sqft per Piece:</span>
                                     <span id="sqft-per-piece" class="text-gray-900">{{ $dailyProduction->stockIssued ? number_format($dailyProduction->stockIssued->sqft_issued / $dailyProduction->stockIssued->quantity_issued, 2) : '0.00' }}</span>
+                                </div>
+                                <div id="weight-per-piece-info" style="display: none;">
+                                    <span class="font-medium text-gray-700">Weight per Piece:</span>
+                                    <span id="weight-per-piece" class="text-gray-900">{{ $dailyProduction->stockIssued ? number_format($dailyProduction->stockIssued->weight_issued / $dailyProduction->stockIssued->quantity_issued, 2) : '0.00' }} kg</span>
                                 </div>
                             </div>
 
@@ -202,14 +223,14 @@
                                     <p class="text-xs text-gray-500 mt-1">Blue = More pieces than issued (smaller pieces)</p>
                                 </div>
 
-                                <!-- Remaining Sqft -->
-                                <div>
+                                <!-- Remaining Measurement (Sqft/Weight) -->
+                                <div id="remaining-measurement-container">
                                     <div class="flex justify-between items-center mb-1">
-                                        <span class="text-sm font-medium text-gray-700">Remaining Sqft</span>
-                                        <span id="remaining-sqft-value" class="text-sm font-semibold text-red-600">0.00</span>
+                                        <span id="remaining-measurement-label" class="text-sm font-medium text-gray-700">Remaining Sqft</span>
+                                        <span id="remaining-measurement-value" class="text-sm font-semibold text-red-600">0.00</span>
                                     </div>
                                     <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div id="remaining-sqft-bar" class="bg-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                        <div id="remaining-measurement-bar" class="bg-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -219,16 +240,16 @@
                                 <h4 class="text-sm font-semibold text-gray-800 mb-2">Production Summary</h4>
                                 <div class="grid grid-cols-3 gap-4 text-sm">
                                     <div class="text-center">
-                                        <div class="text-lg font-bold text-blue-600" id="total-production-sqft">0.00</div>
-                                        <div class="text-xs text-gray-500">Total Production Sqft</div>
+                                        <div class="text-lg font-bold text-blue-600" id="total-production-measurement">0.00</div>
+                                        <div id="production-measurement-label" class="text-xs text-gray-500">Total Production Sqft</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="text-lg font-bold text-gray-600" id="issued-sqft-display">0.00</div>
-                                        <div class="text-xs text-gray-500">Issued Sqft</div>
+                                        <div class="text-lg font-bold text-gray-600" id="issued-measurement-display">0.00</div>
+                                        <div id="issued-measurement-label" class="text-xs text-gray-500">Issued Sqft</div>
                                     </div>
                                     <div class="text-center">
                                         <div class="text-lg font-bold" id="difference-display">0.00</div>
-                                        <div class="text-xs text-gray-500">Difference</div>
+                                        <div id="difference-label" class="text-xs text-gray-500">Difference</div>
                                     </div>
                                 </div>
                             </div>
@@ -266,7 +287,7 @@
                                     </div>
                                     <div class="text-right">
                                         <div class="text-2xl font-bold text-blue-900">
-                                            <span id="total-sqft-display">0.00</span> sqft
+                                            <span id="total-sqft-display">0.00</span>
                                         </div>
                                         <div class="text-sm text-blue-700">
                                             <span id="total-pieces-display">0</span> pieces
@@ -310,11 +331,12 @@
                     <input type="text" name="items[INDEX][product_name]" class="product-name-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
                 </div>
 
-                <!-- Size -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Size (cm) - e.g., 60*90, H*L</label>
+                <!-- Size/Weight Field (conditional based on condition status) -->
+                <div id="size-weight-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-2" id="size-weight-label">Size (cm) - e.g., 60*90, H*L</label>
                     <input type="text" name="items[INDEX][size]" class="size-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 21*60" oninput="calculatePieceSize(this)">
-                    <p class="text-xs text-gray-500 mt-1">Enter size in cm (height × length)</p>
+                    <input type="number" name="items[INDEX][weight]" class="weight-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent hidden" placeholder="e.g., 150.5" step="0.01" min="0" oninput="calculatePieceSize(this)">
+                    <p class="text-xs text-gray-500 mt-1" id="size-weight-help">Enter size in cm (height × length)</p>
                 </div>
 
                 <!-- Diameter -->
@@ -326,7 +348,7 @@
                 <!-- Condition Status -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Condition Status</label>
-                    <select name="items[INDEX][condition_status]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                    <select name="items[INDEX][condition_status]" class="condition-status-select block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required onchange="updateProductionItemFields(this.closest('.production-item'), this.value)">
                         <option value="">Select condition...</option>
                         @foreach($conditionStatuses as $status)
                             <option value="{{ $status->name }}">{{ $status->name }}</option>
@@ -347,20 +369,27 @@
                     <p class="text-xs text-gray-500 mt-1">Number of pieces produced</p>
                 </div>
 
-                <!-- Total Sqft -->
+                <!-- Total Measurement (Sqft/Weight) -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Sqft</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" id="total-measurement-label">Total Sqft</label>
                     <input type="number" name="items[INDEX][total_sqft]" class="total-sqft-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" step="0.01" min="0" required readonly>
-                    <p class="text-xs text-gray-500 mt-1">Auto-calculated from size and pieces</p>
+                    <p class="text-xs text-gray-500 mt-1" id="total-measurement-help">Auto-calculated from size and pieces</p>
+                </div>
+                
+                <!-- Total Weight Field (for block/monuments) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" id="total-weight-label">Total Weight (kg)</label>
+                    <input type="number" name="items[INDEX][total_weight]" class="total-weight-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent hidden" step="0.01" min="0" required readonly>
+                    <p class="text-xs text-gray-500 mt-1" id="total-weight-help">Auto-calculated from weight and pieces</p>
                 </div>
 
                 <!-- Piece Size Display -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Piece Size</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" id="piece-size-label">Piece Size</label>
                     <div class="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
-                        <span class="piece-size-display">0.00</span> sqft per piece
+                        <span class="piece-size-display">0.00</span> <span id="piece-size-unit">sqft</span> per piece
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Size of each individual piece</p>
+                    <p class="text-xs text-gray-500 mt-1" id="piece-size-help">Size of each individual piece</p>
                 </div>
 
                 <!-- Narration -->
@@ -405,9 +434,39 @@
 
             // Load existing production items
             const existingItems = @json($dailyProduction->items);
-            existingItems.forEach((item, index) => {
-                addProductionItem(item, index);
-            });
+            console.log('Daily Production ID:', {{ $dailyProduction->id }});
+            console.log('Existing items:', existingItems);
+            console.log('Items count:', existingItems.length);
+            
+            // Debug: Check if items exist in PHP
+            @if($dailyProduction->items && $dailyProduction->items->count() > 0)
+                console.log('PHP: Items exist, count:', {{ $dailyProduction->items->count() }});
+                @foreach($dailyProduction->items as $item)
+                    console.log('PHP Item:', {
+                        id: {{ $item->id }},
+                        product_name: '{{ $item->product_name }}',
+                        total_pieces: {{ $item->total_pieces }},
+                        total_sqft: {{ $item->total_sqft ?? 0 }},
+                        total_weight: {{ $item->total_weight ?? 0 }}
+                    });
+                @endforeach
+            @else
+                console.log('PHP: No items found');
+            @endif
+            
+            if (existingItems && existingItems.length > 0) {
+                existingItems.forEach((item, index) => {
+                    console.log('Adding item:', item, 'at index:', index);
+                    try {
+                        addProductionItem(item, index);
+                    } catch (error) {
+                        console.error('Error adding production item:', error, item);
+                    }
+                });
+            } else {
+                console.log('No existing items found');
+                noItemsMessage.classList.remove('hidden');
+            }
 
             // Stock selection handler
             stockSelect.addEventListener('change', function() {
@@ -420,17 +479,38 @@
                     selectedProduct.textContent = stockAddition.product.name;
                     selectedVendor.textContent = stockAddition.mine_vendor.name;
                     availablePieces.textContent = currentStockIssued.quantity_issued;
+                    
+                    // Check if this is a block/monuments or sqft-based product
+                    const isBlockOrMonuments = stockAddition.condition_status && 
+                        (stockAddition.condition_status.toLowerCase() === 'block' || 
+                         stockAddition.condition_status.toLowerCase() === 'monuments');
+                    
+                    if (isBlockOrMonuments) {
+                        // Show weight info, hide sqft info
+                        document.getElementById('sqft-info').style.display = 'none';
+                        document.getElementById('weight-info').style.display = 'block';
+                        document.getElementById('sqft-per-piece-info').style.display = 'none';
+                        document.getElementById('weight-per-piece-info').style.display = 'block';
+                        
+                        document.getElementById('available-weight').textContent = parseFloat(currentStockIssued.weight_issued).toFixed(2) + ' kg';
+                        document.getElementById('weight-per-piece').textContent = (parseFloat(currentStockIssued.weight_issued) / currentStockIssued.quantity_issued).toFixed(2) + ' kg';
+                    } else {
+                        // Show sqft info, hide weight info
+                        document.getElementById('sqft-info').style.display = 'block';
+                        document.getElementById('weight-info').style.display = 'none';
+                        document.getElementById('sqft-per-piece-info').style.display = 'block';
+                        document.getElementById('weight-per-piece-info').style.display = 'none';
+                        
                     availableSqft.textContent = parseFloat(currentStockIssued.sqft_issued).toFixed(2);
+                        const sqftPerPieceValue = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;
+                        sqftPerPiece.textContent = sqftPerPieceValue.toFixed(2);
+                    }
                     
                     // Auto-fill stone field
                     const stoneField = document.getElementById('stone');
                     if (stoneField) {
                         stoneField.value = currentStockIssued.stone || stockAddition.stone || '';
                     }
-
-                    // Calculate and display sqft per piece
-                    const sqftPerPieceValue = parseFloat(currentStockIssued.sqft_issued) / currentStockIssued.quantity_issued;
-                    sqftPerPiece.textContent = sqftPerPieceValue.toFixed(2);
 
                     stockInfo.classList.remove('hidden');
 
@@ -502,8 +582,14 @@
             });
 
             function addProductionItem(existingItem = null, index = null) {
-                const template = document.getElementById('production-item-template');
-                const clone = template.content.cloneNode(true);
+                console.log('addProductionItem called with:', existingItem, 'index:', index);
+                try {
+                    const template = document.getElementById('production-item-template');
+                    if (!template) {
+                        console.error('Production item template not found!');
+                        return;
+                    }
+                    const clone = template.content.cloneNode(true);
 
                 // Update index placeholders
                 const html = clone.querySelector('.production-item').outerHTML;
@@ -527,10 +613,29 @@
                     newItem.querySelector('input[name*="[special_status]"]').value = existingItem.special_status || '';
                     newItem.querySelector('input[name*="[total_pieces]"]').value = existingItem.total_pieces || '';
                     newItem.querySelector('input[name*="[total_sqft]"]').value = existingItem.total_sqft || '';
+                    newItem.querySelector('input[name*="[total_weight]"]').value = existingItem.total_weight || '0';
                     newItem.querySelector('textarea[name*="[narration]"]').value = existingItem.narration || '';
                     
-                    // Calculate and display piece size if size is provided
-                    if (existingItem.size && existingItem.total_pieces) {
+                    // Update fields based on condition status
+                    updateProductionItemFields(newItem, existingItem.condition_status);
+                    
+                    // Calculate and display piece size based on product type
+                    const isBlock = existingItem.condition_status && 
+                        (existingItem.condition_status.toLowerCase() === 'block' || 
+                         existingItem.condition_status.toLowerCase() === 'monuments');
+                    
+                    if (isBlock && existingItem.total_weight && existingItem.total_pieces) {
+                        // For block/monuments: calculate weight per piece
+                        const totalWeight = parseFloat(existingItem.total_weight) || 0;
+                        const totalPieces = parseInt(existingItem.total_pieces) || 1;
+                        const pieceSizeDisplay = newItem.querySelector('.piece-size-display');
+                        
+                        if (pieceSizeDisplay) {
+                            const perPieceWeight = totalWeight / totalPieces;
+                            pieceSizeDisplay.textContent = perPieceWeight.toFixed(2);
+                        }
+                    } else if (!isBlock && existingItem.size && existingItem.total_pieces) {
+                        // For slabs/others: calculate sqft per piece
                         const sizeInput = newItem.querySelector('.size-input');
                         const totalPiecesInput = newItem.querySelector('.total-pieces-input');
                         const totalSqftInput = newItem.querySelector('.total-sqft-input');
@@ -566,8 +671,10 @@
                 // Add event listeners
                 setupProductionItemEvents(newItem);
 
+                console.log('Appending item to container:', newItem);
                 itemsContainer.appendChild(newItem);
                 noItemsMessage.classList.add('hidden');
+                console.log('Container children count after append:', itemsContainer.children.length);
 
                 if (index === null) {
                     itemIndex++;
@@ -575,6 +682,9 @@
                 
                 // Update status bars and summary after adding item
                 updateStatusBars();
+                } catch (error) {
+                    console.error('Error in addProductionItem function:', error);
+                }
             }
 
             function setupProductionItemEvents(item) {
@@ -940,129 +1050,455 @@
                     }
                 }
             }
-        }
 
-        // Function to update status bars
-        function updateStatusBars() {
-            const stockSelect = document.getElementById('stock_issued_id');
-            if (!stockSelect.value) return;
+            // Function to update status bars
+            function updateStatusBars() {
+                const stockSelect = document.getElementById('stock_issued_id');
+                if (!stockSelect.value) return;
 
-            const stockIssued = stockIssuedData[stockSelect.value];
-            if (!stockIssued) return;
+                const stockIssued = stockIssuedData[stockSelect.value];
+                if (!stockIssued) return;
 
-            const issuedPieces = parseInt(stockIssued.quantity_issued);
-            const issuedSqft = parseFloat(stockIssued.sqft_issued);
+                const issuedPieces = parseInt(stockIssued.quantity_issued);
+                const issuedSqft = parseFloat(stockIssued.sqft_issued);
+                const issuedWeight = parseFloat(stockIssued.weight_issued);
 
-            // Calculate total production pieces and sqft
-            let totalPieces = 0;
-            let totalSqft = 0;
+                // Check if this is a block/monuments or sqft-based product
+                const stockAddition = stockIssued.stock_addition;
+                const isBlockOrMonuments = stockAddition.condition_status && 
+                    (stockAddition.condition_status.toLowerCase() === 'block' || 
+                    stockAddition.condition_status.toLowerCase() === 'monuments');
 
-            const productionItems = document.querySelectorAll('.production-item');
-            productionItems.forEach(item => {
-                const piecesInput = item.querySelector('.total-pieces-input');
-                const sqftInput = item.querySelector('.total-sqft-input');
+                // Calculate total production pieces and measurements
+                let totalPieces = 0;
+                let totalSqft = 0;
+                let totalWeight = 0;
 
-                if (piecesInput && sqftInput) {
-                    const pieces = parseInt(piecesInput.value) || 0;
-                    const sqft = parseFloat(sqftInput.value) || 0;
+                const productionItems = document.querySelectorAll('.production-item');
+                productionItems.forEach(item => {
+                    const piecesInput = item.querySelector('.total-pieces-input');
+                    const sqftInput = item.querySelector('.total-sqft-input');
+                    const weightInput = item.querySelector('.total-weight-input');
+                    const conditionStatusSelect = item.querySelector('select[name*="[condition_status]"]');
 
-                    totalPieces += pieces;
-                    totalSqft += sqft;
-                }
-            });
+                    const conditionStatus = conditionStatusSelect ? conditionStatusSelect.value : '';
+                    const isItemBlock = conditionStatus && (conditionStatus.toLowerCase() === 'block' || conditionStatus.toLowerCase() === 'monuments');
 
-            // Update pieces status bar
-            const piecesStatusValue = document.getElementById('pieces-status-value');
-            const piecesStatusBar = document.getElementById('pieces-status-bar');
-            
-            if (piecesStatusValue && piecesStatusBar) {
-                piecesStatusValue.textContent = totalPieces;
+                    if (piecesInput) {
+                        const pieces = parseInt(piecesInput.value) || 0;
+                        totalPieces += pieces;
+
+                        if (isItemBlock) {
+                            // For block/monuments: use weight input
+                            if (weightInput) {
+                                const weight = parseFloat(weightInput.value) || 0;
+                                totalWeight += weight;
+                            }
+                        } else {
+                            // For slabs/others: use sqft input
+                            if (sqftInput) {
+                                const sqft = parseFloat(sqftInput.value) || 0;
+                        totalSqft += sqft;
+                            }
+                        }
+                    }
+                });
+
+                // Update pieces status bar
+                const piecesStatusValue = document.getElementById('pieces-status-value');
+                const piecesStatusBar = document.getElementById('pieces-status-bar');
                 
-                if (totalPieces > issuedPieces) {
-                    // More pieces than issued (smaller pieces)
-                    piecesStatusValue.classList.remove('text-green-600', 'text-red-600');
-                    piecesStatusValue.classList.add('text-blue-600');
-                    piecesStatusBar.classList.remove('bg-green-500', 'bg-red-500');
-                    piecesStatusBar.classList.add('bg-blue-500');
-                    piecesStatusBar.style.width = '100%';
-                } else if (totalPieces === issuedPieces) {
-                    // Equal pieces
-                    piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
-                    piecesStatusValue.classList.add('text-green-600');
-                    piecesStatusBar.classList.remove('bg-blue-500', 'bg-red-500');
-                    piecesStatusBar.classList.add('bg-green-500');
-                    piecesStatusBar.style.width = '100%';
+                if (piecesStatusValue && piecesStatusBar) {
+                    piecesStatusValue.textContent = totalPieces;
+                    
+                    if (totalPieces > issuedPieces) {
+                        // More pieces than issued (smaller pieces)
+                        piecesStatusValue.classList.remove('text-green-600', 'text-red-600');
+                        piecesStatusValue.classList.add('text-blue-600');
+                        piecesStatusBar.classList.remove('bg-green-500', 'bg-red-500');
+                        piecesStatusBar.classList.add('bg-blue-500');
+                        piecesStatusBar.style.width = '100%';
+                    } else if (totalPieces === issuedPieces) {
+                        // Equal pieces
+                        piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
+                        piecesStatusValue.classList.add('text-green-600');
+                        piecesStatusBar.classList.remove('bg-blue-500', 'bg-red-500');
+                        piecesStatusBar.classList.add('bg-green-500');
+                        piecesStatusBar.style.width = '100%';
+                    } else {
+                        // Fewer pieces than issued
+                        piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
+                        piecesStatusValue.classList.add('text-red-600');
+                        piecesStatusBar.classList.remove('bg-green-500', 'bg-blue-500');
+                        piecesStatusBar.classList.add('bg-red-500');
+                        const percentage = (totalPieces / issuedPieces) * 100;
+                        piecesStatusBar.style.width = Math.min(percentage, 100) + '%';
+                    }
+                }
+
+                // Update remaining measurement bar (sqft/weight)
+                const remainingMeasurementLabel = document.getElementById('remaining-measurement-label');
+                const remainingMeasurementValue = document.getElementById('remaining-measurement-value');
+                const remainingMeasurementBar = document.getElementById('remaining-measurement-bar');
+                
+                if (isBlockOrMonuments) {
+                    // For block/monuments: show remaining weight
+                    const remainingWeight = issuedWeight - totalWeight;
+                    
+                    if (remainingMeasurementLabel) remainingMeasurementLabel.textContent = 'Remaining Weight';
+                    if (remainingMeasurementValue && remainingMeasurementBar) {
+                        remainingMeasurementValue.textContent = remainingWeight.toFixed(2) + ' kg';
+                        
+                        if (remainingWeight > 0) {
+                            // Still have remaining weight
+                            remainingMeasurementValue.classList.remove('text-green-600', 'text-blue-600');
+                            remainingMeasurementValue.classList.add('text-red-600');
+                            remainingMeasurementBar.classList.remove('bg-green-500', 'bg-blue-500');
+                            remainingMeasurementBar.classList.add('bg-red-500');
+                            const percentage = (remainingWeight / issuedWeight) * 100;
+                            remainingMeasurementBar.style.width = Math.min(percentage, 100) + '%';
+                        } else if (remainingWeight === 0) {
+                            // Exactly used all weight
+                            remainingMeasurementValue.classList.remove('text-red-600', 'text-blue-600');
+                            remainingMeasurementValue.classList.add('text-green-600');
+                            remainingMeasurementBar.classList.remove('bg-red-500', 'bg-blue-500');
+                            remainingMeasurementBar.classList.add('bg-green-500');
+                            remainingMeasurementBar.style.width = '0%';
+                        } else {
+                            // Exceeded issued weight
+                            remainingMeasurementValue.classList.remove('text-green-600', 'text-red-600');
+                            remainingMeasurementValue.classList.add('text-blue-600');
+                            remainingMeasurementBar.classList.remove('bg-green-500', 'bg-red-500');
+                            remainingMeasurementBar.classList.add('bg-blue-500');
+                            remainingMeasurementBar.style.width = '100%';
+                        }
+                    }
                 } else {
-                    // Fewer pieces than issued
-                    piecesStatusValue.classList.remove('text-green-600', 'text-blue-600');
-                    piecesStatusValue.classList.add('text-red-600');
-                    piecesStatusBar.classList.remove('bg-green-500', 'bg-blue-500');
-                    piecesStatusBar.classList.add('bg-red-500');
-                    const percentage = (totalPieces / issuedPieces) * 100;
-                    piecesStatusBar.style.width = Math.min(percentage, 100) + '%';
-                }
-            }
-
-            // Update remaining sqft bar
-            const remainingSqft = issuedSqft - totalSqft;
-            const remainingSqftValue = document.getElementById('remaining-sqft-value');
-            const remainingSqftBar = document.getElementById('remaining-sqft-bar');
-            
-            if (remainingSqftValue && remainingSqftBar) {
-                remainingSqftValue.textContent = remainingSqft.toFixed(2);
+                    // For slabs/others: show remaining sqft
+                const remainingSqft = issuedSqft - totalSqft;
                 
-                if (remainingSqft > 0) {
-                    // Still have remaining sqft
-                    remainingSqftValue.classList.remove('text-green-600', 'text-blue-600');
-                    remainingSqftValue.classList.add('text-red-600');
-                    remainingSqftBar.classList.remove('bg-green-500', 'bg-blue-500');
-                    remainingSqftBar.classList.add('bg-red-500');
-                    const percentage = (remainingSqft / issuedSqft) * 100;
-                    remainingSqftBar.style.width = Math.min(percentage, 100) + '%';
-                } else if (remainingSqft === 0) {
-                    // Exactly used all sqft
-                    remainingSqftValue.classList.remove('text-red-600', 'text-blue-600');
-                    remainingSqftValue.classList.add('text-green-600');
-                    remainingSqftBar.classList.remove('bg-red-500', 'bg-blue-500');
-                    remainingSqftBar.classList.add('bg-green-500');
-                    remainingSqftBar.style.width = '0%';
+                    if (remainingMeasurementLabel) remainingMeasurementLabel.textContent = 'Remaining Sqft';
+                    if (remainingMeasurementValue && remainingMeasurementBar) {
+                        remainingMeasurementValue.textContent = remainingSqft.toFixed(2) + ' sqft';
+                    
+                    if (remainingSqft > 0) {
+                        // Still have remaining sqft
+                            remainingMeasurementValue.classList.remove('text-green-600', 'text-blue-600');
+                            remainingMeasurementValue.classList.add('text-red-600');
+                            remainingMeasurementBar.classList.remove('bg-green-500', 'bg-blue-500');
+                            remainingMeasurementBar.classList.add('bg-red-500');
+                        const percentage = (remainingSqft / issuedSqft) * 100;
+                            remainingMeasurementBar.style.width = Math.min(percentage, 100) + '%';
+                    } else if (remainingSqft === 0) {
+                        // Exactly used all sqft
+                            remainingMeasurementValue.classList.remove('text-red-600', 'text-blue-600');
+                            remainingMeasurementValue.classList.add('text-green-600');
+                            remainingMeasurementBar.classList.remove('bg-red-500', 'bg-blue-500');
+                            remainingMeasurementBar.classList.add('bg-green-500');
+                            remainingMeasurementBar.style.width = '0%';
+                    } else {
+                        // Exceeded issued sqft
+                            remainingMeasurementValue.classList.remove('text-green-600', 'text-red-600');
+                            remainingMeasurementValue.classList.add('text-blue-600');
+                            remainingMeasurementBar.classList.remove('bg-green-500', 'bg-red-500');
+                            remainingMeasurementBar.classList.add('bg-blue-500');
+                            remainingMeasurementBar.style.width = '100%';
+                        }
+                    }
+                }
+
+                // Update summary table
+                const totalProductionMeasurement = document.getElementById('total-production-measurement');
+                const issuedMeasurementDisplay = document.getElementById('issued-measurement-display');
+                const differenceDisplay = document.getElementById('difference-display');
+                const productionMeasurementLabel = document.getElementById('production-measurement-label');
+                const issuedMeasurementLabel = document.getElementById('issued-measurement-label');
+                const differenceLabel = document.getElementById('difference-label');
+
+                if (totalProductionMeasurement && issuedMeasurementDisplay && differenceDisplay) {
+                    if (isBlockOrMonuments) {
+                        // For block/monuments: show weight
+                        totalProductionMeasurement.textContent = totalWeight.toFixed(2);
+                        issuedMeasurementDisplay.textContent = issuedWeight.toFixed(2);
+                        
+                        const difference = totalWeight - issuedWeight;
+                        differenceDisplay.textContent = difference.toFixed(2);
+                        
+                        if (productionMeasurementLabel) productionMeasurementLabel.textContent = 'Total Production Weight';
+                        if (issuedMeasurementLabel) issuedMeasurementLabel.textContent = 'Issued Weight';
+                        if (differenceLabel) differenceLabel.textContent = 'Difference';
+                    } else {
+                        // For slabs/others: show sqft
+                        totalProductionMeasurement.textContent = totalSqft.toFixed(2);
+                        issuedMeasurementDisplay.textContent = issuedSqft.toFixed(2);
+                        
+                        const difference = totalSqft - issuedSqft;
+                        differenceDisplay.textContent = difference.toFixed(2);
+                        
+                        if (productionMeasurementLabel) productionMeasurementLabel.textContent = 'Total Production Sqft';
+                        if (issuedMeasurementLabel) issuedMeasurementLabel.textContent = 'Issued Sqft';
+                        if (differenceLabel) differenceLabel.textContent = 'Difference';
+                    }
+                    
+                    if (isBlockOrMonuments) {
+                        const difference = totalWeight - issuedWeight;
+                        if (difference > 0) {
+                            // Exceeded issued weight
+                            differenceDisplay.classList.remove('text-green-600', 'text-red-600');
+                            differenceDisplay.classList.add('text-blue-600');
+                        } else if (difference === 0) {
+                            // Exactly matches issued weight
+                            differenceDisplay.classList.remove('text-red-600', 'text-blue-600');
+                            differenceDisplay.classList.add('text-green-600');
+                        } else {
+                            // Less than issued weight
+                            differenceDisplay.classList.remove('text-green-600', 'text-blue-600');
+                            differenceDisplay.classList.add('text-red-600');
+                        }
+                    } else {
+                        const difference = totalSqft - issuedSqft;
+                        if (difference > 0) {
+                            // Exceeded issued sqft
+                            differenceDisplay.classList.remove('text-green-600', 'text-red-600');
+                            differenceDisplay.classList.add('text-blue-600');
+                        } else if (difference === 0) {
+                            // Exactly matches issued sqft
+                            differenceDisplay.classList.remove('text-red-600', 'text-blue-600');
+                            differenceDisplay.classList.add('text-green-600');
+                        } else {
+                            // Less than issued sqft
+                            differenceDisplay.classList.remove('text-green-600', 'text-blue-600');
+                            differenceDisplay.classList.add('text-red-600');
+                        }
+                    }
+                }
+
+            // Function to update production item fields based on condition status
+            window.updateProductionItemFields = function(item, conditionStatus) {
+                const isBlock = conditionStatus && (conditionStatus.toLowerCase() === 'block' || conditionStatus.toLowerCase() === 'monuments');
+                
+                // Update labels
+                const totalSqftLabel = item.querySelector('#total-measurement-label');
+                const totalWeightLabel = item.querySelector('#total-weight-label');
+                const pieceSizeLabel = item.querySelector('#piece-size-label');
+                const totalSqftHelp = item.querySelector('#total-measurement-help');
+                const totalWeightHelp = item.querySelector('#total-weight-help');
+                const pieceSizeHelp = item.querySelector('#piece-size-help');
+                const pieceSizeUnit = item.querySelector('#piece-size-unit');
+                
+                // Update measurement fields visibility
+                const totalSqftInput = item.querySelector('.total-sqft-input');
+                const totalWeightInput = item.querySelector('.total-weight-input');
+                
+                // Update size/weight field
+                const sizeWeightLabel = item.querySelector('#size-weight-label');
+                const sizeWeightHelp = item.querySelector('#size-weight-help');
+                const sizeInput = item.querySelector('.size-input');
+                const weightInput = item.querySelector('.weight-input');
+                
+                if (isBlock) {
+                    // Update for weight (block/monuments)
+                    if (totalWeightLabel) totalWeightLabel.textContent = 'Total Weight (kg)';
+                    if (pieceSizeLabel) pieceSizeLabel.textContent = 'Piece Weight';
+                    if (totalWeightHelp) totalWeightHelp.textContent = 'Auto-calculated from weight and pieces';
+                    if (pieceSizeHelp) pieceSizeHelp.textContent = 'Weight of each individual piece';
+                    if (pieceSizeUnit) pieceSizeUnit.textContent = 'kg';
+                    
+                    // Show weight field, hide sqft field
+                    if (totalSqftInput) totalSqftInput.classList.add('hidden');
+                    if (totalWeightInput) totalWeightInput.classList.remove('hidden');
+                    
+                    // Switch to weight input field
+                    if (sizeWeightLabel) sizeWeightLabel.textContent = 'Weight (kg)';
+                    if (sizeWeightHelp) sizeWeightHelp.textContent = 'Enter weight in kg';
+                    if (sizeInput) sizeInput.classList.add('hidden');
+                    if (weightInput) weightInput.classList.remove('hidden');
                 } else {
-                    // Exceeded issued sqft
-                    remainingSqftValue.classList.remove('text-green-600', 'text-red-600');
-                    remainingSqftValue.classList.add('text-blue-600');
-                    remainingSqftBar.classList.remove('bg-green-500', 'bg-red-500');
-                    remainingSqftBar.classList.add('bg-blue-500');
-                    remainingSqftBar.style.width = '100%';
+                    // Update for sqft (slabs and other conditions)
+                    if (totalSqftLabel) totalSqftLabel.textContent = 'Total Sqft';
+                    if (pieceSizeLabel) pieceSizeLabel.textContent = 'Piece Size';
+                    if (totalSqftHelp) totalSqftHelp.textContent = 'Auto-calculated from size and pieces';
+                    if (pieceSizeHelp) pieceSizeHelp.textContent = 'Size of each individual piece';
+                    if (pieceSizeUnit) pieceSizeUnit.textContent = 'sqft';
+                    
+                    // Show sqft field, hide weight field
+                    if (totalSqftInput) totalSqftInput.classList.remove('hidden');
+                    if (totalWeightInput) totalWeightInput.classList.add('hidden');
+                    
+                    // Switch to size input field
+                    if (sizeWeightLabel) sizeWeightLabel.textContent = 'Size (cm) - e.g., 60*90, H*L';
+                    if (sizeWeightHelp) sizeWeightHelp.textContent = 'Enter size in cm (height × length)';
+                    if (sizeInput) sizeInput.classList.remove('hidden');
+                    if (weightInput) weightInput.classList.add('hidden');
                 }
-            }
-
-            // Update summary table
-            const totalProductionSqft = document.getElementById('total-production-sqft');
-            const issuedSqftDisplay = document.getElementById('issued-sqft-display');
-            const differenceDisplay = document.getElementById('difference-display');
-
-            if (totalProductionSqft && issuedSqftDisplay && differenceDisplay) {
-                totalProductionSqft.textContent = totalSqft.toFixed(2);
-                issuedSqftDisplay.textContent = issuedSqft.toFixed(2);
                 
-                const difference = totalSqft - issuedSqft;
-                differenceDisplay.textContent = difference.toFixed(2);
+                // Clear existing values when switching fields
+                if (sizeInput) sizeInput.value = '';
+                if (weightInput) weightInput.value = '';
                 
-                if (difference > 0) {
-                    // Exceeded issued sqft
-                    differenceDisplay.classList.remove('text-green-600', 'text-red-600');
-                    differenceDisplay.classList.add('text-blue-600');
-                } else if (difference === 0) {
-                    // Exactly matches issued sqft
-                    differenceDisplay.classList.remove('text-red-600', 'text-blue-600');
-                    differenceDisplay.classList.add('text-green-600');
+                // Recalculate piece size if there's existing data
+                const totalPiecesInput = item.querySelector('.total-pieces-input');
+                if (totalPiecesInput && totalPiecesInput.value) {
+                    const activeInput = isBlock ? weightInput : sizeInput;
+                    if (activeInput) {
+                        calculatePieceSize(activeInput);
+                    }
+                }
+            };
+
+            // Function to calculate piece size based on input
+            window.calculatePieceSize = function(input) {
+                const item = input.closest('.production-item');
+                const sizeInput = item.querySelector('.size-input');
+                const weightInput = item.querySelector('.weight-input');
+                const totalPiecesInput = item.querySelector('.total-pieces-input');
+                const conditionStatusSelect = item.querySelector('select[name*="[condition_status]"]');
+                
+                const totalPieces = parseInt(totalPiecesInput.value) || 1;
+                const conditionStatus = conditionStatusSelect ? conditionStatusSelect.value : '';
+                const isBlock = conditionStatus && (conditionStatus.toLowerCase() === 'block' || conditionStatus.toLowerCase() === 'monuments');
+                
+                const pieceSizeDisplay = item.querySelector('.piece-size-display');
+                
+                if (isBlock) {
+                    // Handle weight calculation for blocks/monuments
+                    const weight = parseFloat(weightInput.value) || 0;
+                    
+                    if (weight > 0) {
+                        // For blocks: total weight = weight per piece * total pieces
+                        const totalWeight = weight * totalPieces;
+                        const perPieceWeight = weight;
+                        
+                        // Update the fields
+                        const totalWeightInput = item.querySelector('.total-weight-input');
+                        if (totalWeightInput) totalWeightInput.value = totalWeight.toFixed(2);
+                        pieceSizeDisplay.textContent = perPieceWeight.toFixed(2);
+                        
+                        // Update total summary
+                        updateTotalSummary();
+                        updateRemainingStock();
+                    } else {
+                        // Clear calculations if weight is empty
+                        const totalWeightInput = item.querySelector('.total-weight-input');
+                        if (totalWeightInput) totalWeightInput.value = '';
+                        pieceSizeDisplay.textContent = '0.00';
+                    }
                 } else {
-                    // Less than issued sqft
-                    differenceDisplay.classList.remove('text-green-600', 'text-blue-600');
-                    differenceDisplay.classList.add('text-red-600');
+                    // Handle sqft calculation for slabs and other conditions
+                    const size = sizeInput.value.trim();
+                    
+                    if (size) {
+                        const sizeMatch = size.match(/(\d+(?:\.\d+)?)\s*[×*x]\s*(\d+(?:\.\d+)?)/i);
+                        if (sizeMatch) {
+                            const height = parseFloat(sizeMatch[1]);
+                            const length = parseFloat(sizeMatch[2]);
+                            const areaCm = height * length;
+                            const perPieceSqft = areaCm / 929.0304;
+                            
+                            // For slabs: total sqft = per piece sqft * total pieces
+                            const totalSqft = perPieceSqft * totalPieces;
+                            
+                            // Update the fields
+                            const totalSqftInput = item.querySelector('.total-sqft-input');
+                            if (totalSqftInput) totalSqftInput.value = totalSqft.toFixed(2);
+                            pieceSizeDisplay.textContent = perPieceSqft.toFixed(4);
+                            
+                            // Update total summary
+                            updateTotalSummary();
+                            updateRemainingStock();
+                        } else {
+                            // Invalid size format
+                            const totalSqftInput = item.querySelector('.total-sqft-input');
+                            if (totalSqftInput) totalSqftInput.value = '';
+                            pieceSizeDisplay.textContent = '0.0000';
+                        }
+                    } else {
+                        // Clear calculations if size is empty
+                        const totalSqftInput = item.querySelector('.total-sqft-input');
+                        if (totalSqftInput) totalSqftInput.value = '';
+                        pieceSizeDisplay.textContent = '0.0000';
+                        
+                        // Update total summary
+                        updateTotalSummary();
+                        updateRemainingStock();
+                    }
                 }
+            };
+
+            // Function to update total summary
+            window.updateTotalSummary = function() {
+                const totalSummary = document.getElementById('total-summary');
+                const totalSqftDisplay = document.getElementById('total-sqft-display');
+                const totalPiecesDisplay = document.getElementById('total-pieces-display');
+
+                let totalSqft = 0;
+                let totalWeight = 0;
+                let totalPieces = 0;
+                let sqftItems = 0;
+                let weightItems = 0;
+
+                // Calculate totals from all production items
+                const productionItems = document.querySelectorAll('.production-item');
+                productionItems.forEach(item => {
+                    const sqftInput = item.querySelector('.total-sqft-input');
+                    const weightInput = item.querySelector('.total-weight-input');
+                    const piecesInput = item.querySelector('.total-pieces-input');
+                    const conditionStatusSelect = item.querySelector('select[name*="[condition_status]"]');
+                    
+                    const conditionStatus = conditionStatusSelect ? conditionStatusSelect.value : '';
+                    const isBlock = conditionStatus && (conditionStatus.toLowerCase() === 'block' || conditionStatus.toLowerCase() === 'monuments');
+
+                    if (piecesInput) {
+                        const pieces = parseInt(piecesInput.value) || 0;
+                        totalPieces += pieces;
+
+                        if (isBlock) {
+                            // For block/monuments: use weight input
+                            if (weightInput) {
+                                const weight = parseFloat(weightInput.value) || 0;
+                                totalWeight += weight;
+                                weightItems += pieces;
+                            }
+                        } else {
+                            // For slabs/others: use sqft input
+                            if (sqftInput) {
+                                const sqft = parseFloat(sqftInput.value) || 0;
+                                totalSqft += sqft;
+                                sqftItems += pieces;
+                            }
+                        }
+                    }
+                });
+
+                // Update display with separate summaries
+                if (totalWeight > 0 && totalSqft > 0) {
+                    // Both weight and sqft products
+                    totalSqftDisplay.textContent = `${totalSqft.toFixed(2)} sqft (${sqftItems} pieces) | ${totalWeight.toFixed(2)} kg (${weightItems} pieces)`;
+                } else if (totalWeight > 0) {
+                    // Only weight products
+                    totalSqftDisplay.textContent = `${totalWeight.toFixed(2)} kg`;
+                } else if (totalSqft > 0) {
+                    // Only sqft products
+                    totalSqftDisplay.textContent = `${totalSqft.toFixed(2)} sqft`;
+                } else {
+                    totalSqftDisplay.textContent = '0.00';
+                }
+                
+                totalPiecesDisplay.textContent = totalPieces;
+
+                // Show/hide summary based on whether there are items
+                if (productionItems.length > 0) {
+                    totalSummary.classList.remove('hidden');
+                } else {
+                    totalSummary.classList.add('hidden');
+                }
+            };
+
+            // Function to update remaining stock display
+            window.updateRemainingStock = function() {
+                updateStatusBars();
+            };
             }
-        }
         });
     </script>
 </x-app-layout>

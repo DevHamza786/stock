@@ -33,6 +33,44 @@ class StockIssued extends Model
     ];
 
     /**
+     * Set the sqft_issued attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setSqftIssuedAttribute($value)
+    {
+        $this->attributes['sqft_issued'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the weight_issued attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWeightIssuedAttribute($value)
+    {
+        $this->attributes['weight_issued'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Clean a decimal value by removing non-numeric characters (except decimal point)
+     */
+    private function cleanDecimalValue($value)
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        
+        if (is_numeric($value)) {
+            return $value;
+        }
+        
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        if ($cleaned !== '' && is_numeric($cleaned)) {
+            return $cleaned;
+        }
+        
+        return null;
+    }
+
+    /**
      * Get the stock addition that owns the stock issued.
      */
     public function stockAddition(): BelongsTo
@@ -88,12 +126,14 @@ class StockIssued extends Model
         parent::boot();
 
         static::creating(function ($stockIssued) {
-            // Calculate sqft_issued if not provided
+            // Calculate sqft_issued if not provided (for non-block/monument conditions)
             // Auto-fill stone field from stock addition
             if (empty($stockIssued->sqft_issued) || empty($stockIssued->stone)) {
                 $stockAddition = StockAddition::find($stockIssued->stock_addition_id);
                 if ($stockAddition) {
-                    if (empty($stockIssued->sqft_issued)) {
+                    // Only auto-calculate sqft if it's not a block or monument condition
+                    $conditionStatus = strtolower($stockAddition->condition_status ?? '');
+                    if (empty($stockIssued->sqft_issued) && !in_array($conditionStatus, ['block', 'monuments'])) {
                         $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
                         $stockIssued->sqft_issued = $sqftPerPiece * $stockIssued->quantity_issued;
                     }
@@ -108,7 +148,10 @@ class StockIssued extends Model
             // Update available quantities in stock addition
             $stockAddition = $stockIssued->stockAddition;
             $stockAddition->available_pieces -= $stockIssued->quantity_issued;
-            $stockAddition->available_sqft -= $stockIssued->sqft_issued;
+            // Only update sqft if it's not null
+            if ($stockIssued->sqft_issued !== null) {
+                $stockAddition->available_sqft -= $stockIssued->sqft_issued;
+            }
             $stockAddition->save();
 
             // Log stock issued creation
@@ -152,16 +195,20 @@ class StockIssued extends Model
                     // Then subtract from new stock addition
                     $newStockAddition = $stockIssued->stockAddition;
                     $newStockAddition->available_pieces -= $newQuantity;
-                    $newStockAddition->available_sqft -= $newSqft;
+                    if ($newSqft !== null) {
+                        $newStockAddition->available_sqft -= $newSqft;
+                    }
                     $newStockAddition->save();
                 } else {
                     // Same stock addition, just adjust the difference
                     $stockAddition = $stockIssued->stockAddition;
                     $quantityDiff = $newQuantity - $originalQuantity;
-                    $sqftDiff = $newSqft - $originalSqft;
+                    $sqftDiff = ($newSqft ?? 0) - ($originalSqft ?? 0);
 
                     $stockAddition->available_pieces -= $quantityDiff;
-                    $stockAddition->available_sqft -= $sqftDiff;
+                    if ($sqftDiff != 0) {
+                        $stockAddition->available_sqft -= $sqftDiff;
+                    }
                     $stockAddition->save();
                 }
             }
@@ -211,7 +258,9 @@ class StockIssued extends Model
                 $stockAddition = $stockIssued->stockAddition;
                 if ($stockAddition) {
                     $stockAddition->available_pieces += $stockIssued->quantity_issued;
-                    $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                    if ($stockIssued->sqft_issued !== null) {
+                        $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                    }
                     $stockAddition->save();
                 }
             }

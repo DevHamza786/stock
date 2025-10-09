@@ -226,6 +226,10 @@ class StockIssuedController extends Controller
 
         // Prepare data for creation
         $data = $request->all();
+        
+        // Convert empty strings to null for decimal fields
+        $data['sqft_issued'] = $request->filled('sqft_issued') ? $request->sqft_issued : null;
+        $data['weight_issued'] = $request->filled('weight_issued') ? $request->weight_issued : null;
 
         $stockIssued = StockIssued::create($data);
 
@@ -320,6 +324,10 @@ class StockIssuedController extends Controller
 
         // Prepare data for update
         $data = $request->all();
+        
+        // Convert empty strings to null for decimal fields
+        $data['sqft_issued'] = $request->filled('sqft_issued') ? $request->sqft_issued : null;
+        $data['weight_issued'] = $request->filled('weight_issued') ? $request->weight_issued : null;
 
         $stockIssued->update($data);
 

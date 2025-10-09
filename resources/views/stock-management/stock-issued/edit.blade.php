@@ -9,7 +9,7 @@
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
                 <div class="p-6">
-                    <form method="POST" action="{{ route('stock-management.stock-issued.update', $stockIssued) }}">
+                    <form method="POST" action="{{ route('stock-management.stock-issued.update', $stockIssued) }}" id="stock-issued-edit-form">
                         @csrf
                         @method('PUT')
 
@@ -214,6 +214,20 @@
 
             // Calculate on page load
             calculateValues();
+
+            // Clear unused field before form submission
+            const form = document.getElementById('stock-issued-edit-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (conditionStatus === 'block' || conditionStatus === 'monuments') {
+                        // For block/monuments, clear sqft_issued
+                        if (sqftInput) sqftInput.value = '';
+                    } else {
+                        // For other conditions, clear weight_issued
+                        if (weightInput) weightInput.value = '';
+                    }
+                });
+            }
         });
     </script>
 </x-app-layout>

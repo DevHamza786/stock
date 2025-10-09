@@ -33,12 +33,70 @@ class StockAddition extends Model
     protected $casts = [
         'length' => 'decimal:2',
         'height' => 'decimal:2',
+        'diameter' => 'decimal:2',
         'weight' => 'decimal:2',
         'total_sqft' => 'decimal:2',
         'available_sqft' => 'decimal:2',
         'available_weight' => 'decimal:2',
         'date' => 'datetime',
     ];
+
+    /**
+     * Set the length attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setLengthAttribute($value)
+    {
+        $this->attributes['length'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the height attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setHeightAttribute($value)
+    {
+        $this->attributes['height'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the diameter attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setDiameterAttribute($value)
+    {
+        $this->attributes['diameter'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the weight attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWeightAttribute($value)
+    {
+        $this->attributes['weight'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Clean a decimal value by removing non-numeric characters (except decimal point)
+     */
+    private function cleanDecimalValue($value)
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        
+        // If already numeric, return as is
+        if (is_numeric($value)) {
+            return $value;
+        }
+        
+        // Remove all non-numeric characters except decimal point
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        // Check if we have a valid number after cleaning
+        if ($cleaned !== '' && is_numeric($cleaned)) {
+            return $cleaned;
+        }
+        
+        return null;
+    }
 
     /**
      * Get the product that owns the stock addition.

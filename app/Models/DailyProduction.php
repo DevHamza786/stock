@@ -32,6 +32,36 @@ class DailyProduction extends Model
     ];
 
     /**
+     * Set the wastage_sqft attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWastageSqftAttribute($value)
+    {
+        $this->attributes['wastage_sqft'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Clean a decimal value by removing non-numeric characters (except decimal point)
+     */
+    private function cleanDecimalValue($value)
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        
+        if (is_numeric($value)) {
+            return $value;
+        }
+        
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        if ($cleaned !== '' && is_numeric($cleaned)) {
+            return $cleaned;
+        }
+        
+        return null;
+    }
+
+    /**
      * Get the stock addition that owns the daily production.
      */
     public function stockAddition(): BelongsTo
@@ -85,6 +115,14 @@ class DailyProduction extends Model
     public function getTotalSqftAttribute(): float
     {
         return $this->items()->sum('total_sqft');
+    }
+
+    /**
+     * Get total weight from all items.
+     */
+    public function getTotalWeightAttribute(): float
+    {
+        return $this->items()->sum('total_weight');
     }
 
     /**

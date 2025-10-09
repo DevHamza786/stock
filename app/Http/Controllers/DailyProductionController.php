@@ -199,27 +199,51 @@ class DailyProductionController extends Controller
             'items.*.special_status' => 'nullable|string|max:255',
             'items.*.total_pieces' => 'required|integer|min:1',
             'items.*.total_sqft' => 'required|numeric|min:0',
+            'items.*.total_weight' => 'nullable|numeric|min:0',
             'items.*.narration' => 'nullable|string',
         ]);
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Calculate total pieces and sqft from all items
+        // Calculate total pieces and measurement from all items
         $totalPieces = collect($request->items)->sum('total_pieces');
         $totalSqft = collect($request->items)->sum('total_sqft');
-
-        // No piece limit validation - pieces can be more than issued stock
-
-        // Check if total sqft matches issued sqft (with small tolerance for rounding)
-        $sqftDifference = abs($totalSqft - $stockIssued->sqft_issued);
-        if ($sqftDifference > 0.01) { // Allow 0.01 sqft difference for rounding
-            return redirect()->back()
-                ->withInput()
-                ->with('error', "Total production sqft ({$totalSqft}) must equal issued sqft ({$stockIssued->sqft_issued}). The block size must be divided among all products.");
+        $totalWeight = collect($request->items)->sum('total_weight');
+        
+        // Check if this is a block/monuments or sqft-based product
+        $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
+        
+        if ($isBlockOrMonuments) {
+            // For block/monuments: validate against issued weight
+            $issuedWeight = $stockIssued->weight_issued;
+            $measurementType = 'weight';
+            $measurementUnit = 'kg';
+            
+            if ($totalWeight > $issuedWeight) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Total production weight ({$totalWeight} kg) cannot exceed issued weight ({$issuedWeight} kg).");
+            }
+            
+            // Calculate wastage (issued weight - produced weight)
+            $wastageWeight = $issuedWeight - $totalWeight;
+            $wastageSqft = 0;
+        } else {
+            // For slabs/other products: validate against issued sqft
+            $issuedSqft = $stockIssued->sqft_issued;
+            $measurementType = 'sqft';
+            $measurementUnit = 'sqft';
+            
+            if ($totalSqft > $issuedSqft) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Total production sqft ({$totalSqft}) cannot exceed issued sqft ({$issuedSqft}).");
+            }
+            
+            // Calculate wastage (issued sqft - produced sqft)
+            $wastageSqft = $issuedSqft - $totalSqft;
+            $wastageWeight = 0;
         }
-
-        // Calculate wastage (issued sqft - produced sqft)
-        $wastageSqft = $stockIssued->sqft_issued - $totalSqft;
 
         // Create daily production record
         $dailyProduction = DailyProduction::create([
@@ -231,7 +255,7 @@ class DailyProductionController extends Controller
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
             'status' => $request->status,
-            'wastage_sqft' => $wastageSqft,
+            'wastage_sqft' => $wastageSqft, // Store sqft wastage for sqft products
         ]);
 
         // Process production items with product matching logic
@@ -331,14 +355,16 @@ class DailyProductionController extends Controller
             'original_stock_addition_id' => $originalStockAddition->id,
             'produced_groups' => count($producedStockGroups),
             'total_produced_pieces' => $totalPieces,
-            'total_produced_sqft' => $totalSqft
+            'total_produced_sqft' => $totalSqft,
+            'total_produced_weight' => $totalWeight
         ]);
 
         // Generate accounting journal entry
         $this->generateAccountingEntry($dailyProduction);
 
+        $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', "Daily production recorded successfully with {$totalPieces} pieces ({$totalSqft} sqft) across " . count($processedItems) . ' product(s). New stock additions created for produced items.');
+            ->with('success', "Daily production recorded successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . ' product(s). New stock additions created for produced items.');
     }
 
     /**
@@ -376,7 +402,6 @@ class DailyProductionController extends Controller
 
         // Get condition statuses from database
         $conditionStatuses = ConditionStatus::active()->orderBy('name')->get();
-
         return view('stock-management.daily-production.edit', compact('dailyProduction', 'availableStockIssued', 'machines', 'operators', 'conditionStatuses'));
     }
 
@@ -407,29 +432,56 @@ class DailyProductionController extends Controller
             'items.*.special_status' => 'nullable|string|max:255',
             'items.*.total_pieces' => 'required|integer|min:1',
             'items.*.total_sqft' => 'required|numeric|min:0',
+            'items.*.total_weight' => 'nullable|numeric|min:0',
             'items.*.narration' => 'nullable|string',
         ]);
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Calculate total pieces and sqft from all items
+        // Calculate total pieces and measurement from all items
         $totalPieces = collect($request->items)->sum('total_pieces');
         $totalSqft = collect($request->items)->sum('total_sqft');
-
-        // Check if total sqft matches issued sqft (with small tolerance for rounding)
-        $sqftDifference = abs($totalSqft - $stockIssued->sqft_issued);
-        if ($sqftDifference > 0.01) { // Allow 0.01 sqft difference for rounding
-            return redirect()->back()
-                ->withInput()
-                ->with('error', "Total production sqft ({$totalSqft}) must equal issued sqft ({$stockIssued->sqft_issued}). The block size must be divided among all products.");
+        $totalWeight = collect($request->items)->sum('total_weight');
+        
+        // Check if this is a block/monuments or sqft-based product
+        $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
+        
+        if ($isBlockOrMonuments) {
+            // For block/monuments: validate against issued weight
+            $issuedWeight = $stockIssued->weight_issued;
+            $measurementType = 'weight';
+            $measurementUnit = 'kg';
+            
+            if ($totalWeight > $issuedWeight) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Total production weight ({$totalWeight} kg) cannot exceed issued weight ({$issuedWeight} kg).");
+            }
+            
+            // Calculate wastage (issued weight - produced weight)
+            $wastageWeight = $issuedWeight - $totalWeight;
+            $wastageSqft = 0;
+        } else {
+            // For slabs/other products: validate against issued sqft
+            $issuedSqft = $stockIssued->sqft_issued;
+            $measurementType = 'sqft';
+            $measurementUnit = 'sqft';
+            
+            if ($totalSqft > $issuedSqft) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Total production sqft ({$totalSqft}) cannot exceed issued sqft ({$issuedSqft}).");
+            }
+            
+            // Calculate wastage (issued sqft - produced sqft)
+            $wastageSqft = $issuedSqft - $totalSqft;
+            $wastageWeight = 0;
         }
 
         // Store old production data for stock adjustment
         $oldTotalPieces = $dailyProduction->items->sum('total_pieces');
         $oldTotalSqft = $dailyProduction->items->sum('total_sqft');
-
-        // Calculate wastage (issued sqft - produced sqft)
-        $wastageSqft = $stockIssued->sqft_issued - $totalSqft;
+        $oldTotalWeight = $dailyProduction->items->sum('total_weight');
 
         // Update daily production record
         $dailyProduction->update([
@@ -441,7 +493,7 @@ class DailyProductionController extends Controller
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
             'date' => $request->date,
             'status' => $request->status,
-            'wastage_sqft' => $wastageSqft,
+            'wastage_sqft' => $wastageSqft, // Store sqft wastage for sqft products
         ]);
 
         // Delete existing production items
@@ -484,6 +536,7 @@ class DailyProductionController extends Controller
         // Calculate the difference in production
         $piecesDifference = $totalPieces - $oldTotalPieces;
         $sqftDifference = $totalSqft - $oldTotalSqft;
+        $weightDifference = $totalWeight - $oldTotalWeight;
 
         // Update stock additions for produced items (not the original block)
         $originalStockAddition = $stockIssued->stockAddition;
@@ -572,11 +625,15 @@ class DailyProductionController extends Controller
             'old_production_sqft' => $oldTotalSqft,
             'new_production_sqft' => $totalSqft,
             'sqft_difference' => $sqftDifference,
+            'old_production_weight' => $oldTotalWeight,
+            'new_production_weight' => $totalWeight,
+            'weight_difference' => $weightDifference,
             'produced_groups' => count($producedStockGroups)
         ]);
 
+        $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$totalSqft} sqft) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
+            ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
     }
 
     /**

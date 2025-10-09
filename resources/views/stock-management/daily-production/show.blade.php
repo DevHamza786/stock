@@ -80,6 +80,10 @@
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }} sqft</dd>
                                 </div>
                                 <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_weight, 2) }} kg</dd>
+                                </div>
+                                <div>
                                     <dt class="text-sm font-medium text-gray-500">Wastage</dt>
                                     <dd class="mt-1">
                                         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $dailyProduction->wastage_sqft > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
@@ -145,10 +149,18 @@
                                                     <dd class="text-gray-900">{{ $item->special_status }}</dd>
                                                 </div>
                                                 @endif
+                                                @if($item->total_sqft > 0)
                                                 <div>
                                                     <dt class="font-medium text-gray-700">Total Sqft</dt>
                                                     <dd class="text-gray-900">{{ number_format($item->total_sqft, 2) }} sqft</dd>
                                                 </div>
+                                                @endif
+                                                @if($item->total_weight > 0)
+                                                <div>
+                                                    <dt class="font-medium text-gray-700">Total Weight</dt>
+                                                    <dd class="text-gray-900">{{ number_format($item->total_weight, 2) }} kg</dd>
+                                                </div>
+                                                @endif
                                                 @if($item->size)
                                                 <div>
                                                     <dt class="font-medium text-gray-700">Per Piece Sqft</dt>
@@ -242,7 +254,11 @@
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Total Sqft</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }}</dd>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_sqft, 2) }} sqft</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Total Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->total_weight, 2) }} kg</dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Utilization Rate</dt>
