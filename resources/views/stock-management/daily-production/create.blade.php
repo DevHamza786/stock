@@ -852,7 +852,8 @@
                 const removeBtn = item.querySelector('.remove-production-item');
                 const productNameInput = item.querySelector('.product-name-input');
                 const totalPiecesInput = item.querySelector('.total-pieces-input');
-                const totalMeasurementInput = item.querySelector('.total-measurement-input');
+                const totalSqftInput = item.querySelector('.total-sqft-input');
+                const totalWeightInput = item.querySelector('.total-weight-input');
                 const warningDiv = item.querySelector('.product-matching-warning');
 
                 // Remove item
@@ -985,9 +986,17 @@
                 // Pieces can be more than issued stock since smaller pieces can be produced
 
                 // Update remaining stock when measurement changes
-                totalMeasurementInput.addEventListener('input', function() {
-                    updateRemainingStock();
-                });
+                if (totalSqftInput) {
+                    totalSqftInput.addEventListener('input', function() {
+                        updateRemainingStock();
+                    });
+                }
+                
+                if (totalWeightInput) {
+                    totalWeightInput.addEventListener('input', function() {
+                        updateRemainingStock();
+                    });
+                }
 
                 // Check for product matching
                 function checkProductMatching() {
