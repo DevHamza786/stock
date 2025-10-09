@@ -95,6 +95,24 @@
                                     <dt class="text-sm font-medium text-gray-500">Production Efficiency</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($dailyProduction->efficiency, 2) }} pieces/hour</dd>
                                 </div>
+                                @if($dailyProduction->stockAddition)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Source Stock Addition</dt>
+                                    <dd class="mt-1">
+                                        <a href="{{ route('stock-management.stock-additions.show', $dailyProduction->stockAddition) }}" 
+                                           class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                            </svg>
+                                            View Stock Addition
+                                        </a>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ $dailyProduction->stockAddition->product->name ?? 'N/A' }} - 
+                                            {{ $dailyProduction->stockAddition->mineVendor->name ?? 'N/A' }}
+                                        </div>
+                                    </dd>
+                                </div>
+                                @endif
                                 @if($dailyProduction->notes)
                                 <div class="md:col-span-2">
                                     <dt class="text-sm font-medium text-gray-500">Notes</dt>
@@ -117,9 +135,21 @@
                                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <div class="flex items-center justify-between mb-3">
                                                 <h3 class="text-lg font-semibold text-gray-900">Production Item #{{ $index + 1 }}</h3>
-                                                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                                    {{ $item->total_pieces }} pieces
-                                                </span>
+                                                <div class="flex items-center space-x-2">
+                                                    @if($dailyProduction->stockAddition)
+                                                        <a href="{{ route('stock-management.stock-additions.show', $dailyProduction->stockAddition) }}" 
+                                                           class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded hover:bg-green-200 transition-colors duration-200"
+                                                           title="View Stock Addition">
+                                                            <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                                            </svg>
+                                                            Stock Addition
+                                                        </a>
+                                                    @endif
+                                                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                                        {{ $item->total_pieces }} pieces
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
