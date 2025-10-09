@@ -57,8 +57,8 @@
                                                      data-sqft="{{ $issued->sqft_issued }}"
                                                      data-date="{{ $issued->date->format('M d, Y') }}"
                                                      data-stone="{{ $issued->stone }}"
-                                                     data-machine="{{ $issued->machine_name }}"
-                                                     data-operator="{{ $issued->operator_name }}">
+                                                     data-machine="{{ $issued->machine?->name }}"
+                                                     data-operator="{{ $issued->operator?->name }}">
                                                     <div class="font-medium text-gray-900">{{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}</div>
                                                     <div class="text-sm text-gray-600">
                                                         {{ ucfirst($issued->stockAddition->condition_status) }} -
@@ -461,6 +461,11 @@
                 if (selectedId && stockIssuedData[selectedId]) {
                     currentStockIssued = stockIssuedData[selectedId];
                     const stockAddition = currentStockIssued.stock_addition;
+                    
+                    // Debug logging
+                    console.log('Selected Stock Issued:', currentStockIssued);
+                    console.log('Machine:', currentStockIssued.machine);
+                    console.log('Operator:', currentStockIssued.operator);
 
                     selectedProduct.textContent = stockAddition.product.name;
                     selectedVendor.textContent = stockAddition.mine_vendor.name;
@@ -484,43 +489,43 @@
                     const machineSelect = document.getElementById('machine_name');
                     const operatorSelect = document.getElementById('operator_name');
 
-                    if (currentStockIssued.machine_name && machineSelect) {
+                    if (currentStockIssued.machine?.name && machineSelect) {
                         // Find and select the machine option
                         const machineOptions = machineSelect.querySelectorAll('option');
                         let machineFound = false;
                         machineOptions.forEach(option => {
-                            if (option.value === currentStockIssued.machine_name) {
+                            if (option.value === currentStockIssued.machine.name) {
                                 option.selected = true;
                                 machineFound = true;
                             }
                         });
 
                         // If machine not found in options, add it as a new option
-                        if (!machineFound && currentStockIssued.machine_name) {
+                        if (!machineFound && currentStockIssued.machine.name) {
                             const newOption = document.createElement('option');
-                            newOption.value = currentStockIssued.machine_name;
-                            newOption.textContent = currentStockIssued.machine_name;
+                            newOption.value = currentStockIssued.machine.name;
+                            newOption.textContent = currentStockIssued.machine.name;
                             newOption.selected = true;
                             machineSelect.appendChild(newOption);
                         }
                     }
 
-                    if (currentStockIssued.operator_name && operatorSelect) {
+                    if (currentStockIssued.operator?.name && operatorSelect) {
                         // Find and select the operator option
                         const operatorOptions = operatorSelect.querySelectorAll('option');
                         let operatorFound = false;
                         operatorOptions.forEach(option => {
-                            if (option.value === currentStockIssued.operator_name) {
+                            if (option.value === currentStockIssued.operator.name) {
                                 option.selected = true;
                                 operatorFound = true;
                             }
                         });
 
                         // If operator not found in options, add it as a new option
-                        if (!operatorFound && currentStockIssued.operator_name) {
+                        if (!operatorFound && currentStockIssued.operator.name) {
                             const newOption = document.createElement('option');
-                            newOption.value = currentStockIssued.operator_name;
-                            newOption.textContent = currentStockIssued.operator_name;
+                            newOption.value = currentStockIssued.operator.name;
+                            newOption.textContent = currentStockIssued.operator.name;
                             newOption.selected = true;
                             operatorSelect.appendChild(newOption);
                         }

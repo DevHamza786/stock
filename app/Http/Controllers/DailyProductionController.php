@@ -149,7 +149,7 @@ class DailyProductionController extends Controller
         }
 
         // Get stock issued records for production (where purpose is 'Production')
-        $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+        $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->orderBy('date', 'desc')
             ->get();
 

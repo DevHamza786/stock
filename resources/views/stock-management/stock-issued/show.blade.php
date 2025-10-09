@@ -44,19 +44,26 @@
                                 <div class="text-3xl font-bold text-blue-600">{{ number_format($stockIssued->quantity_issued) }}</div>
                                 <div class="text-sm text-gray-500">Pieces Issued</div>
                             </div>
+                            @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-green-600">{{ number_format($stockIssued->sqft_issued, 2) }}</div>
-                                <div class="text-sm text-gray-500">Sqft Issued</div>
-                            </div>
-                            @if($stockIssued->weight_issued)
-                            <div class="text-center">
-                                <div class="text-3xl font-bold text-purple-600">{{ number_format($stockIssued->weight_issued, 1) }}</div>
+                                <div class="text-3xl font-bold text-green-600">{{ number_format($stockIssued->weight_issued, 1) }}</div>
                                 <div class="text-sm text-gray-500">Weight Issued (kg)</div>
                             </div>
                             @else
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-gray-400">0.0</div>
-                                <div class="text-sm text-gray-500">Weight Issued (kg)</div>
+                                <div class="text-3xl font-bold text-green-600">{{ number_format($stockIssued->sqft_issued, 2) }}</div>
+                                <div class="text-sm text-gray-500">Sqft Issued</div>
+                            </div>
+                            @endif
+                            @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-purple-600">{{ number_format($stockIssued->stockAddition->weight * $stockIssued->stockAddition->total_pieces, 1) }}</div>
+                                <div class="text-sm text-gray-500">Total Weight (kg)</div>
+                            </div>
+                            @else
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-purple-600">{{ number_format($stockIssued->stockAddition->total_sqft, 2) }}</div>
+                                <div class="text-sm text-gray-500">Total Sqft</div>
                             </div>
                             @endif
                         </div>
@@ -127,10 +134,17 @@
                                     <dt class="text-sm font-medium text-gray-500">Quantity Issued</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->quantity_issued) }} pieces</dd>
                                 </div>
+                                @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Weight Issued</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->weight_issued, 2) }} kg</dd>
+                                </div>
+                                @else
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Square Footage Issued</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->sqft_issued, 2) }} sqft</dd>
                                 </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Purpose</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ $stockIssued->purpose ?? 'Production' }}</dd>
@@ -180,18 +194,32 @@
                                     <dt class="text-sm font-medium text-gray-500">Original Total Pieces</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->total_pieces) }}</dd>
                                 </div>
+                                @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Original Total Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->weight * $stockIssued->stockAddition->total_pieces, 2) }} kg</dd>
+                                </div>
+                                @else
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Original Total Sqft</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->total_sqft, 2) }}</dd>
                                 </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Remaining Pieces</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->available_pieces) }}</dd>
                                 </div>
+                                @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Remaining Weight</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->available_weight, 2) }} kg</dd>
+                                </div>
+                                @else
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Remaining Sqft</dt>
                                     <dd class="mt-1 text-sm text-gray-900">{{ number_format($stockIssued->stockAddition->available_sqft, 2) }}</dd>
                                 </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Condition Status</dt>
                                     <dd class="mt-1">
@@ -332,10 +360,17 @@
                             <td class="print:font-semibold print:py-1 print:pr-4">Quantity Issued:</td>
                             <td class="print:py-1 print:font-bold">{{ number_format($stockIssued->quantity_issued) }} pieces</td>
                         </tr>
+                        @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                        <tr>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Weight Issued:</td>
+                            <td class="print:py-1 print:font-bold">{{ number_format($stockIssued->weight_issued, 2) }} kg</td>
+                        </tr>
+                        @else
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Sqft Issued:</td>
                             <td class="print:py-1 print:font-bold">{{ number_format($stockIssued->sqft_issued, 2) }} sqft</td>
                         </tr>
+                        @endif
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Purpose:</td>
                             <td class="print:py-1">{{ $stockIssued->purpose ?? 'Production' }}</td>
@@ -375,18 +410,32 @@
                             <td class="print:font-semibold print:py-1 print:pr-4">Total Pieces:</td>
                             <td class="print:py-1">{{ number_format($stockIssued->stockAddition->total_pieces) }}</td>
                         </tr>
+                        @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                        <tr>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Total Weight:</td>
+                            <td class="print:py-1">{{ number_format($stockIssued->stockAddition->weight * $stockIssued->stockAddition->total_pieces, 2) }} kg</td>
+                        </tr>
+                        @else
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Total Sqft:</td>
                             <td class="print:py-1">{{ number_format($stockIssued->stockAddition->total_sqft, 2) }}</td>
                         </tr>
+                        @endif
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Remaining Pieces:</td>
                             <td class="print:py-1 print:font-bold print:text-green-700">{{ number_format($stockIssued->stockAddition->available_pieces) }}</td>
                         </tr>
+                        @if(strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments')
+                        <tr>
+                            <td class="print:font-semibold print:py-1 print:pr-4">Remaining Weight:</td>
+                            <td class="print:py-1 print:font-bold print:text-green-700">{{ number_format($stockIssued->stockAddition->available_weight, 2) }} kg</td>
+                        </tr>
+                        @else
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Remaining Sqft:</td>
                             <td class="print:py-1 print:font-bold print:text-green-700">{{ number_format($stockIssued->stockAddition->available_sqft, 2) }}</td>
                         </tr>
+                        @endif
                         <tr>
                             <td class="print:font-semibold print:py-1 print:pr-4">Condition:</td>
                             <td class="print:py-1">{{ $stockIssued->stockAddition->condition_status }}</td>
@@ -672,6 +721,7 @@
                 size3d: '{{ $stockIssued->stockAddition->length && $stockIssued->stockAddition->height ? $stockIssued->stockAddition->length . " × " . $stockIssued->stockAddition->height . " cm" : $stockIssued->stockAddition->size_3d }}',
                 quantityIssued: '{{ number_format($stockIssued->quantity_issued) }}',
                 sqftIssued: '{{ number_format($stockIssued->sqft_issued, 2) }}',
+                weightIssued: '{{ number_format($stockIssued->weight_issued, 2) }}',
                 purpose: '{{ $stockIssued->purpose ?? 'Production' }}',
                 machineName: '{{ $stockIssued->machine_name }}',
                 operatorName: '{{ $stockIssued->operator_name }}',
@@ -680,12 +730,15 @@
                 originalDate: '{{ $stockIssued->stockAddition->date->format('M d, Y') }}',
                 totalPieces: '{{ number_format($stockIssued->stockAddition->total_pieces) }}',
                 totalSqft: '{{ number_format($stockIssued->stockAddition->total_sqft, 2) }}',
+                totalWeight: '{{ number_format($stockIssued->stockAddition->weight * $stockIssued->stockAddition->total_pieces, 2) }}',
                 remainingPieces: '{{ number_format($stockIssued->stockAddition->available_pieces) }}',
                 remainingSqft: '{{ number_format($stockIssued->stockAddition->available_sqft, 2) }}',
+                remainingWeight: '{{ number_format($stockIssued->stockAddition->available_weight, 2) }}',
                 condition: '{{ $stockIssued->stockAddition->condition_status }}',
                 notes: '{{ $stockIssued->notes }}',
                 generatedOn: '{{ now()->format('M d, Y H:i:s') }}',
-                issueId: '{{ str_pad($stockIssued->id, 6, '0', STR_PAD_LEFT) }}'
+                issueId: '{{ str_pad($stockIssued->id, 6, '0', STR_PAD_LEFT) }}',
+                isBlockOrMonuments: {{ strtolower($stockIssued->stockAddition->condition_status) === 'block' || strtolower($stockIssued->stockAddition->condition_status) === 'monuments' ? 'true' : 'false' }}
             };
 
             // Create the PDF content with exact print styling
@@ -728,10 +781,17 @@
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Quantity Issued:</td>
                                 <td style="padding: 2px 0; font-weight: bold;">${stockData.quantityIssued} pieces</td>
                             </tr>
+                            ${stockData.isBlockOrMonuments ? `
+                            <tr>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Weight Issued:</td>
+                                <td style="padding: 2px 0; font-weight: bold;">${stockData.weightIssued} kg</td>
+                            </tr>
+                            ` : `
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Sqft Issued:</td>
                                 <td style="padding: 2px 0; font-weight: bold;">${stockData.sqftIssued} sqft</td>
                             </tr>
+                            `}
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Purpose:</td>
                                 <td style="padding: 2px 0;">${stockData.purpose}</td>
@@ -771,18 +831,32 @@
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Total Pieces:</td>
                                 <td style="padding: 2px 0;">${stockData.totalPieces}</td>
                             </tr>
+                            ${stockData.isBlockOrMonuments ? `
+                            <tr>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Total Weight:</td>
+                                <td style="padding: 2px 0;">${stockData.totalWeight} kg</td>
+                            </tr>
+                            ` : `
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Total Sqft:</td>
                                 <td style="padding: 2px 0;">${stockData.totalSqft}</td>
                             </tr>
+                            `}
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Remaining Pieces:</td>
                                 <td style="padding: 2px 0; font-weight: bold; color: #059669;">${stockData.remainingPieces}</td>
                             </tr>
+                            ${stockData.isBlockOrMonuments ? `
+                            <tr>
+                                <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Remaining Weight:</td>
+                                <td style="padding: 2px 0; font-weight: bold; color: #059669;">${stockData.remainingWeight} kg</td>
+                            </tr>
+                            ` : `
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Remaining Sqft:</td>
                                 <td style="padding: 2px 0; font-weight: bold; color: #059669;">${stockData.remainingSqft}</td>
                             </tr>
+                            `}
                             <tr>
                                 <td style="font-weight: bold; padding: 2px 0; padding-right: 10px;">Condition:</td>
                                 <td style="padding: 2px 0;">${stockData.condition}</td>

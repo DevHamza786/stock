@@ -236,18 +236,6 @@ class GatePassController extends Controller
         foreach ($request->items as $item) {
             $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
 
-            // Create stock issued record
-        $stockIssued = StockIssued::create([
-            'stock_addition_id' => $stockAddition->id,
-                'quantity_issued' => $item['quantity_issued'],
-                'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
-                'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
-            'purpose' => 'Gate Pass Dispatch',
-            'notes' => 'Auto-created for gate pass dispatch',
-            'stone' => $stockAddition->stone,
-            'date' => $request->date,
-        ]);
-
             // Create gate pass item
             GatePassItem::create([
                 'gate_pass_id' => $gatePass->id,
