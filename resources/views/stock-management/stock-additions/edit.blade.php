@@ -212,6 +212,48 @@
                                 <x-input-error :messages="$errors->get('total_pieces')" class="mt-2" />
                             </div>
 
+                            <!-- Available Pieces (Editable) -->
+                            <div>
+                                <x-input-label for="available_pieces" :value="__('Available Pieces')" />
+                                <input id="available_pieces" name="available_pieces" type="number" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 bg-green-50 hover:bg-green-100" value="{{ old('available_pieces', $stockAddition->available_pieces) }}" min="0" max="{{ $stockAddition->total_pieces }}" />
+                                <p class="mt-1 text-xs text-green-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Edit to manually correct available pieces (Max: <span id="max_available_pieces">{{ $stockAddition->total_pieces }}</span>)
+                                </p>
+                                <x-input-error :messages="$errors->get('available_pieces')" class="mt-2" />
+                            </div>
+
+                            <!-- Available Sqft (Editable) -->
+                            <div>
+                                <x-input-label for="available_sqft" :value="__('Available Sqft')" />
+                                <input id="available_sqft" name="available_sqft" type="number" step="0.01" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 bg-green-50 hover:bg-green-100" value="{{ old('available_sqft', $stockAddition->available_sqft) }}" min="0" max="{{ $stockAddition->total_sqft ?? 0 }}" />
+                                <p class="mt-1 text-xs text-green-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Edit to manually correct available sqft (Max: <span id="max_available_sqft">{{ number_format($stockAddition->total_sqft ?? 0, 2) }}</span>)
+                                </p>
+                                <x-input-error :messages="$errors->get('available_sqft')" class="mt-2" />
+                            </div>
+
+                            <!-- Available Weight (Editable) -->
+                            <div>
+                                <x-input-label for="available_weight" :value="__('Available Weight (kg)')" />
+                                @php
+                                    $totalWeight = ($stockAddition->weight ?? 0) * ($stockAddition->total_pieces ?? 0);
+                                @endphp
+                                <input id="available_weight" name="available_weight" type="number" step="0.01" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200 bg-green-50 hover:bg-green-100" value="{{ old('available_weight', $stockAddition->available_weight) }}" min="0" max="{{ $totalWeight }}" />
+                                <p class="mt-1 text-xs text-green-600 flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Edit to manually correct available weight (Max: <span id="max_available_weight">{{ number_format($totalWeight, 2) }}</span> kg)
+                                </p>
+                                <x-input-error :messages="$errors->get('available_weight')" class="mt-2" />
+                            </div>
+
                                                         <!-- Condition Status -->
                                                         <div>
                                 <x-input-label for="condition_status" :value="__('Condition Status')" />
@@ -1196,6 +1238,87 @@
             
             // Make function globally available
             window.updateBlockInfo = updateBlockInfo;
+            
+            // Function to update max values for available fields
+            function updateAvailableMaxValues() {
+                const totalPiecesInput = document.getElementById('total_pieces');
+                const availablePiecesInput = document.getElementById('available_pieces');
+                const maxAvailablePiecesSpan = document.getElementById('max_available_pieces');
+                
+                // Update available pieces max
+                if (totalPiecesInput && availablePiecesInput && maxAvailablePiecesSpan) {
+                    const totalPieces = parseInt(totalPiecesInput.value) || 0;
+                    availablePiecesInput.setAttribute('max', totalPieces);
+                    maxAvailablePiecesSpan.textContent = totalPieces;
+                }
+                
+                // Update available sqft max (for non-block conditions)
+                const lengthInput = document.getElementById('length');
+                const heightInput = document.getElementById('height');
+                const availableSqftInput = document.getElementById('available_sqft');
+                const maxAvailableSqftSpan = document.getElementById('max_available_sqft');
+                
+                if (lengthInput && heightInput && totalPiecesInput && availableSqftInput && maxAvailableSqftSpan) {
+                    const length = parseFloat(lengthInput.value) || 0;
+                    const height = parseFloat(heightInput.value) || 0;
+                    const pieces = parseInt(totalPiecesInput.value) || 0;
+                    
+                    if (length > 0 && height > 0 && pieces > 0) {
+                        const cmToSqft = 0.00107639;
+                        const singlePieceSizeCm = length * height;
+                        const singlePieceSizeSqft = singlePieceSizeCm * cmToSqft;
+                        const totalSqft = singlePieceSizeSqft * pieces;
+                        
+                        availableSqftInput.setAttribute('max', totalSqft.toFixed(2));
+                        maxAvailableSqftSpan.textContent = totalSqft.toFixed(2);
+                    }
+                }
+                
+                // Update available weight max (for block conditions)
+                const weightInput = document.getElementById('weight');
+                const availableWeightInput = document.getElementById('available_weight');
+                const maxAvailableWeightSpan = document.getElementById('max_available_weight');
+                
+                if (weightInput && totalPiecesInput && availableWeightInput && maxAvailableWeightSpan) {
+                    const weight = parseFloat(weightInput.value) || 0;
+                    const pieces = parseInt(totalPiecesInput.value) || 0;
+                    const totalWeight = weight * pieces;
+                    
+                    availableWeightInput.setAttribute('max', totalWeight.toFixed(2));
+                    maxAvailableWeightSpan.textContent = totalWeight.toFixed(2);
+                }
+            }
+            
+            // Add event listeners for updating available max values
+            setTimeout(function() {
+                const totalPiecesInput = document.getElementById('total_pieces');
+                const lengthInput = document.getElementById('length');
+                const heightInput = document.getElementById('height');
+                const weightInput = document.getElementById('weight');
+                
+                if (totalPiecesInput) {
+                    totalPiecesInput.addEventListener('input', updateAvailableMaxValues);
+                    totalPiecesInput.addEventListener('change', updateAvailableMaxValues);
+                }
+                
+                if (lengthInput) {
+                    lengthInput.addEventListener('input', updateAvailableMaxValues);
+                    lengthInput.addEventListener('change', updateAvailableMaxValues);
+                }
+                
+                if (heightInput) {
+                    heightInput.addEventListener('input', updateAvailableMaxValues);
+                    heightInput.addEventListener('change', updateAvailableMaxValues);
+                }
+                
+                if (weightInput) {
+                    weightInput.addEventListener('input', updateAvailableMaxValues);
+                    weightInput.addEventListener('change', updateAvailableMaxValues);
+                }
+                
+                // Initial update
+                updateAvailableMaxValues();
+            }, 1000);
             
             // Make sure calculateSize is available globally
             if (typeof window.calculateSize !== 'function') {

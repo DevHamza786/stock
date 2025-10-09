@@ -223,17 +223,18 @@ class StockIssued extends Model
             $sqftIssued = $stockIssued->sqft_issued;
             $gatePassId = $stockIssued->gate_pass_id_for_log ?? null;
 
-            // Log stock issued deletion (don't reference the deleted record)
+            // Log stock issued deletion (don't reference the deleted record to avoid FK constraint)
             \App\Models\StockLog::logActivity(
                 'deleted',
-                "Stock issued deleted - {$quantityIssued} pieces restored",
+                "Stock issued deleted (ID: {$stockIssuedId}) - {$quantityIssued} pieces restored",
                 $stockAdditionId,
-                $stockIssuedId,
+                null, // Set to null to avoid foreign key constraint violation
                 $gatePassId,
                 null,
                 [
                     'quantity_issued' => $quantityIssued,
-                    'sqft_issued' => $sqftIssued
+                    'sqft_issued' => $sqftIssued,
+                    'deleted_stock_issued_id' => $stockIssuedId // Store ID in old_values for reference
                 ],
                 null,
                 $quantityIssued,

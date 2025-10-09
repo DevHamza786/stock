@@ -227,6 +227,9 @@ class StockAdditionController extends Controller
             'diameter' => 'nullable|string|max:255',
             'weight' => 'nullable|numeric|min:0.1',
             'total_pieces' => 'required|integer|min:1',
+            'available_pieces' => 'nullable|integer|min:0',
+            'available_sqft' => 'nullable|numeric|min:0',
+            'available_weight' => 'nullable|numeric|min:0',
             'condition_status' => 'required|string|max:255',
             'date' => 'required|date',
         ]);
@@ -244,6 +247,39 @@ class StockAdditionController extends Controller
                 'length' => 'required|numeric|min:0.1',
                 'height' => 'required|numeric|min:0.1',
             ]);
+        }
+
+        // Validate available quantities don't exceed total quantities
+        if ($request->filled('available_pieces') && $request->available_pieces > $request->total_pieces) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Available pieces cannot be greater than total pieces.');
+        }
+
+        // For Block/Monuments, validate available weight
+        if (($conditionStatus === 'block' || $conditionStatus === 'monuments') && $request->filled('available_weight')) {
+            $totalWeight = ($request->weight ?? 0) * ($request->total_pieces ?? 0);
+            if ($request->available_weight > $totalWeight) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Available weight cannot be greater than total weight (' . number_format($totalWeight, 2) . ' kg).');
+            }
+        }
+
+        // For other conditions, validate available sqft
+        if (!in_array($conditionStatus, ['block', 'monuments']) && $request->filled('available_sqft')) {
+            if ($request->filled('length') && $request->filled('height')) {
+                $cmToSqft = 0.00107639;
+                $singlePieceSizeCm = $request->length * $request->height;
+                $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
+                $totalSqft = $singlePieceSizeSqft * ($request->total_pieces ?? 0);
+                
+                if ($request->available_sqft > $totalSqft) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Available sqft cannot be greater than total sqft (' . number_format($totalSqft, 2) . ' sqft).');
+                }
+            }
         }
 
         try {
@@ -265,7 +301,11 @@ class StockAdditionController extends Controller
                     'date' => $updateData['date'],
                     'weight' => !empty($updateData['weight']) ? $updateData['weight'] : null,
                     'total_pieces' => $updateData['total_pieces'],
-                    'available_pieces' => $updateData['total_pieces'], // Update available pieces to match total pieces
+                    
+                    // Use submitted available_pieces if provided, otherwise use total_pieces
+                    'available_pieces' => isset($updateData['available_pieces']) 
+                        ? $updateData['available_pieces'] 
+                        : $updateData['total_pieces'],
                     
                     // Set dimension fields to NULL for Block/Monuments
                     'length' => null,
@@ -275,10 +315,12 @@ class StockAdditionController extends Controller
                     'available_sqft' => null,
                     'size_3d' => null,
                     
-                    // Calculate available_weight for Block/Monuments
-                    'available_weight' => !empty($updateData['weight']) && !empty($updateData['total_pieces']) 
-                        ? ($updateData['weight'] * $updateData['total_pieces']) 
-                        : 0
+                    // Use submitted available_weight if provided, otherwise calculate
+                    'available_weight' => isset($updateData['available_weight']) 
+                        ? $updateData['available_weight']
+                        : (!empty($updateData['weight']) && !empty($updateData['total_pieces']) 
+                            ? ($updateData['weight'] * $updateData['total_pieces']) 
+                            : 0)
                 ];
                 
                 $updateData = $blockData;
@@ -291,7 +333,12 @@ class StockAdditionController extends Controller
                     'condition_status' => $updateData['condition_status'],
                     'date' => $updateData['date'],
                     'total_pieces' => $updateData['total_pieces'],
-                    'available_pieces' => $updateData['total_pieces'], // Update available pieces to match total pieces
+                    
+                    // Use submitted available_pieces if provided, otherwise use total_pieces
+                    'available_pieces' => isset($updateData['available_pieces']) 
+                        ? $updateData['available_pieces'] 
+                        : $updateData['total_pieces'],
+                    
                     'length' => !empty($updateData['length']) ? $updateData['length'] : null,
                     'height' => !empty($updateData['height']) ? $updateData['height'] : null,
                     'diameter' => !empty($updateData['diameter']) ? $updateData['diameter'] : null,
@@ -308,11 +355,17 @@ class StockAdditionController extends Controller
                     $singlePieceSizeCm = $updateData['length'] * $updateData['height'];
                     $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
                     $sizeData['total_sqft'] = $singlePieceSizeSqft * $totalPieces;
-                    $sizeData['available_sqft'] = $singlePieceSizeSqft * $totalPieces;
+                    
+                    // Use submitted available_sqft if provided, otherwise calculate
+                    $sizeData['available_sqft'] = isset($updateData['available_sqft']) 
+                        ? $updateData['available_sqft']
+                        : ($singlePieceSizeSqft * $totalPieces);
                 } else {
                     // Set to NULL if no dimensions provided
                     $sizeData['total_sqft'] = null;
-                    $sizeData['available_sqft'] = null;
+                    $sizeData['available_sqft'] = isset($updateData['available_sqft']) 
+                        ? $updateData['available_sqft']
+                        : null;
                 }
                 
                 $updateData = $sizeData;

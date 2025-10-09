@@ -21,8 +21,7 @@ class StockIssuedController extends Controller
         $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->whereDoesntHave('dailyProduction', function ($dailyQuery) {
                 $dailyQuery->where('status', 'close');
-            })
-            ->where('purpose', '!=', 'Gate Pass Dispatch'); // Exclude gate pass dispatched stock
+            });
 
         // Search functionality
         if ($request->filled('search')) {

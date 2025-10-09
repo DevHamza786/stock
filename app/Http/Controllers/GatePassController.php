@@ -305,22 +305,33 @@ class GatePassController extends Controller
      */
     public function edit(GatePass $gatePass)
     {
+        // Load the gate pass with its items
+        $gatePass->load(['items.stockAddition.product', 'items.stockAddition.mineVendor']);
+        
+        // Get IDs of stock additions already used in this gate pass
+        $usedStockIds = $gatePass->items->pluck('stock_addition_id')->toArray();
+        
         $stockAdditions = StockAddition::with(['product', 'mineVendor', 'stockIssued'])
-            ->where(function($query) use ($gatePass) {
+            ->where(function($query) use ($usedStockIds) {
+                // Include stock with available pieces OR stock already used in this gate pass
                 $query->where('available_pieces', '>', 0);
-                if ($gatePass->stockIssued?->stock_addition_id) {
-                    $query->orWhere('id', $gatePass->stockIssued->stock_addition_id);
+                if (!empty($usedStockIds)) {
+                    $query->orWhereIn('id', $usedStockIds);
                 }
             })
             ->whereHas('product')
             ->whereHas('mineVendor')
             ->orderBy('date', 'desc')
             ->get()
-            ->filter(function ($stockAddition) use ($gatePass) {
-                // Show stock with available pieces OR the currently selected stock
-                return $stockAddition->hasAvailableStock() ||
-                       ($gatePass->stockIssued?->stock_addition_id && $stockAddition->id == $gatePass->stockIssued->stock_addition_id);
+            ->filter(function ($stockAddition) use ($usedStockIds) {
+                // Show stock with available pieces OR the currently used stock in this gate pass
+                return $stockAddition->hasAvailableStock() || in_array($stockAddition->id, $usedStockIds);
             });
+
+        // Debug logging
+        \Log::info('Gate Pass Edit - Stock Additions Count: ' . $stockAdditions->count());
+        \Log::info('Gate Pass Edit - Used Stock IDs: ', $usedStockIds);
+        \Log::info('Gate Pass Edit - Gate Pass Items Count: ' . $gatePass->items->count());
 
         return view('stock-management.gate-pass.edit', compact('gatePass', 'stockAdditions'));
     }

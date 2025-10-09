@@ -263,7 +263,6 @@
                     <tr style="background: #f3f4f6; border-bottom: 2px solid #d1d5db;">
                         <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">#</th>
                         <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Product</th>
-                        <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Vendor</th>
                         <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Particulars</th>
                         <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Pieces</th>
                         <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Sqft</th>
@@ -275,7 +274,6 @@
                     <tr style="border-bottom: 1px solid #e5e7eb;">
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center;">{{ $index + 1 }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->product->name ?? 'N/A' }}</td>
-                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->mineVendor->name ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stone ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->quantity_issued) }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->sqft_issued, 2) }}</td>
@@ -283,7 +281,7 @@
                     </tr>
                     @endforeach
                     <tr style="background: #f9fafb; font-weight: bold; border-top: 2px solid #d1d5db;">
-                        <td colspan="4" style="padding: 12px; border: 1px solid #d1d5db; text-align: right;">TOTAL:</td>
+                        <td colspan="3" style="padding: 12px; border: 1px solid #d1d5db; text-align: right;">TOTAL:</td>
                         <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->quantity_issued) }}</td>
                         <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->sqft_issued, 2) }}</td>
                         <td style="padding: 12px; border: 1px solid #d1d5db;"></td>
