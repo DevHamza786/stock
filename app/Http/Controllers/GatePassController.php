@@ -130,7 +130,8 @@ class GatePassController extends Controller
                 $query->orderBy('driver_name', $sortOrder);
                 break;
             case 'quantity':
-                $query->orderBy('quantity_issued', $sortOrder);
+                // Sort by total quantity from items
+                $query->withCount('items as total_quantity')->orderBy('total_quantity', $sortOrder);
                 break;
             case 'status':
                 $query->orderBy('status', $sortOrder);
@@ -217,8 +218,6 @@ class GatePassController extends Controller
         // Create gate pass first
         $gatePass = GatePass::create([
             'stock_issued_id' => null, // We'll handle this differently now
-            'quantity_issued' => 0, // Will be calculated from items
-            'sqft_issued' => 0, // Will be calculated from items
             'destination' => $request->destination,
             'vehicle_number' => $request->vehicle_number,
             'driver_name' => $request->driver_name,
@@ -229,47 +228,58 @@ class GatePassController extends Controller
             'date' => $request->date,
         ]);
 
-        $totalQuantity = 0;
-        $totalSqft = 0;
-
-        // Create gate pass items and stock issued records
+        // Create gate pass items
         foreach ($request->items as $item) {
             $stockAddition = StockAddition::findOrFail($item['stock_addition_id']);
+
+            // Calculate sqft and weight based on stock addition
+            $sqftIssued = null;
+            $weightIssued = null;
+            
+            if ($stockAddition->condition_status && in_array(strtolower($stockAddition->condition_status), ['block', 'monuments'])) {
+                // For block/monuments, calculate weight
+                if ($stockAddition->weight) {
+                    $weightIssued = $stockAddition->weight * $item['quantity_issued'];
+                }
+            } else {
+                // For other conditions, calculate sqft
+                if ($stockAddition->total_sqft && $stockAddition->total_pieces > 0) {
+                    $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
+                    $sqftIssued = $sqftPerPiece * $item['quantity_issued'];
+                }
+            }
 
             // Create gate pass item
             GatePassItem::create([
                 'gate_pass_id' => $gatePass->id,
                 'stock_addition_id' => $stockAddition->id,
                 'quantity_issued' => $item['quantity_issued'],
-                'sqft_issued' => $stockIssued->sqft_issued,
-                'weight_issued' => $stockIssued->weight_issued,
+                'sqft_issued' => $sqftIssued,
+                'weight_issued' => $weightIssued,
                 'stone' => $stockAddition->stone,
             ]);
 
-            $totalQuantity += $item['quantity_issued'];
-            $totalSqft += $stockIssued->sqft_issued;
+            // Update stock addition available quantities
+            $stockAddition->available_pieces -= $item['quantity_issued'];
+            if ($sqftIssued) {
+                $stockAddition->available_sqft -= $sqftIssued;
+            }
+            $stockAddition->save();
 
             // Log stock activity
-        $stockAddition->refresh();
-        StockLog::logActivity(
-            'dispatched',
+            StockLog::logActivity(
+                'dispatched',
                 "Gate pass created - {$item['quantity_issued']} pieces dispatched to {$request->destination}",
-            $stockAddition->id,
-            $stockIssued->id,
-            $gatePass->id,
-            null,
-                ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + $stockIssued->sqft_issued],
-            ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                $stockAddition->id,
+                null, // No stock_issued_id for direct gate passes
+                $gatePass->id,
+                null,
+                ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0)],
+                ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
                 -$item['quantity_issued'],
-            -$stockIssued->sqft_issued
-        );
+                -($sqftIssued ?? 0)
+            );
         }
-
-        // Update gate pass with totals
-        $gatePass->update([
-            'quantity_issued' => $totalQuantity,
-            'sqft_issued' => $totalSqft,
-        ]);
 
         // Generate accounting journal entry
         $this->generateAccountingEntry($gatePass);
@@ -464,8 +474,7 @@ class GatePassController extends Controller
                 );
             }
 
-            $totalQuantity += $item['quantity_issued'];
-            $totalSqft += ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'];
+            // No need to calculate totals since they're now calculated from items
         }
 
         // Remove items that are no longer in the request
@@ -508,10 +517,8 @@ class GatePassController extends Controller
             $itemToRemove->delete();
         }
 
-        // Update gate pass with new totals and other fields
+        // Update gate pass with other fields (totals are now calculated from items)
         $gatePass->update([
-            'quantity_issued' => $totalQuantity,
-            'sqft_issued' => $totalSqft,
             'destination' => $request->destination,
             'vehicle_number' => $request->vehicle_number,
             'driver_name' => $request->driver_name,
@@ -589,7 +596,7 @@ class GatePassController extends Controller
 
             // Calculate cost (you might want to add cost fields)
             $costPerSqft = 100; // This should come from your data
-            $totalCost = $gatePass->quantity_issued * $costPerSqft; // Assuming quantity_issued is in sqft
+            $totalCost = $gatePass->sqft_issued * $costPerSqft; // Use calculated sqft from items
 
             // Create journal entry
             $journalEntry = JournalEntry::create([

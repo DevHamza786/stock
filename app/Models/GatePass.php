@@ -16,8 +16,6 @@ class GatePass extends Model
 
     protected $fillable = [
         'stock_issued_id',
-        'quantity_issued',
-        'sqft_issued',
         'destination',
         'vehicle_number',
         'driver_name',
@@ -29,38 +27,31 @@ class GatePass extends Model
     ];
 
     protected $casts = [
-        'sqft_issued' => 'decimal:2',
         'date' => 'datetime',
     ];
 
     /**
-     * Set the sqft_issued attribute - convert empty strings to null and strip non-numeric characters
+     * Get the total quantity issued across all items.
      */
-    protected function setSqftIssuedAttribute($value)
+    public function getQuantityIssuedAttribute(): int
     {
-        $this->attributes['sqft_issued'] = $this->cleanDecimalValue($value);
+        return $this->items()->sum('quantity_issued');
     }
 
     /**
-     * Clean a decimal value by removing non-numeric characters (except decimal point)
+     * Get the total square feet issued across all items.
      */
-    private function cleanDecimalValue($value)
+    public function getSqftIssuedAttribute(): float
     {
-        if ($value === '' || $value === null) {
-            return null;
-        }
-        
-        if (is_numeric($value)) {
-            return $value;
-        }
-        
-        $cleaned = preg_replace('/[^0-9.]/', '', $value);
-        
-        if ($cleaned !== '' && is_numeric($cleaned)) {
-            return $cleaned;
-        }
-        
-        return null;
+        return $this->items()->sum('sqft_issued') ?? 0;
+    }
+
+    /**
+     * Get the total weight issued across all items.
+     */
+    public function getWeightIssuedAttribute(): float
+    {
+        return $this->items()->sum('weight_issued') ?? 0;
     }
 
     /**
@@ -78,16 +69,7 @@ class GatePass extends Model
     {
         parent::boot();
 
-        static::creating(function ($gatePass) {
-            // Calculate sqft_issued if not provided
-            if (empty($gatePass->sqft_issued)) {
-                $stockIssued = StockIssued::find($gatePass->stock_issued_id);
-                if ($stockIssued) {
-                    $sqftPerPiece = $stockIssued->sqft_issued / $stockIssued->quantity_issued;
-                    $gatePass->sqft_issued = $sqftPerPiece * $gatePass->quantity_issued;
-                }
-            }
-        });
+        // No longer need creating event since we calculate totals from items
 
         static::deleting(function ($gatePass) {
             // Handle old single-item gate passes (with stockIssued relationship)
@@ -131,7 +113,9 @@ class GatePass extends Model
 
                     // Restore stock quantities
                     $stockAddition->available_pieces += $item->quantity_issued;
-                    $stockAddition->available_sqft += $item->sqft_issued;
+                    if ($item->sqft_issued) {
+                        $stockAddition->available_sqft += $item->sqft_issued;
+                    }
                     $stockAddition->save();
 
                     // Log the stock restoration activity
@@ -145,7 +129,7 @@ class GatePass extends Model
                         ['available_pieces' => $oldAvailablePieces, 'available_sqft' => $oldAvailableSqft],
                         ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
                         $item->quantity_issued,
-                        $item->sqft_issued
+                        $item->sqft_issued ?? 0
                     );
                 }
             }
