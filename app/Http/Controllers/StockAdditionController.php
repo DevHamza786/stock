@@ -86,7 +86,7 @@ class StockAdditionController extends Controller
             $query->orderBy('date', 'desc');
         }
 
-        $stockAdditions = $query->paginate(15)->withQueryString();
+        $stockAdditions = $query->paginate(100)->withQueryString();
 
         // Get filter options
         $products = Product::where('is_active', true)->orderBy('name')->get();
