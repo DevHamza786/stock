@@ -75,10 +75,10 @@ class ConditionStatusController extends Controller
             'description' => 'nullable|string',
             'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|in:on,1,true,0,false'
         ]);
 
-        $data = $request->all();
+        $data = $request->only(['name', 'description', 'color', 'sort_order']);
         $data['is_active'] = $request->has('is_active');
 
         // Set default sort order if not provided
@@ -120,10 +120,10 @@ class ConditionStatusController extends Controller
             'description' => 'nullable|string',
             'color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'sort_order' => 'nullable|integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|in:on,1,true,0,false'
         ]);
 
-        $data = $request->all();
+        $data = $request->only(['name', 'description', 'color', 'sort_order']);
         $data['is_active'] = $request->has('is_active');
 
         $conditionStatus->update($data);
