@@ -179,6 +179,27 @@ class DailyProductionController extends Controller
     }
 
     /**
+     * Show the Excel-style form for creating multiple daily production records.
+     */
+    public function createExcel(Request $request)
+    {
+        // Get available stock issued for production
+        $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
+            ->whereDoesntHave('dailyProduction', function ($query) {
+                $query->where('status', 'close');
+            })
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Get active machines and operators
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+        $conditionStatuses = ConditionStatus::active()->orderBy('name')->get();
+
+        return view('stock-management.daily-production.create-excel', compact('availableStockIssued', 'machines', 'operators', 'conditionStatuses'));
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -368,13 +389,163 @@ class DailyProductionController extends Controller
     }
 
     /**
+     * Store multiple daily production records from Excel-style form.
+     */
+    public function storeMultiple(Request $request)
+    {
+        // Validate common fields
+        $request->validate([
+            'date' => 'required|date',
+            'machine_name' => 'required|string|max:255',
+            'operator_name' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+            'status' => 'required|in:open,close',
+            'productions' => 'required|array|min:1',
+            'productions.*.stock_issued_id' => 'required|exists:stock_issued,id',
+            'productions.*.product_name' => 'required|string|max:255',
+            'productions.*.size' => 'nullable|string|max:255',
+            'productions.*.diameter' => 'nullable|string|max:255',
+            'productions.*.condition_status' => 'required|string|max:255',
+            'productions.*.special_status' => 'nullable|string|max:255',
+            'productions.*.total_pieces' => 'required|integer|min:1',
+            'productions.*.total_sqft' => 'required|numeric|min:0',
+            'productions.*.total_weight' => 'nullable|numeric|min:0',
+            'productions.*.narration' => 'nullable|string',
+        ]);
+
+        $createdCount = 0;
+        $errors = [];
+
+        try {
+            \DB::beginTransaction();
+
+            foreach ($request->productions as $index => $productionData) {
+                // Skip empty rows
+                if (empty($productionData['stock_issued_id']) || empty($productionData['product_name']) || 
+                    empty($productionData['condition_status']) || empty($productionData['total_pieces'])) {
+                    continue;
+                }
+
+                $stockIssued = StockIssued::with('stockAddition')->findOrFail($productionData['stock_issued_id']);
+                
+                // Check if this is a block/monuments or sqft-based product
+                $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
+                
+                if ($isBlockOrMonuments) {
+                    // For block/monuments: validate against issued weight
+                    $issuedWeight = $stockIssued->weight_issued;
+                    $totalWeight = floatval($productionData['total_weight'] ?? 0);
+                    
+                    if ($totalWeight > $issuedWeight) {
+                        $errors[] = "Row " . ($index + 1) . ": Total production weight ({$totalWeight} kg) cannot exceed issued weight ({$issuedWeight} kg).";
+                        continue;
+                    }
+                } else {
+                    // For sqft-based products: validate against issued sqft
+                    $issuedSqft = $stockIssued->sqft_issued;
+                    $totalSqft = floatval($productionData['total_sqft'] ?? 0);
+                    
+                    if ($totalSqft > $issuedSqft) {
+                        $errors[] = "Row " . ($index + 1) . ": Total production sqft ({$totalSqft} sqft) cannot exceed issued sqft ({$issuedSqft} sqft).";
+                        continue;
+                    }
+                }
+
+                // Create daily production record
+                $dailyProduction = DailyProduction::create([
+                    'stock_issued_id' => $productionData['stock_issued_id'],
+                    'machine_name' => $request->machine_name,
+                    'operator_name' => $request->operator_name,
+                    'notes' => $request->notes,
+                    'stone' => $stockIssued->stockAddition->stone,
+                    'date' => $request->date,
+                    'status' => $request->status,
+                    'total_pieces' => intval($productionData['total_pieces']),
+                    'total_sqft' => floatval($productionData['total_sqft']),
+                    'total_weight' => floatval($productionData['total_weight'] ?? 0),
+                ]);
+
+                // Create production item
+                $dailyProduction->items()->create([
+                    'product_name' => $productionData['product_name'],
+                    'size' => $productionData['size'] ?? null,
+                    'diameter' => $productionData['diameter'] ?? null,
+                    'condition_status' => $productionData['condition_status'],
+                    'special_status' => $productionData['special_status'] ?? null,
+                    'total_pieces' => intval($productionData['total_pieces']),
+                    'total_sqft' => floatval($productionData['total_sqft']),
+                    'total_weight' => floatval($productionData['total_weight'] ?? 0),
+                    'narration' => $productionData['narration'] ?? null,
+                ]);
+
+                // Create stock addition for produced items
+                $stockAddition = StockAddition::create([
+                    'product_id' => $stockIssued->stockAddition->product_id,
+                    'mine_vendor_id' => $stockIssued->stockAddition->mine_vendor_id,
+                    'stone' => $productionData['product_name'],
+                    'condition_status' => $productionData['condition_status'],
+                    'length' => null,
+                    'height' => null,
+                    'diameter' => $productionData['diameter'] ?? null,
+                    'weight' => $isBlockOrMonuments ? floatval($productionData['total_weight'] ?? 0) : null,
+                    'total_pieces' => intval($productionData['total_pieces']),
+                    'total_sqft' => $isBlockOrMonuments ? null : floatval($productionData['total_sqft']),
+                    'available_sqft' => $isBlockOrMonuments ? null : floatval($productionData['total_sqft']),
+                    'available_weight' => $isBlockOrMonuments ? floatval($productionData['total_weight'] ?? 0) : 0,
+                    'available_pieces' => intval($productionData['total_pieces']),
+                    'date' => $request->date,
+                    // Let the system auto-generate STK- format PID
+                ]);
+
+                $createdCount++;
+            }
+
+            if (!empty($errors)) {
+                \DB::rollBack();
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Some rows had validation errors: ' . implode(' ', $errors));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('success', "Successfully created {$createdCount} daily production record(s).");
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Multiple daily production creation error: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create daily production records. Please try again.');
+        }
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(DailyProduction $dailyProduction)
     {
         $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator']);
+        
+        // Get produced stock additions
+        $producedStockAdditions = $dailyProduction->producedStockAdditions();
 
-        return view('stock-management.daily-production.show', compact('dailyProduction'));
+        return view('stock-management.daily-production.show', compact('dailyProduction', 'producedStockAdditions'));
+    }
+
+    /**
+     * Print the daily production details.
+     */
+    public function print(DailyProduction $dailyProduction)
+    {
+        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator']);
+        
+        // Get produced stock additions
+        $producedStockAdditions = $dailyProduction->producedStockAdditions();
+
+        return view('stock-management.daily-production.print', compact('dailyProduction', 'producedStockAdditions'));
     }
 
     /**

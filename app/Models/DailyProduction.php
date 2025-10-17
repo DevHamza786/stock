@@ -102,6 +102,24 @@ class DailyProduction extends Model
     }
 
     /**
+     * Get the stock additions that were created from this daily production.
+     */
+    public function producedStockAdditions()
+    {
+        // Get production item names and conditions
+        $productionItemNames = $this->items()->pluck('product_name')->toArray();
+        $productionItemConditions = $this->items()->pluck('condition_status')->toArray();
+        
+        // Find stock additions created on the same date with matching product names and conditions
+        return StockAddition::where('date', $this->date->format('Y-m-d'))
+            ->whereIn('stone', $productionItemNames)
+            ->whereIn('condition_status', $productionItemConditions)
+            ->where('pid', 'like', 'STK-%') // Only STK- format PIDs
+            ->orderBy('created_at', 'asc')
+            ->get();
+    }
+
+    /**
      * Get total pieces from all items.
      */
     public function getTotalPiecesAttribute(): int

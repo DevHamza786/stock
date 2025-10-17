@@ -75,11 +75,21 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     Route::get('stock-issued/available-quantity/{stockAddition}', [StockIssuedController::class, 'getAvailableQuantity'])->name('stock-issued.available-quantity');
 
     // Daily Production
+    // Daily Production - Excel routes (must come before resource routes)
+    Route::get('daily-production/create-excel', [DailyProductionController::class, 'createExcel'])->name('daily-production.create-excel');
+    Route::post('daily-production/store-multiple', [DailyProductionController::class, 'storeMultiple'])->name('daily-production.store-multiple');
+    
+    // Daily Production - Resource routes
     Route::resource('daily-production', DailyProductionController::class);
+    Route::get('daily-production/{dailyProduction}/print', [DailyProductionController::class, 'print'])->name('daily-production.print');
     Route::get('daily-production/machine-stats', [DailyProductionController::class, 'getMachineStats'])->name('daily-production.machine-stats');
     Route::get('daily-production/operator-stats', [DailyProductionController::class, 'getOperatorStats'])->name('daily-production.operator-stats');
 
-    // Gate Pass
+    // Gate Pass - Excel routes (must come before resource routes)
+    Route::get('gate-pass/create-excel', [GatePassController::class, 'createExcel'])->name('gate-pass.create-excel');
+    Route::post('gate-pass/store-multiple', [GatePassController::class, 'storeMultiple'])->name('gate-pass.store-multiple');
+    
+    // Gate Pass - Resource routes
     Route::resource('gate-pass', GatePassController::class);
     Route::get('gate-pass/{gatePass}/print', [GatePassController::class, 'print'])->name('gate-pass.print');
     Route::get('gate-pass/remaining-quantity/{stockIssued}', [GatePassController::class, 'getRemainingQuantity'])->name('gate-pass.remaining-quantity');

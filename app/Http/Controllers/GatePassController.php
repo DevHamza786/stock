@@ -187,6 +187,30 @@ class GatePassController extends Controller
     }
 
     /**
+     * Show the Excel-style form for creating multiple gate pass records.
+     */
+    public function createExcel(Request $request)
+    {
+        // Get stock additions that have available stock (not fully issued)
+        $stockAdditions = StockAddition::with(['product', 'mineVendor', 'stockIssued'])
+            ->where('available_pieces', '>', 0)
+            ->whereHas('product')
+            ->whereHas('mineVendor')
+            ->orderBy('date', 'desc')
+            ->get()
+            ->filter(function ($stockAddition) {
+                // Double-check that stock actually has available pieces
+                return $stockAddition->hasAvailableStock();
+            });
+
+        // Get active machines and operators for dropdowns
+        $machines = Machine::active()->orderBy('name')->get();
+        $operators = Operator::active()->orderBy('name')->get();
+
+        return view('stock-management.gate-pass.create-excel', compact('stockAdditions', 'machines', 'operators'));
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -286,6 +310,103 @@ class GatePassController extends Controller
 
         return redirect()->route('stock-management.gate-pass.index')
             ->with('success', 'Gate pass created successfully with ' . count($request->items) . ' items.');
+    }
+
+    /**
+     * Store multiple gate pass records from Excel-style form.
+     */
+    public function storeMultiple(Request $request)
+    {
+        // Validate common fields
+        $request->validate([
+            'date' => 'required|date',
+            'destination' => 'nullable|string|max:255',
+            'vehicle_number' => 'nullable|string|max:255',
+            'driver_name' => 'nullable|string|max:255',
+            'client_name' => 'nullable|string|max:255',
+            'client_number' => 'nullable|string|max:255',
+            'status' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
+            'items.*.quantity_issued' => 'required|integer|min:1',
+        ]);
+
+        $createdCount = 0;
+        $errors = [];
+
+        try {
+            \DB::beginTransaction();
+
+            foreach ($request->items as $index => $itemData) {
+                // Skip empty rows
+                if (empty($itemData['stock_addition_id']) || empty($itemData['quantity_issued'])) {
+                    continue;
+                }
+
+                $stockAddition = StockAddition::findOrFail($itemData['stock_addition_id']);
+                $quantityToIssue = intval($itemData['quantity_issued']);
+
+                // Check stock availability
+                if ($quantityToIssue > $stockAddition->available_pieces) {
+                    $errors[] = "Row " . ($index + 1) . ": Requested quantity ({$quantityToIssue}) exceeds available pieces ({$stockAddition->available_pieces}) for stock ID {$stockAddition->id}.";
+                    continue;
+                }
+
+                // Create gate pass record
+                $gatePass = GatePass::create([
+                    'date' => $request->date,
+                    'destination' => $request->destination,
+                    'vehicle_number' => $request->vehicle_number,
+                    'driver_name' => $request->driver_name,
+                    'client_name' => $request->client_name,
+                    'client_number' => $request->client_number,
+                    'status' => $request->status,
+                    'notes' => $request->notes,
+                ]);
+
+                // Create gate pass item
+                $gatePassItem = GatePassItem::create([
+                    'gate_pass_id' => $gatePass->id,
+                    'stock_addition_id' => $itemData['stock_addition_id'],
+                    'quantity_issued' => $quantityToIssue,
+                ]);
+
+                // Update stock availability
+                $stockAddition->decrement('available_pieces', $quantityToIssue);
+
+                // Create stock log entry
+                StockLog::create([
+                    'stock_addition_id' => $stockAddition->id,
+                    'action' => 'issued',
+                    'quantity' => $quantityToIssue,
+                    'notes' => "Gate pass issued - GP: {$gatePass->id}",
+                    'date' => $request->date,
+                ]);
+
+                $createdCount++;
+            }
+
+            if (!empty($errors)) {
+                \DB::rollBack();
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Some rows had validation errors: ' . implode(' ', $errors));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('stock-management.gate-pass.index')
+                ->with('success', "Successfully created {$createdCount} gate pass record(s).");
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Multiple gate pass creation error: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create gate pass records. Please try again.');
+        }
     }
 
     /**
