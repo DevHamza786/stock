@@ -5,6 +5,76 @@
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900">Edit Stock (Excel View)</h1>
                 <p class="mt-2 text-gray-600">Edit multiple stock entries in Excel-style table format</p>
+                <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-blue-700">
+                            <span class="font-medium">Showing:</span> {{ $stockAdditions->count() }} records
+                            @if($filteredCount > $stockAdditions->count())
+                                (of {{ $filteredCount }} total filtered records)
+                            @endif
+                            <span class="ml-4 font-medium">Total in database:</span> {{ $totalCount }} records
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="{{ route('stock-management.stock-additions.edit-excel', array_merge(request()->query(), ['limit' => 'all'])) }}" 
+                               class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-1 px-3 rounded transition-colors duration-200">
+                                Load All Records
+                            </a>
+                            <button onclick="showFilters()" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-1 px-3 rounded transition-colors duration-200">
+                                Filter Records
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Panel (Hidden by default) -->
+            <div id="filters-panel" class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200" style="display: none;">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Filter Records</h3>
+                <form method="GET" action="{{ route('stock-management.stock-additions.edit-excel') }}">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <!-- Product Filter -->
+                        <div>
+                            <label for="product_ids" class="block text-sm font-medium text-gray-700 mb-1">Products</label>
+                            <select name="product_ids[]" id="product_ids" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm" multiple>
+                                @foreach($products as $product)
+                                    <option value="{{ $product->id }}" {{ in_array($product->id, request('product_ids', [])) ? 'selected' : '' }}>
+                                        {{ $product->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Vendor Filter -->
+                        <div>
+                            <label for="vendor_ids" class="block text-sm font-medium text-gray-700 mb-1">Vendors</label>
+                            <select name="vendor_ids[]" id="vendor_ids" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm" multiple>
+                                @foreach($mineVendors as $vendor)
+                                    <option value="{{ $vendor->id }}" {{ in_array($vendor->id, request('vendor_ids', [])) ? 'selected' : '' }}>
+                                        {{ $vendor->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <!-- Date Range -->
+                        <div>
+                            <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" name="date_from" id="date_from" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm" value="{{ request('date_from') }}">
+                                <input type="date" name="date_to" id="date_to" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm" value="{{ request('date_to') }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                            Apply Filters
+                        </button>
+                        <a href="{{ route('stock-management.stock-additions.edit-excel') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                            Clear Filters
+                        </a>
+                    </div>
+                </form>
             </div>
 
             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
@@ -124,6 +194,15 @@
     </div>
 
     <script>
+        function showFilters() {
+            const panel = document.getElementById('filters-panel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             let rowCounter = 0;
             const products = @json($products);

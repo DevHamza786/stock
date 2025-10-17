@@ -332,6 +332,8 @@ class StockAdditionController extends Controller
         $vendorIds = $request->get('vendor_ids', []);
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
+        $limitParam = $request->get('limit', 1000); // Default to 1000 records, but allow override
+        $limit = ($limitParam === 'all') ? null : $limitParam;
         
         $query = StockAddition::with(['product', 'mineVendor']);
         
@@ -351,13 +353,22 @@ class StockAdditionController extends Controller
             $query->where('date', '<=', $dateTo);
         }
         
-        $stockAdditions = $query->orderBy('date', 'desc')->limit(50)->get();
+        // Apply limit to prevent memory issues with very large datasets
+        if ($limit) {
+            $stockAdditions = $query->orderBy('date', 'desc')->limit($limit)->get();
+        } else {
+            $stockAdditions = $query->orderBy('date', 'desc')->get();
+        }
+        
+        // Get total count for information
+        $totalCount = StockAddition::count();
+        $filteredCount = $query->count();
         
         $products = Product::where('is_active', true)->get();
         $mineVendors = MineVendor::where('is_active', true)->get();
         $conditionStatuses = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
 
-        return view('stock-management.stock-additions.edit-excel', compact('stockAdditions', 'products', 'mineVendors', 'conditionStatuses'));
+        return view('stock-management.stock-additions.edit-excel', compact('stockAdditions', 'products', 'mineVendors', 'conditionStatuses', 'totalCount', 'filteredCount', 'limit'));
     }
 
     /**
