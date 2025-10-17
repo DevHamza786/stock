@@ -125,6 +125,35 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Global Dropdown Container (Outside Table) -->
+                            <div id="global-stock-dropdown" class="fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-lg hidden" style="display: none;">
+                                <div class="bg-blue-600 text-white px-3 py-2 rounded-t-lg">
+                                    <span class="text-sm font-medium">Select Stock Issued</span>
+                                </div>
+                                <div class="max-h-96 overflow-y-auto">
+                                    ${stockIssued.map(issued => `
+                                        <div class="px-3 py-2 hover:bg-gray-50 cursor-pointer stock-issued-option border-b border-gray-100 last:border-b-0" 
+                                             data-id="${issued.id}" 
+                                             data-product="${issued.stock_addition?.product?.name || ''}" 
+                                             data-vendor="${issued.stock_addition?.mine_vendor?.name || ''}" 
+                                             data-condition="${issued.stock_addition?.condition_status || ''}"
+                                             data-pieces="${issued.pieces_issued}"
+                                             data-weight="${issued.weight_issued || ''}"
+                                             data-sqft="${issued.sqft_issued || ''}">
+                                            <div class="font-semibold text-gray-900 text-xs">
+                                                ${issued.stock_addition?.product?.name || 'N/A'} - ${issued.stock_addition?.mine_vendor?.name || 'N/A'}
+                                            </div>
+                                            <div class="text-xs text-gray-600">
+                                                ${issued.stock_addition?.condition_status || 'N/A'} - Weight: ${issued.weight_issued ? parseFloat(issued.weight_issued).toFixed(2) + ' kg' : 'N/A'}
+                                            </div>
+                                            <div class="text-xs text-gray-500">
+                                                ${issued.pieces_issued} pieces issued (${issued.date ? new Date(issued.date).toLocaleDateString() : 'N/A'})
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
 
                             <!-- Summary Section -->
                             <div class="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
@@ -166,6 +195,48 @@
     </div>
 
     @if($availableStockIssued->count() > 0)
+    <style>
+        /* Custom Dropdown Styling */
+        .stock-issued-search {
+            position: relative;
+        }
+        
+        .stock-issued-dropdown {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: block !important;
+        }
+        
+        .stock-issued-dropdown.hidden {
+            display: none !important;
+        }
+        
+        .stock-issued-dropdown .bg-blue-600 {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        
+        .stock-issued-option {
+            transition: background-color 0.15s ease-in-out;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .stock-issued-option:hover {
+            background-color: #f9fafb;
+        }
+        
+        .stock-issued-option:last-child {
+            border-bottom: none;
+        }
+        
+        /* Search input styling */
+        .stock-issued-search:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+        
+    </style>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let rowCounter = 0;
@@ -192,14 +263,15 @@
                 row.innerHTML = `
                     <td class="px-3 py-2 text-sm text-gray-600">${rowCounter}</td>
                     <td class="px-3 py-2">
-                        <select name="productions[${rowCounter}][stock_issued_id]" class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded stock-issued-select" required>
-                            <option value="">Select Stock Issued</option>
-                            ${stockIssued.map(issued => `
-                                <option value="${issued.id}" data-product="${issued.stock_addition?.product?.name || ''}" data-vendor="${issued.stock_addition?.mine_vendor?.name || ''}" data-condition="${issued.stock_addition?.condition_status || ''}">
-                                    ${issued.stock_addition?.product?.name || 'N/A'} - ${issued.stock_addition?.mine_vendor?.name || 'N/A'} (${issued.pieces_issued} pcs)
-                                </option>
-                            `).join('')}
-                        </select>
+                        <div class="relative">
+                            <input type="text" 
+                                   name="productions[${rowCounter}][stock_issued_search]" 
+                                   class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded stock-issued-search" 
+                                   placeholder="Search stock issued for production..."
+                                   autocomplete="off"
+                                   data-row-index="${rowCounter}">
+                            <input type="hidden" name="productions[${rowCounter}][stock_issued_id]" class="stock-issued-id-input">
+                        </div>
                     </td>
                     <td class="px-3 py-2">
                         <input type="text" name="productions[${rowCounter}][product_name]" class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded product-name-input" placeholder="Product Name" required>
@@ -237,6 +309,12 @@
                 
                 tableBody.appendChild(row);
                 
+                // Hide dropdown initially
+                const dropdown = row.querySelector('.stock-issued-dropdown');
+                if (dropdown) {
+                    dropdown.classList.add('hidden');
+                }
+                
                 // Add event listeners to new row
                 setupRowEventListeners(row);
                 
@@ -245,7 +323,9 @@
             }
             
             function setupRowEventListeners(row) {
-                const stockIssuedSelect = row.querySelector('.stock-issued-select');
+                const stockIssuedSearch = row.querySelector('.stock-issued-search');
+                const stockIssuedIdInput = row.querySelector('.stock-issued-id-input');
+                const stockIssuedDropdown = row.querySelector('.stock-issued-dropdown');
                 const productNameInput = row.querySelector('.product-name-input');
                 const conditionSelect = row.querySelector('.condition-select');
                 const piecesInput = row.querySelector('.pieces-input');
@@ -253,20 +333,76 @@
                 const weightInput = row.querySelector('.weight-input');
                 const removeBtn = row.querySelector('.remove-row');
                 
-                // Stock issued selection handler
-                stockIssuedSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption.value) {
-                        const productName = selectedOption.dataset.product;
-                        const condition = selectedOption.dataset.condition;
+                // Define filterOptions function first
+                function filterOptions(searchTerm) {
+                    const options = stockIssuedDropdown.querySelectorAll('.stock-issued-option');
+                    const term = searchTerm.toLowerCase();
+                    
+                    options.forEach(option => {
+                        const product = option.dataset.product.toLowerCase();
+                        const vendor = option.dataset.vendor.toLowerCase();
+                        const condition = option.dataset.condition.toLowerCase();
+                        const text = `${product} ${vendor} ${condition}`;
                         
-                        if (productName) {
-                            productNameInput.value = productName;
+                        if (text.includes(term)) {
+                            option.style.display = 'block';
+                        } else {
+                            option.style.display = 'none';
                         }
-                        if (condition) {
-                            conditionSelect.value = condition;
-                        }
+                    });
+                }
+                
+                // Show dropdown on focus/click
+                stockIssuedSearch.addEventListener('focus', function() {
+                    console.log('Search field focused, showing dropdown');
+                    stockIssuedDropdown.classList.remove('hidden');
+                    filterOptions(this.value);
+                });
+                
+                // Also show dropdown on click
+                stockIssuedSearch.addEventListener('click', function() {
+                    console.log('Search field clicked, showing dropdown');
+                    stockIssuedDropdown.classList.remove('hidden');
+                    filterOptions(this.value);
+                });
+                
+                // Search functionality
+                stockIssuedSearch.addEventListener('input', function() {
+                    filterOptions(this.value);
+                });
+                
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!row.contains(e.target)) {
+                        stockIssuedDropdown.classList.add('hidden');
                     }
+                });
+                
+                // Handle option selection
+                const stockIssuedOptions = row.querySelectorAll('.stock-issued-option');
+                stockIssuedOptions.forEach(option => {
+                    option.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const product = this.dataset.product;
+                        const condition = this.dataset.condition;
+                        const pieces = this.dataset.pieces;
+                        const weight = this.dataset.weight;
+                        const sqft = this.dataset.sqft;
+                        
+                        // Set the selected value
+                        stockIssuedIdInput.value = id;
+                        stockIssuedSearch.value = `${product} - ${pieces} pcs`;
+                        
+                        // Auto-fill related fields
+                        productNameInput.value = product || '';
+                        conditionSelect.value = condition || '';
+                        
+                        // Hide dropdown
+                        stockIssuedDropdown.classList.add('hidden');
+                        
+                        // Update summary
+                        updateSummary();
+                    });
                 });
                 
                 // Input change handlers for summary
