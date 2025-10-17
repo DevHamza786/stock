@@ -131,7 +131,11 @@ class StockIssuedController extends Controller
                 break;
         }
 
-        $stockIssued = $query->paginate(15)->withQueryString();
+        // Get per_page parameter with default of 200, max of 1000
+        $perPage = $request->get('per_page', 200);
+        $perPage = min($perPage, 1000); // Limit to max 1000 records per page
+        
+        $stockIssued = $query->paginate($perPage)->withQueryString();
 
         // Get filter options
         $products = \App\Models\Product::where('is_active', true)->orderBy('name')->get();
