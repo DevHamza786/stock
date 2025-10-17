@@ -144,13 +144,13 @@
                                         <td>{{ $production->machine->name ?? 'N/A' }}</td>
                                         <td>{{ $production->operator->name ?? 'N/A' }}</td>
                                         <td>
-                                            <span class="font-semibold">{{ number_format($production->pieces_produced) }}</span>
+                                            <span class="font-semibold">{{ number_format($production->total_pieces) }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-sm">{{ number_format($production->sqft_produced, 2) }}</span>
+                                            <span class="text-sm">{{ number_format($production->total_sqft, 2) }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-sm text-red-600">{{ number_format($production->wastage, 2) }}%</span>
+                                            <span class="text-sm text-red-600">{{ number_format($production->wastage_sqft ?? 0, 2) }}%</span>
                                         </td>
                                         <td>
                                             @if($production->conditionStatus)
