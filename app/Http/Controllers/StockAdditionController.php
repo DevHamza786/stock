@@ -86,7 +86,7 @@ class StockAdditionController extends Controller
             $query->orderBy('date', 'desc');
         }
 
-        $stockAdditions = $query->paginate(100)->withQueryString();
+        $stockAdditions = $query->paginate(50)->withQueryString();
 
         // Get filter options
         $products = Product::where('is_active', true)->orderBy('name')->get();
@@ -179,6 +179,118 @@ class StockAdditionController extends Controller
     }
 
     /**
+     * Store multiple stock additions from Excel-style form.
+     */
+    public function storeMultiple(Request $request)
+    {
+        // Validate common fields
+        $request->validate([
+            'date' => 'required|date',
+            'mine_vendor_id' => 'required|exists:mine_vendors,id',
+            'stocks' => 'required|array|min:1',
+            'stocks.*.product_id' => 'required|exists:products,id',
+            'stocks.*.condition_status' => 'required|string|max:255',
+            'stocks.*.stone' => 'required|string|max:255',
+            'stocks.*.total_pieces' => 'required|integer|min:1',
+        ]);
+
+        $createdCount = 0;
+        $errors = [];
+
+        try {
+            \DB::beginTransaction();
+
+            foreach ($request->stocks as $index => $stockData) {
+                // Skip empty rows
+                if (empty($stockData['product_id']) || empty($stockData['condition_status']) || 
+                    empty($stockData['stone']) || empty($stockData['total_pieces'])) {
+                    continue;
+                }
+
+                $conditionStatus = strtolower(trim($stockData['condition_status']));
+                
+                // Validate condition-specific fields
+                if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+                    if (empty($stockData['weight']) || !is_numeric($stockData['weight']) || $stockData['weight'] <= 0) {
+                        $errors[] = "Row " . ($index + 1) . ": Weight is required for Block/Monuments condition.";
+                        continue;
+                    }
+                } else {
+                    if (empty($stockData['length']) || !is_numeric($stockData['length']) || $stockData['length'] <= 0 ||
+                        empty($stockData['height']) || !is_numeric($stockData['height']) || $stockData['height'] <= 0) {
+                        $errors[] = "Row " . ($index + 1) . ": Length and Height are required for this condition.";
+                        continue;
+                    }
+                }
+
+                // Calculate totals
+                $totalSqft = 0;
+                $availableWeight = 0;
+                
+                if ($conditionStatus !== 'block' && $conditionStatus !== 'monuments') {
+                    // Calculate total_sqft for non-block conditions
+                    $length = floatval($stockData['length'] ?? 0);
+                    $height = floatval($stockData['height'] ?? 0);
+                    $totalPieces = intval($stockData['total_pieces']);
+                    
+                    if ($length > 0 && $height > 0 && $totalPieces > 0) {
+                        $cmToSqft = 0.00107639;
+                        $singlePieceSizeCm = $length * $height;
+                        $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
+                        $totalSqft = $singlePieceSizeSqft * $totalPieces;
+                    }
+                } else {
+                    // Calculate available_weight for block conditions
+                    $weight = floatval($stockData['weight'] ?? 0);
+                    $totalPieces = intval($stockData['total_pieces']);
+                    $availableWeight = $weight * $totalPieces;
+                }
+
+                // Create stock addition
+                StockAddition::create([
+                    'product_id' => $stockData['product_id'],
+                    'mine_vendor_id' => $request->mine_vendor_id,
+                    'stone' => $stockData['stone'],
+                    'condition_status' => $stockData['condition_status'],
+                    'length' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['length'] ?? null),
+                    'height' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['height'] ?? null),
+                    'diameter' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['diameter'] ?? null),
+                    'weight' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? floatval($stockData['weight']) : null,
+                    'total_pieces' => intval($stockData['total_pieces']),
+                    'total_sqft' => $totalSqft,
+                    'available_sqft' => $totalSqft,
+                    'available_weight' => $availableWeight,
+                    'available_pieces' => intval($stockData['total_pieces']),
+                    'date' => $request->date,
+                    'pid' => $stockData['pid'] ?? null,
+                ]);
+
+                $createdCount++;
+            }
+
+            if (!empty($errors)) {
+                \DB::rollBack();
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Some rows had validation errors: ' . implode(' ', $errors));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('stock-management.stock-additions.index')
+                ->with('success', "Successfully created {$createdCount} stock addition(s).");
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Multiple stock addition error: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create stock additions. Please try again.');
+        }
+    }
+
+    /**
      * Display the specified resource.
      */
     public function show(StockAddition $stockAddition)
@@ -209,6 +321,43 @@ class StockAdditionController extends Controller
         $conditionStatuses = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
 
         return view('stock-management.stock-additions.edit', compact('stockAddition', 'products', 'mineVendors', 'conditionStatuses'));
+    }
+
+    /**
+     * Show the Excel-style edit form for multiple stock additions.
+     */
+    public function editExcel(Request $request)
+    {
+        $productIds = $request->get('product_ids', []);
+        $vendorIds = $request->get('vendor_ids', []);
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        
+        $query = StockAddition::with(['product', 'mineVendor']);
+        
+        if (!empty($productIds)) {
+            $query->whereIn('product_id', $productIds);
+        }
+        
+        if (!empty($vendorIds)) {
+            $query->whereIn('mine_vendor_id', $vendorIds);
+        }
+        
+        if ($dateFrom) {
+            $query->where('date', '>=', $dateFrom);
+        }
+        
+        if ($dateTo) {
+            $query->where('date', '<=', $dateTo);
+        }
+        
+        $stockAdditions = $query->orderBy('date', 'desc')->limit(50)->get();
+        
+        $products = Product::where('is_active', true)->get();
+        $mineVendors = MineVendor::where('is_active', true)->get();
+        $conditionStatuses = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
+
+        return view('stock-management.stock-additions.edit-excel', compact('stockAdditions', 'products', 'mineVendors', 'conditionStatuses'));
     }
 
     /**
@@ -408,6 +557,139 @@ class StockAdditionController extends Controller
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Update failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update multiple stock additions from Excel-style form.
+     */
+    public function updateMultiple(Request $request)
+    {
+        // Validate common fields
+        $request->validate([
+            'date' => 'required|date',
+            'mine_vendor_id' => 'required|exists:mine_vendors,id',
+            'stocks' => 'required|array|min:1',
+            'stocks.*.id' => 'nullable|exists:stock_additions,id',
+            'stocks.*.product_id' => 'required|exists:products,id',
+            'stocks.*.condition_status' => 'required|string|max:255',
+            'stocks.*.stone' => 'required|string|max:255',
+            'stocks.*.total_pieces' => 'required|integer|min:1',
+            'stocks.*.available_pieces' => 'required|integer|min:0',
+        ]);
+
+        $updatedCount = 0;
+        $createdCount = 0;
+        $errors = [];
+
+        try {
+            \DB::beginTransaction();
+
+            foreach ($request->stocks as $index => $stockData) {
+                // Skip empty rows
+                if (empty($stockData['product_id']) || empty($stockData['condition_status']) || 
+                    empty($stockData['stone']) || empty($stockData['total_pieces'])) {
+                    continue;
+                }
+
+                $conditionStatus = strtolower(trim($stockData['condition_status']));
+                
+                // Validate condition-specific fields
+                if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
+                    if (empty($stockData['weight']) || !is_numeric($stockData['weight']) || $stockData['weight'] <= 0) {
+                        $errors[] = "Row " . ($index + 1) . ": Weight is required for Block/Monuments condition.";
+                        continue;
+                    }
+                } else {
+                    if (empty($stockData['length']) || !is_numeric($stockData['length']) || $stockData['length'] <= 0 ||
+                        empty($stockData['height']) || !is_numeric($stockData['height']) || $stockData['height'] <= 0) {
+                        $errors[] = "Row " . ($index + 1) . ": Length and Height are required for this condition.";
+                        continue;
+                    }
+                }
+
+                // Validate available pieces doesn't exceed total pieces
+                if (intval($stockData['available_pieces']) > intval($stockData['total_pieces'])) {
+                    $errors[] = "Row " . ($index + 1) . ": Available pieces cannot exceed total pieces.";
+                    continue;
+                }
+
+                // Calculate totals
+                $totalSqft = 0;
+                $availableWeight = 0;
+                
+                if ($conditionStatus !== 'block' && $conditionStatus !== 'monuments') {
+                    // Calculate total_sqft for non-block conditions
+                    $length = floatval($stockData['length'] ?? 0);
+                    $height = floatval($stockData['height'] ?? 0);
+                    $totalPieces = intval($stockData['total_pieces']);
+                    
+                    if ($length > 0 && $height > 0 && $totalPieces > 0) {
+                        $cmToSqft = 0.00107639;
+                        $singlePieceSizeCm = $length * $height;
+                        $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
+                        $totalSqft = $singlePieceSizeSqft * $totalPieces;
+                    }
+                } else {
+                    // Calculate available_weight for block conditions
+                    $weight = floatval($stockData['weight'] ?? 0);
+                    $totalPieces = intval($stockData['total_pieces']);
+                    $availableWeight = $weight * $totalPieces;
+                }
+
+                $stockDataArray = [
+                    'product_id' => $stockData['product_id'],
+                    'mine_vendor_id' => $request->mine_vendor_id,
+                    'stone' => $stockData['stone'],
+                    'condition_status' => $stockData['condition_status'],
+                    'length' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['length'] ?? null),
+                    'height' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['height'] ?? null),
+                    'diameter' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? null : ($stockData['diameter'] ?? null),
+                    'weight' => $conditionStatus === 'block' || $conditionStatus === 'monuments' ? floatval($stockData['weight']) : null,
+                    'total_pieces' => intval($stockData['total_pieces']),
+                    'available_pieces' => intval($stockData['available_pieces']),
+                    'total_sqft' => $totalSqft,
+                    'available_sqft' => $totalSqft,
+                    'available_weight' => $availableWeight,
+                    'date' => $request->date,
+                    'pid' => $stockData['pid'] ?? null,
+                ];
+
+                if (!empty($stockData['id'])) {
+                    // Update existing stock addition
+                    $stockAddition = StockAddition::findOrFail($stockData['id']);
+                    $stockAddition->update($stockDataArray);
+                    $updatedCount++;
+                } else {
+                    // Create new stock addition
+                    StockAddition::create($stockDataArray);
+                    $createdCount++;
+                }
+            }
+
+            if (!empty($errors)) {
+                \DB::rollBack();
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Some rows had validation errors: ' . implode(' ', $errors));
+            }
+
+            \DB::commit();
+
+            $message = [];
+            if ($updatedCount > 0) $message[] = "Updated {$updatedCount} stock addition(s)";
+            if ($createdCount > 0) $message[] = "Created {$createdCount} stock addition(s)";
+            
+            return redirect()->route('stock-management.stock-additions.index')
+                ->with('success', implode('. ', $message) . '.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Multiple stock update error: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update stock additions. Please try again.');
         }
     }
 

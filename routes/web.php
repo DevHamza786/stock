@@ -52,9 +52,14 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     Route::patch('condition-statuses/{conditionStatus}/toggle-status', [ConditionStatusController::class, 'toggleStatus'])->name('condition-statuses.toggle-status');
     Route::get('condition-statuses-api/active', [ConditionStatusController::class, 'getActive'])->name('condition-statuses.active');
 
-    // Stock Additions
-    Route::resource('stock-additions', StockAdditionController::class);
+    // Stock Additions - Excel routes (must come before resource routes)
+    Route::get('stock-additions/edit-excel', [StockAdditionController::class, 'editExcel'])->name('stock-additions.edit-excel');
+    Route::put('stock-additions/update-multiple', [StockAdditionController::class, 'updateMultiple'])->name('stock-additions.update-multiple');
+    Route::post('stock-additions/store-multiple', [StockAdditionController::class, 'storeMultiple'])->name('stock-additions.store-multiple');
     Route::post('stock-additions/calculate-sqft', [StockAdditionController::class, 'calculateSqft'])->name('stock-additions.calculate-sqft');
+    
+    // Stock Additions - Resource routes
+    Route::resource('stock-additions', StockAdditionController::class);
 
     // TEMPORARY TEST ROUTE
     Route::get('stock-additions/{stockAddition}/edit-test', function ($stockAdditionId) {
