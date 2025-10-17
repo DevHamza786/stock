@@ -131,27 +131,8 @@
                                 <div class="bg-blue-600 text-white px-3 py-2 rounded-t-lg">
                                     <span class="text-sm font-medium">Select Stock Issued</span>
                                 </div>
-                                <div class="max-h-96 overflow-y-auto">
-                                    ${stockIssued.map(issued => `
-                                        <div class="px-3 py-2 hover:bg-gray-50 cursor-pointer stock-issued-option border-b border-gray-100 last:border-b-0" 
-                                             data-id="${issued.id}" 
-                                             data-product="${issued.stock_addition?.product?.name || ''}" 
-                                             data-vendor="${issued.stock_addition?.mine_vendor?.name || ''}" 
-                                             data-condition="${issued.stock_addition?.condition_status || ''}"
-                                             data-pieces="${issued.pieces_issued}"
-                                             data-weight="${issued.weight_issued || ''}"
-                                             data-sqft="${issued.sqft_issued || ''}">
-                                            <div class="font-semibold text-gray-900 text-xs">
-                                                ${issued.stock_addition?.product?.name || 'N/A'} - ${issued.stock_addition?.mine_vendor?.name || 'N/A'}
-                                            </div>
-                                            <div class="text-xs text-gray-600">
-                                                ${issued.stock_addition?.condition_status || 'N/A'} - Weight: ${issued.weight_issued ? parseFloat(issued.weight_issued).toFixed(2) + ' kg' : 'N/A'}
-                                            </div>
-                                            <div class="text-xs text-gray-500">
-                                                ${issued.pieces_issued} pieces issued (${issued.date ? new Date(issued.date).toLocaleDateString() : 'N/A'})
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                <div class="max-h-[500px] overflow-y-auto" id="dropdown-options-container">
+                                    <!-- Options will be populated by JavaScript -->
                                 </div>
                             </div>
 
@@ -201,15 +182,34 @@
             position: relative;
         }
         
-        .stock-issued-dropdown {
+        #global-stock-dropdown {
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            display: block !important;
+            z-index: 9999;
         }
         
-        .stock-issued-dropdown.hidden {
+        #global-stock-dropdown.hidden {
             display: none !important;
+        }
+        
+        /* Scrollbar styling for dropdown */
+        #dropdown-options-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #dropdown-options-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        #dropdown-options-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        #dropdown-options-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         
         .stock-issued-dropdown .bg-blue-600 {
@@ -242,6 +242,61 @@
             let rowCounter = 0;
             const stockIssued = @json($availableStockIssued);
             const conditionStatuses = @json($conditionStatuses);
+            
+            // Populate dropdown options
+            function populateDropdownOptions() {
+                const container = document.getElementById('dropdown-options-container');
+                container.innerHTML = '';
+                
+                stockIssued.forEach(issued => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'px-3 py-2 hover:bg-gray-50 cursor-pointer stock-issued-option border-b border-gray-100 last:border-b-0';
+                    optionDiv.setAttribute('data-id', issued.id);
+                    optionDiv.setAttribute('data-product', issued.stock_addition?.product?.name || '');
+                    optionDiv.setAttribute('data-vendor', issued.stock_addition?.mine_vendor?.name || '');
+                    optionDiv.setAttribute('data-condition', issued.stock_addition?.condition_status || '');
+                    optionDiv.setAttribute('data-pieces', issued.pieces_issued);
+                    optionDiv.setAttribute('data-weight', issued.weight_issued || '');
+                    optionDiv.setAttribute('data-sqft', issued.sqft_issued || '');
+                    
+                    const productName = issued.stock_addition?.product?.name || 'N/A';
+                    const vendorName = issued.stock_addition?.mine_vendor?.name || 'N/A';
+                    const condition = issued.stock_addition?.condition_status || 'N/A';
+                    const weight = issued.weight_issued ? parseFloat(issued.weight_issued).toFixed(2) + ' kg' : 'N/A';
+                    const pieces = issued.pieces_issued;
+                    const date = issued.date ? new Date(issued.date).toLocaleDateString() : 'N/A';
+                    
+                    optionDiv.innerHTML = `
+                        <div class="font-semibold text-gray-900 text-xs">
+                            ${productName} - ${vendorName}
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            ${condition} - Weight: ${weight}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${pieces} pieces issued (${date})
+                        </div>
+                    `;
+                    
+                    container.appendChild(optionDiv);
+                });
+            }
+            
+            // Initialize dropdown options
+            populateDropdownOptions();
+            
+            // Global click handler to hide dropdown
+            document.addEventListener('click', function(e) {
+                const globalDropdown = document.getElementById('global-stock-dropdown');
+                const searchFields = document.querySelectorAll('.stock-issued-search');
+                const isClickOnSearch = Array.from(searchFields).some(field => field.contains(e.target));
+                const isClickOnDropdown = globalDropdown && globalDropdown.contains(e.target);
+                
+                if (!isClickOnSearch && !isClickOnDropdown) {
+                    globalDropdown.style.display = 'none';
+                    globalDropdown.classList.add('hidden');
+                }
+            });
             
             const tableBody = document.getElementById('production-table-body');
             const addRowBtn = document.getElementById('add-row');
@@ -309,12 +364,6 @@
                 
                 tableBody.appendChild(row);
                 
-                // Hide dropdown initially
-                const dropdown = row.querySelector('.stock-issued-dropdown');
-                if (dropdown) {
-                    dropdown.classList.add('hidden');
-                }
-                
                 // Add event listeners to new row
                 setupRowEventListeners(row);
                 
@@ -325,7 +374,6 @@
             function setupRowEventListeners(row) {
                 const stockIssuedSearch = row.querySelector('.stock-issued-search');
                 const stockIssuedIdInput = row.querySelector('.stock-issued-id-input');
-                const stockIssuedDropdown = row.querySelector('.stock-issued-dropdown');
                 const productNameInput = row.querySelector('.product-name-input');
                 const conditionSelect = row.querySelector('.condition-select');
                 const piecesInput = row.querySelector('.pieces-input');
@@ -333,9 +381,13 @@
                 const weightInput = row.querySelector('.weight-input');
                 const removeBtn = row.querySelector('.remove-row');
                 
-                // Define filterOptions function first
+                // Get global dropdown
+                const globalDropdown = document.getElementById('global-stock-dropdown');
+                let currentActiveSearch = null;
+                
+                // Define filterOptions function
                 function filterOptions(searchTerm) {
-                    const options = stockIssuedDropdown.querySelectorAll('.stock-issued-option');
+                    const options = globalDropdown.querySelectorAll('.stock-issued-option');
                     const term = searchTerm.toLowerCase();
                     
                     options.forEach(option => {
@@ -352,17 +404,47 @@
                     });
                 }
                 
+                // Position dropdown relative to search field
+                function positionDropdown(searchField) {
+                    const rect = searchField.getBoundingClientRect();
+                    const dropdownHeight = 520; // Estimated dropdown height (header + max content)
+                    const viewportHeight = window.innerHeight;
+                    const spaceBelow = viewportHeight - rect.bottom;
+                    const spaceAbove = rect.top;
+                    
+                    globalDropdown.style.position = 'fixed';
+                    globalDropdown.style.left = rect.left + 'px';
+                    globalDropdown.style.width = Math.max(rect.width, 400) + 'px';
+                    globalDropdown.style.maxWidth = '600px';
+                    globalDropdown.style.minWidth = '400px';
+                    
+                    // Position dropdown below if there's enough space, otherwise above
+                    if (spaceBelow >= dropdownHeight || spaceBelow > spaceAbove) {
+                        globalDropdown.style.top = (rect.bottom + window.scrollY + 2) + 'px';
+                        globalDropdown.style.bottom = 'auto';
+                    } else {
+                        globalDropdown.style.bottom = (viewportHeight - rect.top + window.scrollY + 2) + 'px';
+                        globalDropdown.style.top = 'auto';
+                    }
+                }
+                
                 // Show dropdown on focus/click
                 stockIssuedSearch.addEventListener('focus', function() {
                     console.log('Search field focused, showing dropdown');
-                    stockIssuedDropdown.classList.remove('hidden');
+                    currentActiveSearch = this;
+                    positionDropdown(this);
+                    globalDropdown.style.display = 'block';
+                    globalDropdown.classList.remove('hidden');
                     filterOptions(this.value);
                 });
                 
                 // Also show dropdown on click
                 stockIssuedSearch.addEventListener('click', function() {
                     console.log('Search field clicked, showing dropdown');
-                    stockIssuedDropdown.classList.remove('hidden');
+                    currentActiveSearch = this;
+                    positionDropdown(this);
+                    globalDropdown.style.display = 'block';
+                    globalDropdown.classList.remove('hidden');
                     filterOptions(this.value);
                 });
                 
@@ -371,38 +453,35 @@
                     filterOptions(this.value);
                 });
                 
-                // Hide dropdown when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!row.contains(e.target)) {
-                        stockIssuedDropdown.classList.add('hidden');
+                // Handle option selection (global event listener)
+                globalDropdown.addEventListener('click', function(e) {
+                    if (e.target.closest('.stock-issued-option')) {
+                        const option = e.target.closest('.stock-issued-option');
+                        const id = option.dataset.id;
+                        const product = option.dataset.product;
+                        const condition = option.dataset.condition;
+                        const pieces = option.dataset.pieces;
+                        const weight = option.dataset.weight;
+                        const sqft = option.dataset.sqft;
+                        
+                        if (currentActiveSearch && currentActiveSearch.closest('tr') === row) {
+                            // Set the selected value
+                            stockIssuedIdInput.value = id;
+                            stockIssuedSearch.value = `${product} - ${pieces} pcs`;
+                            
+                            // Auto-fill related fields
+                            productNameInput.value = product || '';
+                            conditionSelect.value = condition || '';
+                            
+                            // Hide dropdown
+                            globalDropdown.style.display = 'none';
+                            globalDropdown.classList.add('hidden');
+                            currentActiveSearch = null;
+                            
+                            // Update summary
+                            updateSummary();
+                        }
                     }
-                });
-                
-                // Handle option selection
-                const stockIssuedOptions = row.querySelectorAll('.stock-issued-option');
-                stockIssuedOptions.forEach(option => {
-                    option.addEventListener('click', function() {
-                        const id = this.dataset.id;
-                        const product = this.dataset.product;
-                        const condition = this.dataset.condition;
-                        const pieces = this.dataset.pieces;
-                        const weight = this.dataset.weight;
-                        const sqft = this.dataset.sqft;
-                        
-                        // Set the selected value
-                        stockIssuedIdInput.value = id;
-                        stockIssuedSearch.value = `${product} - ${pieces} pcs`;
-                        
-                        // Auto-fill related fields
-                        productNameInput.value = product || '';
-                        conditionSelect.value = condition || '';
-                        
-                        // Hide dropdown
-                        stockIssuedDropdown.classList.add('hidden');
-                        
-                        // Update summary
-                        updateSummary();
-                    });
                 });
                 
                 // Input change handlers for summary
