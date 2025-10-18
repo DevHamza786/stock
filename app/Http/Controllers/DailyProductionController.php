@@ -451,6 +451,17 @@ class DailyProductionController extends Controller
                     }
                 }
 
+                // Calculate wastage for this production
+                $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
+                if ($isBlockOrMonuments) {
+                    // For blocks/monuments: wastage is in weight, sqft wastage is 0
+                    $wastageSqft = 0;
+                } else {
+                    // For slabs/other products: calculate sqft wastage
+                    $issuedSqft = $stockIssued->sqft_issued;
+                    $wastageSqft = $issuedSqft - $totalSqft;
+                }
+
                 // Create daily production record
                 $dailyProduction = DailyProduction::create([
                     'stock_issued_id' => $productionData['stock_issued_id'],
@@ -463,6 +474,7 @@ class DailyProductionController extends Controller
                     'total_pieces' => intval($productionData['total_pieces']),
                     'total_sqft' => floatval($productionData['total_sqft']),
                     'total_weight' => floatval($productionData['total_weight'] ?? 0),
+                    'wastage_sqft' => $wastageSqft,
                 ]);
 
                 // Create production item

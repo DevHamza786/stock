@@ -150,7 +150,7 @@
                                             <span class="text-sm">{{ number_format($production->total_sqft, 2) }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-sm text-red-600">{{ number_format($production->wastage_sqft ?? 0, 2) }}%</span>
+                                            <span class="text-sm text-red-600">{{ number_format($production->wastage_sqft ?? 0, 2) }} sqft</span>
                                         </td>
                                         <td>
                                             @if($production->conditionStatus)
