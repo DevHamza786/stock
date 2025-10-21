@@ -48,10 +48,10 @@
             }
 
             .dt-buttons .btn {
-                padding: 10px 18px;
+                padding: 6px 12px;
                 border-radius: 6px;
                 font-weight: 500;
-                font-size: 16px;
+                font-size: 12px;
                 transition: all 0.2s ease;
                 border: 1px solid transparent;
                 cursor: pointer;
@@ -146,7 +146,7 @@
             }
 
             .dataTables_paginate .paginate_button {
-                padding: 10px 14px;
+                padding: 6px 10px;
                 margin: 0 2px;
                 border: 1px solid #d1d5db;
                 border-radius: 6px;
@@ -154,7 +154,7 @@
                 color: #374151;
                 text-decoration: none;
                 font-weight: 500;
-                font-size: 16px;
+                font-size: 12px;
                 transition: all 0.2s ease;
                 cursor: pointer;
                 display: inline-block;
@@ -219,11 +219,11 @@
                 background-color: #f8f9fa !important;
                 color: #374151 !important;
                 font-weight: 600 !important;
-                padding: 14px 10px !important;
+                padding: 8px 6px !important;
                 text-align: center !important;
                 border-bottom: 1px solid #e5e7eb !important;
                 border-right: 1px solid #e5e7eb !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
                 text-transform: uppercase !important;
                 letter-spacing: 0.5px !important;
             }
@@ -235,11 +235,11 @@
             .dataTables_wrapper .dataTable tbody td {
                 background-color: #ffffff !important;
                 color: #374151 !important;
-                padding: 14px 10px !important;
+                padding: 8px 6px !important;
                 vertical-align: middle !important;
                 border-bottom: 1px solid #e5e7eb !important;
                 border-right: 1px solid #e5e7eb !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
             }
 
             .dataTables_wrapper .dataTable tbody td:last-child {
@@ -275,7 +275,7 @@
                 border: 1px solid #d1d5db !important;
                 border-radius: 6px !important;
                 padding: 8px 12px !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
                 font-weight: 500 !important;
                 min-width: 70px !important;
                 cursor: pointer !important;
@@ -299,7 +299,7 @@
                 border: 1px solid #d1d5db !important;
                 border-radius: 6px !important;
                 padding: 8px 12px !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
             }
 
             .dataTables_filter input:focus {
@@ -312,7 +312,7 @@
             .dataTables_info {
                 color: #6b7280 !important;
                 margin-top: 15px !important;
-                font-size: 16px !important;
+                font-size: 12px !important;
             }
 
             /* Full width container */
@@ -416,7 +416,7 @@
                     content: "Stock Management Report - Generated on: " attr(data-print-date);
                     display: block;
                     text-align: center;
-                    font-size: 16px;
+                    font-size: 12px;
                     font-weight: bold;
                     margin-bottom: 20px;
                     border-bottom: 2px solid #000;

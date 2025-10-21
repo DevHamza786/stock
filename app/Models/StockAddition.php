@@ -267,20 +267,40 @@ class StockAddition extends Model
         static::updating(function ($stockAddition) {
             // Check if there are any stock issues for this stock addition
             if ($stockAddition->stockIssued()->count() > 0) {
-                // Check if critical fields are being changed
-                $criticalFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft'];
-                $hasCriticalChanges = false;
+                // Only block updates to quantity/dimension fields
+                // Product Name, Mine Vendor, and Particulars can always be updated
+                $quantityDimensionFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft', 'weight', 'available_pieces', 'available_sqft', 'available_weight'];
+                $hasQuantityDimensionChanges = false;
                 
-                foreach ($criticalFields as $field) {
+                foreach ($quantityDimensionFields as $field) {
                     if ($stockAddition->isDirty($field)) {
-                        $hasCriticalChanges = true;
+                        // Skip null values for sqft fields (form sends null but DB has 0.00)
+                        if (($field === 'total_sqft' || $field === 'available_sqft') && 
+                            $stockAddition->getAttribute($field) === null && 
+                            $stockAddition->getOriginal($field) == 0) {
+                            continue;
+                        }
+                        
+                        $hasQuantityDimensionChanges = true;
+                        \Log::info("Model: Quantity/dimension field change detected: {$field}", [
+                            'old_value' => $stockAddition->getOriginal($field),
+                            'new_value' => $stockAddition->getAttribute($field)
+                        ]);
                         break;
                     }
                 }
                 
-                if ($hasCriticalChanges) {
-                    throw new \Exception('Cannot update stock dimensions or quantities after stock has been issued. Please delete all related stock issuances first.');
+                if ($hasQuantityDimensionChanges) {
+                    \Log::info('Model: Blocking update due to quantity/dimension field changes');
+                    throw new \Exception('Cannot update stock dimensions or quantities after stock has been issued. Product Name, Mine Vendor, and Particulars can be updated freely.');
                 }
+                
+                // Log that product/vendor/particulars fields are being updated for issued stock
+                \Log::info('Updating product/vendor/particulars fields for issued stock', [
+                    'stock_id' => $stockAddition->id,
+                    'dirty_fields' => array_keys($stockAddition->getDirty()),
+                    'has_stock_issuances' => $stockAddition->stockIssued()->count()
+                ]);
             }
             
             // Recalculate if any dimension fields change
@@ -358,6 +378,38 @@ class StockAddition extends Model
     public function canBeUpdated(): bool
     {
         return !$this->hasBeenIssued();
+    }
+
+    /**
+     * Get fields that are quantity/dimension related and cannot be updated when stock has been issued.
+     */
+    public function getQuantityDimensionFields(): array
+    {
+        return [
+            'length',
+            'height', 
+            'size_3d',
+            'total_pieces',
+            'total_sqft',
+            'weight',
+            'available_pieces',
+            'available_sqft',
+            'available_weight'
+        ];
+    }
+
+    /**
+     * Check if a specific field can be updated for issued stock.
+     * Product Name, Mine Vendor, and Particulars can always be updated.
+     */
+    public function canUpdateField(string $field): bool
+    {
+        if (!$this->hasBeenIssued()) {
+            return true; // Can update any field if stock hasn't been issued
+        }
+        
+        // Only block quantity/dimension fields, allow everything else
+        return !in_array($field, $this->getQuantityDimensionFields());
     }
 
     /**

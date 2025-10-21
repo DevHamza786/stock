@@ -398,6 +398,13 @@ class StockAdditionController extends Controller
             'date' => 'required|date',
         ]);
 
+        // Debug: Log validation success
+        \Log::info('Validation passed successfully', [
+            'mine_vendor_id' => $request->mine_vendor_id,
+            'product_id' => $request->product_id,
+            'stone' => $request->stone
+        ]);
+
         // Custom validation based on condition status
         $conditionStatus = strtolower(trim($request->condition_status));
         if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
@@ -451,6 +458,62 @@ class StockAdditionController extends Controller
             // Show what data will be updated
             $updateData = $request->all();
             unset($updateData['_token'], $updateData['_method']);
+            
+            // Debug: Log the request data
+            \Log::info('Request data received:', [
+                'mine_vendor_id' => $request->mine_vendor_id,
+                'product_id' => $request->product_id,
+                'stone' => $request->stone,
+                'condition_status' => $request->condition_status,
+                'all_request_data' => $request->all()
+            ]);
+            
+            // Debug: Check if stock has been issued
+            \Log::info('Stock status check:', [
+                'stock_id' => $stockAddition->id,
+                'has_been_issued' => $stockAddition->hasBeenIssued(),
+                'stock_issued_count' => $stockAddition->stockIssued()->count(),
+                'current_mine_vendor_id' => $stockAddition->mine_vendor_id,
+                'requested_mine_vendor_id' => $request->mine_vendor_id
+            ]);
+            
+            // For issued stock, only block updates to quantity/dimension fields
+            // Product Name, Mine Vendor, and Particulars can always be updated
+            if ($stockAddition->hasBeenIssued()) {
+                $quantityDimensionFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft', 'weight', 'available_pieces', 'available_sqft', 'available_weight'];
+                
+                // Check if any quantity/dimension fields are being changed
+                $hasQuantityDimensionChanges = false;
+                foreach ($quantityDimensionFields as $field) {
+                    if ($request->has($field)) {
+                        $oldValue = $stockAddition->getAttribute($field);
+                        $newValue = $request->get($field);
+                        
+                        // Skip null values for sqft fields (form sends null but DB has 0.00)
+                        if (($field === 'total_sqft' || $field === 'available_sqft') && $newValue === null && $oldValue == 0) {
+                            continue;
+                        }
+                        
+                        if ($newValue != $oldValue) {
+                            $hasQuantityDimensionChanges = true;
+                            \Log::info("Quantity/dimension field change detected: {$field}", [
+                                'old_value' => $oldValue,
+                                'new_value' => $newValue
+                            ]);
+                            break;
+                        }
+                    }
+                }
+                
+                if ($hasQuantityDimensionChanges) {
+                    \Log::info('Blocking update due to quantity/dimension field changes');
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', "Cannot update quantity or dimension fields for issued stock. Product Name, Mine Vendor, and Particulars can be updated freely.");
+                }
+                
+                \Log::info('No quantity/dimension changes detected, allowing update of product/vendor/particulars');
+            }
             
             // Handle NULL values based on condition status
             $conditionStatus = strtolower(trim($updateData['condition_status'] ?? ''));
@@ -537,20 +600,42 @@ class StockAdditionController extends Controller
             
             \Log::info('Update data prepared:', $updateData);
             
+            // Debug: Check if mine_vendor_id is in update data
+            \Log::info('Vendor update check:', [
+                'mine_vendor_id_in_update_data' => isset($updateData['mine_vendor_id']),
+                'mine_vendor_id_value' => $updateData['mine_vendor_id'] ?? 'NOT_SET',
+                'update_data_keys' => array_keys($updateData)
+            ]);
+            
             // Log before update
             \Log::info('Before update - Stock ID: ' . $stockAddition->id);
             \Log::info('Before update - Current values:', [
+                'mine_vendor_id' => $stockAddition->mine_vendor_id,
+                'product_id' => $stockAddition->product_id,
                 'weight' => $stockAddition->weight,
                 'total_pieces' => $stockAddition->total_pieces,
                 'available_pieces' => $stockAddition->available_pieces,
                 'available_weight' => $stockAddition->available_weight
             ]);
             
-            $stockAddition->update($updateData);
+            // Debug: Check if update was successful
+            \Log::info('Update method called', [
+                'update_data_keys' => array_keys($updateData),
+                'about_to_update' => true
+            ]);
+            
+            $updateResult = $stockAddition->update($updateData);
+            
+            \Log::info('Update result:', [
+                'update_successful' => $updateResult,
+                'update_data_keys' => array_keys($updateData)
+            ]);
             
             // Refresh and log after update
             $stockAddition->refresh();
             \Log::info('After update - Updated values:', [
+                'mine_vendor_id' => $stockAddition->mine_vendor_id,
+                'product_id' => $stockAddition->product_id,
                 'weight' => $stockAddition->weight,
                 'total_pieces' => $stockAddition->total_pieces,
                 'available_pieces' => $stockAddition->available_pieces,
@@ -744,5 +829,35 @@ class StockAdditionController extends Controller
             'sqft_per_piece' => $sqft,
             'total_sqft' => $totalSqft
         ]);
+    }
+
+    /**
+     * Test method to debug vendor update issues.
+     */
+    public function testUpdate(Request $request, StockAddition $stockAddition)
+    {
+        \Log::info('=== TEST UPDATE METHOD CALLED ===');
+        \Log::info('Request data:', $request->all());
+        \Log::info('Stock ID:', $stockAddition->id);
+        \Log::info('Current vendor ID:', $stockAddition->mine_vendor_id);
+        
+        try {
+            $stockAddition->mine_vendor_id = $request->mine_vendor_id;
+            $stockAddition->save();
+            
+            \Log::info('Test update successful');
+            return response()->json([
+                'success' => true,
+                'message' => 'Test update successful',
+                'old_vendor_id' => $stockAddition->getOriginal('mine_vendor_id'),
+                'new_vendor_id' => $stockAddition->mine_vendor_id
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Test update failed:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Test update failed: ' . $e->getMessage()
+            ]);
+        }
     }
 }

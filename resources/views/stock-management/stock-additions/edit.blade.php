@@ -47,7 +47,8 @@
                                         <h3 class="text-sm font-medium text-red-800">Stock Fully Issued</h3>
                                         <div class="mt-2 text-sm text-red-700">
                                             <p>This stock has been <strong>fully issued</strong> ({{ $stockAddition->stockIssued()->count() }} issuance(s)). No pieces are available for new issuances.</p>
-                                            <p class="mt-2 font-medium">⚠️ <strong>Cannot modify key fields</strong> as this stock is completely issued. Available pieces: {{ $stockAddition->available_pieces }}</p>
+                                            <p class="mt-2 font-medium">⚠️ <strong>Cannot modify quantity-related fields</strong> as this stock is completely issued. Available pieces: {{ $stockAddition->available_pieces }}</p>
+                                            <p class="mt-2 font-medium text-green-600">✅ You can still edit: Product Name, Mine Vendor, and Particulars for record keeping purposes.</p>
                         @else
                             <!-- Partially issued warning -->
                         <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -62,6 +63,7 @@
                                     <div class="mt-2 text-sm text-yellow-700">
                                             <p>This stock has been issued {{ $stockAddition->stockIssued()->count() }} time(s) but still has <strong>{{ $stockAddition->available_pieces }} pieces available</strong> for new issuances.</p>
                                         <p class="mt-2 font-medium">⚠️ Proceed with caution when modifying dimensions and quantities as this may affect existing stock issuances.</p>
+                                        <p class="mt-2 font-medium text-green-600">✅ You can safely edit: Product Name, Mine Vendor, and Particulars without affecting existing issuances.</p>
                         @endif
                                         @if($stockAddition->stockIssued()->count() > 0)
                                             <div class="mt-3">
@@ -79,7 +81,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('stock-management.stock-additions.update', $stockAddition) }}">
+                    <form method="POST" action="{{ route('stock-management.stock-additions.update', $stockAddition) }}" id="stock-edit-form" onsubmit="return confirm('Are you sure you want to update this stock?')">
                         @csrf
                         @method('PUT')
 
@@ -95,7 +97,7 @@
                             <!-- Product -->
                             <div>
                                 <x-input-label for="product_id" :value="__('Product')" />
-                                <select id="product_id" name="product_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                <select id="product_id" name="product_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm {{ $stockAddition->isFullyIssued() ? 'bg-red-50 border-red-200' : ($stockAddition->hasBeenIssued() ? 'bg-yellow-50 border-yellow-200' : 'bg-white hover:border-gray-400') }}" required {{ $stockAddition->isFullyIssued() ? 'readonly' : '' }}>
                                     <option value="">Select Product</option>
                                     @foreach($products as $product)
                                         <option value="{{ $product->id }}" {{ old('product_id', $stockAddition->product_id) == $product->id ? 'selected' : '' }}>
@@ -103,6 +105,11 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($stockAddition->isFullyIssued())
+                                    <p class="mt-1 text-xs text-red-600">🚫 Cannot modify - stock is fully issued</p>
+                                @elseif($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-yellow-600">⚠️ Modify with caution - affects existing stock issuances</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('product_id')" class="mt-2" />
                             </div>
 
@@ -117,13 +124,21 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-blue-600">✅ Vendor can be updated even for issued stock</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('mine_vendor_id')" class="mt-2" />
+                                <!-- Debug info -->
+                                <p class="mt-1 text-xs text-gray-500">Current vendor ID: {{ $stockAddition->mine_vendor_id }} | Vendor name: {{ $stockAddition->mineVendor->name ?? 'N/A' }}</p>
                             </div>
 
                             <!-- Particulars -->
                             <div>
                                 <x-input-label for="stone" :value="__('Particulars')" />
                                 <x-text-input id="stone" name="stone" type="text" class="mt-1 block w-full" :value="old('stone', $stockAddition->stone)" required />
+                                @if($stockAddition->hasBeenIssued())
+                                    <p class="mt-1 text-xs text-blue-600">✅ Particulars can be updated even for issued stock</p>
+                                @endif
                                 <x-input-error :messages="$errors->get('stone')" class="mt-2" />
                             </div>
 
@@ -379,6 +394,10 @@
                             <x-primary-button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 {{ __('Update Stock') }}
                             </x-primary-button>
+                            <!-- Debug button -->
+                            <button type="button" onclick="testFormSubmission()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 ml-4">
+                                Test Form
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -389,6 +408,38 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('=== STOCK EDIT FORM INITIALIZATION ===');
+            
+            // Debug vendor field
+            const vendorSelect = document.getElementById('mine_vendor_id');
+            if (vendorSelect) {
+                console.log('Vendor field found:', vendorSelect.value);
+                console.log('Vendor field options:', vendorSelect.options.length);
+                
+                // Add change listener for vendor field
+                vendorSelect.addEventListener('change', function() {
+                    console.log('Vendor field changed to:', this.value);
+                });
+            } else {
+                console.log('Vendor field NOT found!');
+            }
+            
+            // Add form submission debugging
+            const form = document.getElementById('stock-edit-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    console.log('=== FORM SUBMISSION DEBUG ===');
+                    const formData = new FormData(this);
+                    console.log('Form data being submitted:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key + ':', value);
+                    }
+                    console.log('Vendor field value:', document.getElementById('mine_vendor_id').value);
+                    console.log('Vendor field selected option:', document.getElementById('mine_vendor_id').selectedOptions[0]?.text);
+                    console.log('Form action:', this.action);
+                    console.log('Form method:', this.method);
+                    console.log('=== END FORM SUBMISSION DEBUG ===');
+                });
+            }
             
             const conditionStatusSelect = document.getElementById('condition_status');
             const lengthInput = document.getElementById('length');
@@ -1332,5 +1383,28 @@
                 }, 2000);
             }
         });
+        
+        // Test form submission function
+        function testFormSubmission() {
+            console.log('=== TEST FORM SUBMISSION ===');
+            const form = document.getElementById('stock-edit-form');
+            const vendorField = document.getElementById('mine_vendor_id');
+            
+            console.log('Form found:', form ? 'YES' : 'NO');
+            console.log('Vendor field found:', vendorField ? 'YES' : 'NO');
+            console.log('Vendor field value:', vendorField ? vendorField.value : 'NOT FOUND');
+            console.log('Form action:', form ? form.action : 'NOT FOUND');
+            console.log('Form method:', form ? form.method : 'NOT FOUND');
+            
+            if (form && vendorField) {
+                console.log('Submitting form...');
+                form.submit();
+            } else {
+                console.log('Cannot submit - form or vendor field not found');
+            }
+        }
+        
+        // Make test function globally available
+        window.testFormSubmission = testFormSubmission;
     </script>
 </x-app-layout>

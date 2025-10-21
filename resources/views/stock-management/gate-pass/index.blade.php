@@ -162,6 +162,20 @@
                                             @endif
                                         </td>
                                         <td>
+                                            @if($gatePass->items->count() > 0)
+                                                <div class="text-sm">
+                                                    @foreach($gatePass->items->take(3) as $item)
+                                                        <div class="font-mono text-blue-600 font-semibold">{{ $item->pid ?? 'N/A' }}</div>
+                                                    @endforeach
+                                                    @if($gatePass->items->count() > 3)
+                                                        <div class="text-gray-500 text-xs">+{{ $gatePass->items->count() - 3 }} more</div>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-gray-500 text-sm">N/A</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             <span class="font-semibold">{{ number_format($gatePass->quantity_issued) }}</span>
                                         </td>
                                         <td>
@@ -270,7 +284,7 @@
                                 $('row:first c', sheet).attr('s', '2');
 
                                 // Set column widths
-                                var colWidths = [15, 20, 12, 12, 20, 15, 12, 12];
+                                var colWidths = [15, 20, 12, 12, 12, 12, 20, 15, 12, 12];
                                 $('col', sheet).each(function(index) {
                                     if (index < colWidths.length) {
                                         $(this).attr('width', colWidths[index]);
@@ -288,9 +302,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[8, 'desc']], // Sort by Date column (descending)
+                order: [[9, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 9 } // Disable sorting on Actions column
+                    { orderable: false, targets: 10 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",
