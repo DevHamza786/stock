@@ -343,17 +343,15 @@ class DailyProductionController extends Controller
         if ($machine && $machine->can_add_stock) {
             // Create new stock addition entries for each group
             foreach ($producedStockGroups as $group) {
-                // Find or create product
-                $product = \App\Models\Product::firstOrCreate(
-                    ['name' => $group['product_name']],
-                    ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
-                );
-
-                // Create stock addition for produced items
+                // Use the original product instead of creating new ones
+                // Auto-generate production name based on date and machine
+                $productionName = "Production " . $request->date->format('Y-m-d') . " - " . $request->machine_name;
+                
+                // Create stock addition for produced items using original product
                 \App\Models\StockAddition::create([
-                    'product_id' => $product->id,
+                    'product_id' => $originalStockAddition->product_id, // Use original product
                     'mine_vendor_id' => $originalStockAddition->mine_vendor_id, // Same vendor
-                    'stone' => $originalStockAddition->stone,
+                    'stone' => $productionName, // Use auto-generated production name
                     'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
                     'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
                     'total_pieces' => $group['total_pieces'],
@@ -766,16 +764,15 @@ class DailyProductionController extends Controller
         if ($machine && $machine->can_add_stock) {
             // Create new stock addition entries for each produced item group
             foreach ($producedStockGroups as $group) {
-                $product = \App\Models\Product::firstOrCreate(
-                    ['name' => $group['product_name']],
-                    ['description' => 'Produced item', 'category' => 'Produced', 'is_active' => true]
-                );
-
-                // Create new stock addition for produced items
+                // Use the original product instead of creating new ones
+                // Auto-generate production name based on date and machine
+                $productionName = "Production " . $request->date->format('Y-m-d') . " - " . $request->machine_name;
+                
+                // Create new stock addition for produced items using original product
                 \App\Models\StockAddition::create([
-                    'product_id' => $product->id,
+                    'product_id' => $originalStockAddition->product_id, // Use original product
                     'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
-                    'stone' => $originalStockAddition->stone,
+                    'stone' => $productionName, // Use auto-generated production name
                     'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
                     'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
                     'total_pieces' => $group['total_pieces'],
@@ -787,7 +784,7 @@ class DailyProductionController extends Controller
                 ]);
 
                 \Log::info("Created new stock addition for produced item", [
-                    'product' => $product->name,
+                    'production_name' => $productionName,
                     'total_pieces' => $group['total_pieces'],
                     'total_sqft' => $group['total_sqft']
                 ]);

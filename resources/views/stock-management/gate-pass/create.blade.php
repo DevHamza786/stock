@@ -208,6 +208,8 @@
                                         <div><span class="font-medium">Vendor:</span> <span class="selected-vendor"></span></div>
                                         <div><span class="font-medium">PID:</span> <span class="selected-pid"></span></div>
                                         <div><span class="font-medium">Available:</span> <span class="available-pieces text-green-600 font-semibold"></span></div>
+                                        <div><span class="font-medium">Available Sqft:</span> <span class="available-sqft text-blue-600 font-semibold"></span></div>
+                                        <div><span class="font-medium">Selected Sqft:</span> <span class="selected-sqft text-purple-600 font-semibold">0.00</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -313,14 +315,37 @@
                         itemRow.querySelector('.selected-vendor').textContent = stock.mine_vendor?.name || 'N/A';
                         itemRow.querySelector('.selected-pid').textContent = stock.pid || 'N/A';
                         itemRow.querySelector('.available-pieces').textContent = stock.available_pieces || 0;
+                        itemRow.querySelector('.available-sqft').textContent = (parseFloat(stock.available_sqft) || 0).toFixed(2);
 
                         stockInfo.classList.remove('hidden');
 
                         // Set max value for quantity input based on available stock
                         quantityInput.max = stock.available_pieces || 0;
                         quantityInput.value = Math.min(quantityInput.value || 1, stock.available_pieces || 0);
+                        
+                        // Calculate and display selected sqft
+                        calculateSelectedSqft();
                     } else {
                         stockInfo.classList.add('hidden');
+                    }
+                }
+                
+                // Calculate selected sqft based on quantity
+                function calculateSelectedSqft() {
+                    const selectedId = stockSelect.value;
+                    if (selectedId && stockData[selectedId]) {
+                        const stock = stockData[selectedId];
+                        const quantity = parseInt(quantityInput.value) || 0;
+                        const availableSqft = parseFloat(stock.available_sqft) || 0;
+                        const availablePieces = parseInt(stock.available_pieces) || 1;
+                        
+                        // Calculate sqft per piece
+                        const sqftPerPiece = availablePieces > 0 ? availableSqft / availablePieces : 0;
+                        
+                        // Calculate selected sqft
+                        const selectedSqft = quantity * sqftPerPiece;
+                        
+                        itemRow.querySelector('.selected-sqft').textContent = selectedSqft.toFixed(2);
                     }
                 }
 
@@ -328,6 +353,11 @@
                 removeBtn.addEventListener('click', function() {
                     itemRow.remove();
                     updateRemoveButtons();
+                });
+                
+                // Add event listener for quantity input to recalculate sqft
+                quantityInput.addEventListener('input', function() {
+                    calculateSelectedSqft();
                 });
             }
 

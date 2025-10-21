@@ -150,7 +150,7 @@
                                                     <div class="font-medium">{{ $gatePass->items->count() }} items</div>
                                                     <div class="text-gray-500 text-xs">
                                                         @foreach($gatePass->items->take(2) as $item)
-                                                            {{ $item->stockAddition->product->name ?? 'N/A' }}{{ !$loop->last ? ', ' : '' }}
+                                                            <span class="text-blue-600 font-mono">{{ $item->stockAddition->pid ?? 'N/A' }}</span> - {{ $item->stockAddition->product->name ?? 'N/A' }}{{ !$loop->last ? ', ' : '' }}
                                                         @endforeach
                                                         @if($gatePass->items->count() > 2)
                                                             +{{ $gatePass->items->count() - 2 }} more
@@ -200,6 +200,9 @@
 
     <script>
         $(document).ready(function() {
+            // Add debugging for DataTable initialization
+            console.log('Initializing DataTable...');
+            
             $('#gatePassTable').DataTable({
                 responsive: true,
                 dom: '<"top"Blf>rtip',
@@ -245,26 +248,37 @@
                     },
                     {
                         extend: 'excel',
-                        text: '📊 Excel',
+                        text: '📊 Excel Export',
                         className: 'btn btn-success',
                         title: 'Gate Pass Report - {{ now()->format("d-m-Y H-i") }}',
                         filename: 'Gate_Pass_{{ now()->format("d-m-Y_H-i") }}',
                         exportOptions: {
                             columns: ':not(:last-child)' // Exclude Actions column
                         },
+                        action: function ( e, dt, button, config ) {
+                            // Add debugging
+                            console.log('Excel export button clicked');
+                            
+                            // Call the default Excel export action
+                            $.fn.dataTable.ext.buttons.excelHtml5.action.call(this, e, dt, button, config);
+                        },
                         customize: function ( xlsx ) {
-                            var sheet = xlsx.xl.worksheets['sheet1.xml'];
+                            try {
+                                var sheet = xlsx.xl.worksheets['sheet1.xml'];
 
-                            // Add header row styling
-                            $('row:first c', sheet).attr('s', '2');
+                                // Add header row styling
+                                $('row:first c', sheet).attr('s', '2');
 
-                            // Set column widths
-                            var colWidths = [15, 20, 12, 12, 20, 15, 12, 12];
-                            $('col', sheet).each(function(index) {
-                                if (index < colWidths.length) {
-                                    $(this).attr('width', colWidths[index]);
-                                }
-                            });
+                                // Set column widths
+                                var colWidths = [15, 20, 12, 12, 20, 15, 12, 12];
+                                $('col', sheet).each(function(index) {
+                                    if (index < colWidths.length) {
+                                        $(this).attr('width', colWidths[index]);
+                                    }
+                                });
+                            } catch (error) {
+                                console.error('Excel customization error:', error);
+                            }
                         }
                     },
                     {
@@ -290,6 +304,17 @@
                     }
                 }
             });
+            
+            // Add debugging for button creation
+            console.log('DataTable initialized successfully');
+            console.log('Buttons available:', $.fn.dataTable.ext.buttons);
+            
+            // Check if Excel button is available
+            if ($.fn.dataTable.ext.buttons.excelHtml5) {
+                console.log('Excel HTML5 button is available');
+            } else {
+                console.error('Excel HTML5 button is NOT available');
+            }
         });
     </script>
 </x-app-layout>

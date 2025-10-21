@@ -49,7 +49,7 @@
                                             @foreach($availableStockIssued as $issued)
                                                 <div class="stock-issued-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
                                                      data-value="{{ $issued->id }}"
-                                                     data-text="{{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($issued->stockAddition->condition_status) }}@if(in_array(strtolower($issued->stockAddition->condition_status), ['block', 'monuments'])) - Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg @else - Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm @endif - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})"
+                                                     data-text="{{ $issued->stockAddition->pid ?? 'N/A' }} - {{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }} - {{ ucfirst($issued->stockAddition->condition_status) }}@if(in_array(strtolower($issued->stockAddition->condition_status), ['block', 'monuments'])) - Weight: {{ number_format($issued->stockAddition->weight, 2) }} kg @else - Size: {{ $issued->stockAddition->length }} × {{ $issued->stockAddition->height }} cm @endif - {{ $issued->quantity_issued }} pieces issued ({{ $issued->date->format('M d, Y') }})"
                                                      data-product="{{ $issued->stockAddition->product->name ?? 'N/A' }}"
                                                      data-vendor="{{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}"
                                                      data-condition="{{ $issued->stockAddition->condition_status }}"
@@ -58,8 +58,12 @@
                                                      data-date="{{ $issued->date->format('M d, Y') }}"
                                                      data-stone="{{ $issued->stone }}"
                                                      data-machine="{{ $issued->machine?->name }}"
-                                                     data-operator="{{ $issued->operator?->name }}">
-                                                    <div class="font-medium text-gray-900">{{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}</div>
+                                                     data-operator="{{ $issued->operator?->name }}"
+                                                     data-pid="{{ $issued->stockAddition->pid ?? 'N/A' }}">
+                                                    <div class="font-medium text-gray-900">
+                                                        <span class="text-blue-600 font-mono text-sm">{{ $issued->stockAddition->pid ?? 'N/A' }}</span> - 
+                                                        {{ $issued->stockAddition->product->name ?? 'N/A' }} - {{ $issued->stockAddition->mineVendor->name ?? 'N/A' }}
+                                                    </div>
                                                     <div class="text-sm text-gray-600">
                                                         {{ ucfirst($issued->stockAddition->condition_status) }} -
                                                         @if(in_array(strtolower($issued->stockAddition->condition_status), ['block', 'monuments']))
@@ -159,7 +163,11 @@
                         <!-- Stock Info Display -->
                         <div id="stock-info" class="mt-6 p-4 bg-blue-50 rounded-lg hidden">
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Selected Stock Issued Information</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-700">PID:</span>
+                                    <span id="selected-pid" class="text-blue-600 font-mono text-sm"></span>
+                                </div>
                                 <div>
                                     <span class="font-medium text-gray-700">Product:</span>
                                     <span id="selected-product" class="text-gray-900"></span>
@@ -475,6 +483,12 @@
                     console.log('Machine:', currentStockIssued.machine);
                     console.log('Operator:', currentStockIssued.operator);
 
+                    // Update PID display
+                    const selectedPid = document.getElementById('selected-pid');
+                    if (selectedPid) {
+                        selectedPid.textContent = stockAddition.pid || 'N/A';
+                    }
+                    
                     selectedProduct.textContent = stockAddition.product.name;
                     selectedVendor.textContent = stockAddition.mine_vendor.name;
                     availablePieces.textContent = currentStockIssued.quantity_issued;

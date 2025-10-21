@@ -73,6 +73,10 @@
                     <span class="text-gray-900">{{ number_format($dailyProduction->total_weight, 2) }} kg</span>
                 </div>
                 @endif
+                <div>
+                    <span class="font-medium text-gray-700">Wastage:</span>
+                    <span class="text-red-600 font-semibold">{{ number_format($dailyProduction->wastage_sqft ?? 0, 2) }} sqft</span>
+                </div>
                 @if($dailyProduction->notes)
                 <div class="col-span-2">
                     <span class="font-medium text-gray-700">Notes:</span>
