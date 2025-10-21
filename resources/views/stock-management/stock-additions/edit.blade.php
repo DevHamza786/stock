@@ -128,8 +128,6 @@
                                     <p class="mt-1 text-xs text-blue-600">✅ Vendor can be updated even for issued stock</p>
                                 @endif
                                 <x-input-error :messages="$errors->get('mine_vendor_id')" class="mt-2" />
-                                <!-- Debug info -->
-                                <p class="mt-1 text-xs text-gray-500">Current vendor ID: {{ $stockAddition->mine_vendor_id }} | Vendor name: {{ $stockAddition->mineVendor->name ?? 'N/A' }}</p>
                             </div>
 
                             <!-- Particulars -->
@@ -394,10 +392,6 @@
                             <x-primary-button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200">
                                 {{ __('Update Stock') }}
                             </x-primary-button>
-                            <!-- Debug button -->
-                            <button type="button" onclick="testFormSubmission()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 ml-4">
-                                Test Form
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -407,40 +401,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== STOCK EDIT FORM INITIALIZATION ===');
-            
-            // Debug vendor field
-            const vendorSelect = document.getElementById('mine_vendor_id');
-            if (vendorSelect) {
-                console.log('Vendor field found:', vendorSelect.value);
-                console.log('Vendor field options:', vendorSelect.options.length);
-                
-                // Add change listener for vendor field
-                vendorSelect.addEventListener('change', function() {
-                    console.log('Vendor field changed to:', this.value);
-                });
-            } else {
-                console.log('Vendor field NOT found!');
-            }
-            
-            // Add form submission debugging
-            const form = document.getElementById('stock-edit-form');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    console.log('=== FORM SUBMISSION DEBUG ===');
-                    const formData = new FormData(this);
-                    console.log('Form data being submitted:');
-                    for (let [key, value] of formData.entries()) {
-                        console.log(key + ':', value);
-                    }
-                    console.log('Vendor field value:', document.getElementById('mine_vendor_id').value);
-                    console.log('Vendor field selected option:', document.getElementById('mine_vendor_id').selectedOptions[0]?.text);
-                    console.log('Form action:', this.action);
-                    console.log('Form method:', this.method);
-                    console.log('=== END FORM SUBMISSION DEBUG ===');
-                });
-            }
-            
             const conditionStatusSelect = document.getElementById('condition_status');
             const lengthInput = document.getElementById('length');
             const heightInput = document.getElementById('height');
@@ -1384,27 +1344,5 @@
             }
         });
         
-        // Test form submission function
-        function testFormSubmission() {
-            console.log('=== TEST FORM SUBMISSION ===');
-            const form = document.getElementById('stock-edit-form');
-            const vendorField = document.getElementById('mine_vendor_id');
-            
-            console.log('Form found:', form ? 'YES' : 'NO');
-            console.log('Vendor field found:', vendorField ? 'YES' : 'NO');
-            console.log('Vendor field value:', vendorField ? vendorField.value : 'NOT FOUND');
-            console.log('Form action:', form ? form.action : 'NOT FOUND');
-            console.log('Form method:', form ? form.method : 'NOT FOUND');
-            
-            if (form && vendorField) {
-                console.log('Submitting form...');
-                form.submit();
-            } else {
-                console.log('Cannot submit - form or vendor field not found');
-            }
-        }
-        
-        // Make test function globally available
-        window.testFormSubmission = testFormSubmission;
     </script>
 </x-app-layout>

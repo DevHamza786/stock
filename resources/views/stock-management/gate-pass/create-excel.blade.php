@@ -21,7 +21,7 @@
                             </a>
                         </div>
                     @else
-                    <form method="POST" action="{{ route('stock-management.gate-pass.store-multiple') }}" id="excel-form">
+                    <form method="POST" action="{{ route('stock-management.gate-pass.store-multiple') }}" id="excel-form">  
                         @csrf
 
                         <!-- Common Fields -->
@@ -34,7 +34,7 @@
                                     <x-text-input id="date" name="date" type="date" class="mt-1 block w-full" :value="old('date', now()->format('Y-m-d'))" required />
                                     <x-input-error :messages="$errors->get('date')" class="mt-2" />
                                 </div>
-                                
+
                                 <!-- Status -->
                                 <div>
                                     <x-input-label for="status" :value="__('Status')" />
@@ -118,10 +118,10 @@
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">#</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Stock Item</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Product</th>
-                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Vendor</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Condition</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Available</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Issue Qty</th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Particulars</th>
                                             <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Action</th>
                                         </tr>
                                     </thead>
@@ -195,18 +195,20 @@
                         <select name="items[${rowCounter}][stock_addition_id]" class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded stock-addition-select" required>
                             <option value="">Select Stock Item</option>
                             ${stockAdditions.map(stock => `
-                                <option value="${stock.id}" data-product="${stock.product?.name || ''}" data-vendor="${stock.mine_vendor?.name || ''}" data-condition="${stock.condition_status || ''}" data-available="${stock.available_pieces || 0}">
-                                    ${stock.stone || 'N/A'} - ${stock.condition_status || 'N/A'} (Available: ${stock.available_pieces || 0})
+                                <option value="${stock.id}" data-product="${stock.product?.name || ''}" data-condition="${stock.condition_status || ''}" data-available="${stock.available_pieces || 0}" data-sqft="${stock.available_sqft || 0}" data-weight="${stock.weight || 0}">
+                                    ${stock.product?.name || 'N/A'} - ${stock.condition_status || 'N/A'} (${stock.available_pieces || 0} pieces${stock.available_sqft ? `, ${parseFloat(stock.available_sqft).toFixed(2)} sqft` : ''}${stock.weight ? `, ${parseFloat(stock.weight).toFixed(2)} kg` : ''})${stock.pid ? ` - PID: ${stock.pid}` : ''}
                                 </option>
                             `).join('')}
                         </select>
                     </td>
                     <td class="px-3 py-2 text-sm text-gray-900 product-cell">-</td>
-                    <td class="px-3 py-2 text-sm text-gray-900 vendor-cell">-</td>
                     <td class="px-3 py-2 text-sm text-gray-900 condition-cell">-</td>
                     <td class="px-3 py-2 text-sm text-gray-900 available-cell">-</td>
                     <td class="px-3 py-2">
                         <input type="number" name="items[${rowCounter}][quantity_issued]" class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded quantity-input" min="1" placeholder="Qty" required>
+                    </td>
+                    <td class="px-3 py-2">
+                        <textarea name="items[${rowCounter}][particulars]" class="w-full text-xs border-gray-300 focus:border-green-500 focus:ring-green-500 rounded particulars-input" rows="2" placeholder="Particulars..."></textarea>
                     </td>
                     <td class="px-3 py-2 text-center">
                         <button type="button" class="remove-row text-red-600 hover:text-red-800 text-xs font-medium" ${rowCounter === 1 ? 'disabled' : ''}>
@@ -234,21 +236,29 @@
                     const selectedOption = this.options[this.selectedIndex];
                     if (selectedOption.value) {
                         const product = selectedOption.dataset.product;
-                        const vendor = selectedOption.dataset.vendor;
                         const condition = selectedOption.dataset.condition;
                         const available = selectedOption.dataset.available;
+                        const sqft = selectedOption.dataset.sqft;
+                        const weight = selectedOption.dataset.weight;
                         
                         row.querySelector('.product-cell').textContent = product || '-';
-                        row.querySelector('.vendor-cell').textContent = vendor || '-';
                         row.querySelector('.condition-cell').textContent = condition || '-';
-                        row.querySelector('.available-cell').textContent = available || '-';
+                        
+                        // Show available pieces and sqft/weight
+                        let availableText = `${available || 0} pieces`;
+                        if (sqft && parseFloat(sqft) > 0) {
+                            availableText += `, ${parseFloat(sqft).toFixed(2)} sqft`;
+                        }
+                        if (weight && parseFloat(weight) > 0) {
+                            availableText += `, ${parseFloat(weight).toFixed(2)} kg`;
+                        }
+                        row.querySelector('.available-cell').textContent = availableText;
                         
                         // Set max quantity
                         quantityInput.max = available;
                         quantityInput.placeholder = `Max: ${available}`;
                     } else {
                         row.querySelector('.product-cell').textContent = '-';
-                        row.querySelector('.vendor-cell').textContent = '-';
                         row.querySelector('.condition-cell').textContent = '-';
                         row.querySelector('.available-cell').textContent = '-';
                         quantityInput.max = '';
@@ -339,7 +349,7 @@
                     const stockSelect = row.querySelector('.stock-addition-select');
                     const quantityInput = row.querySelector('.quantity-input');
                     
-                    if (stockSelect.value && quantityInput.value) {
+                    if (stockSelect && stockSelect.value && quantityInput && quantityInput.value) {
                         hasValidRows = true;
                     }
                 });

@@ -16,7 +16,8 @@ class GatePassItem extends Model
         'quantity_issued',
         'sqft_issued',
         'weight_issued',
-        'stone'
+        'stone',
+        'particulars'
     ];
 
     protected $casts = [

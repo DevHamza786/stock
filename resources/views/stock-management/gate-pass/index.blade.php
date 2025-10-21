@@ -141,7 +141,7 @@
                                                     @endif
                                                 </div>
                                             @else
-                                                <span class="text-gray-500 text-sm">N/A</span>
+                                                <span class="text-gray-500 text-sm"></span>
                                             @endif
                                         </td>
                                         <td>
@@ -150,7 +150,7 @@
                                                     <div class="font-medium">{{ $gatePass->items->count() }} items</div>
                                                     <div class="text-gray-500 text-xs">
                                                         @foreach($gatePass->items->take(2) as $item)
-                                                            <span class="text-blue-600 font-mono">{{ $item->stockAddition->pid ?? 'N/A' }}</span> - {{ $item->stockAddition->product->name ?? 'N/A' }}{{ !$loop->last ? ', ' : '' }}
+                                                            <span class="text-blue-600 font-mono">{{ $item->stockAddition->pid ?? '' }}</span> - {{ $item->stockAddition->product->name ?? '' }}{{ !$loop->last ? ', ' : '' }}
                                                         @endforeach
                                                         @if($gatePass->items->count() > 2)
                                                             +{{ $gatePass->items->count() - 2 }} more
@@ -158,21 +158,7 @@
                                                     </div>
                                                 </div>
                                             @else
-                                                <span class="text-gray-500 text-sm">N/A</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($gatePass->items->count() > 0)
-                                                <div class="text-sm">
-                                                    @foreach($gatePass->items->take(3) as $item)
-                                                        <div class="font-mono text-blue-600 font-semibold">{{ $item->pid ?? 'N/A' }}</div>
-                                                    @endforeach
-                                                    @if($gatePass->items->count() > 3)
-                                                        <div class="text-gray-500 text-xs">+{{ $gatePass->items->count() - 3 }} more</div>
-                                                    @endif
-                                                </div>
-                                            @else
-                                                <span class="text-gray-500 text-sm">N/A</span>
+                                                <span class="text-gray-500 text-sm"></span>
                                             @endif
                                         </td>
                                         <td>
@@ -181,9 +167,9 @@
                                         <td>
                                             <span class="font-semibold">{{ number_format($gatePass->sqft_issued, 2) }}</span>
                                         </td>
-                                        <td>{{ $gatePass->destination ?? 'N/A' }}</td>
+                                        <td>{{ $gatePass->destination ?? '' }}</td>
                                         <td>
-                                            <span class="font-mono text-sm">{{ $gatePass->vehicle_number ?? 'N/A' }}</span>
+                                            <span class="font-mono text-sm">{{ $gatePass->vehicle_number ?? '' }}</span>
                                         </td>
                                         <td>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $gatePass->status === 'Dispatched' ? 'bg-green-100 text-green-800' : ($gatePass->status === 'Approved' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800') }}">
@@ -284,7 +270,7 @@
                                 $('row:first c', sheet).attr('s', '2');
 
                                 // Set column widths
-                                var colWidths = [15, 20, 12, 12, 12, 12, 20, 15, 12, 12];
+                                var colWidths = [15, 20, 12, 12, 20, 15, 12, 12];
                                 $('col', sheet).each(function(index) {
                                     if (index < colWidths.length) {
                                         $(this).attr('width', colWidths[index]);
@@ -302,9 +288,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[9, 'desc']], // Sort by Date column (descending)
+                order: [[8, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 10 } // Disable sorting on Actions column
+                    { orderable: false, targets: 9 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",

@@ -199,6 +199,12 @@
                                 <input type="number" class="quantity-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" name="items[${itemIndex}][quantity_issued]" min="1" required>
                             </div>
 
+                            <!-- Particulars -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Particulars</label>
+                                <textarea class="particulars-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" name="items[${itemIndex}][particulars]" rows="2" placeholder="Enter particulars for this item..."></textarea>
+                            </div>
+
                             <!-- Stock Info Display -->
                             <div class="stock-info hidden">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Stock Information</label>

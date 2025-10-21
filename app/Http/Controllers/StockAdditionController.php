@@ -830,34 +830,4 @@ class StockAdditionController extends Controller
             'total_sqft' => $totalSqft
         ]);
     }
-
-    /**
-     * Test method to debug vendor update issues.
-     */
-    public function testUpdate(Request $request, StockAddition $stockAddition)
-    {
-        \Log::info('=== TEST UPDATE METHOD CALLED ===');
-        \Log::info('Request data:', $request->all());
-        \Log::info('Stock ID:', $stockAddition->id);
-        \Log::info('Current vendor ID:', $stockAddition->mine_vendor_id);
-        
-        try {
-            $stockAddition->mine_vendor_id = $request->mine_vendor_id;
-            $stockAddition->save();
-            
-            \Log::info('Test update successful');
-            return response()->json([
-                'success' => true,
-                'message' => 'Test update successful',
-                'old_vendor_id' => $stockAddition->getOriginal('mine_vendor_id'),
-                'new_vendor_id' => $stockAddition->mine_vendor_id
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Test update failed:', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Test update failed: ' . $e->getMessage()
-            ]);
-        }
-    }
 }

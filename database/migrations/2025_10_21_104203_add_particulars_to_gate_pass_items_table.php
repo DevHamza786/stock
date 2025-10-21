@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('gate_pass_items', function (Blueprint $table) {
-            $table->string('pid')->nullable()->after('stock_addition_id');
+            $table->text('particulars')->nullable()->after('stone');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('gate_pass_items', function (Blueprint $table) {
-            $table->dropColumn('pid');
+            $table->dropColumn('particulars');
         });
     }
 };

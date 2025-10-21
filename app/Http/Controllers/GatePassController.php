@@ -219,6 +219,7 @@ class GatePassController extends Controller
             'items' => 'required|array|min:1',
             'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
             'items.*.quantity_issued' => 'required|integer|min:1',
+            'items.*.particulars' => 'nullable|string|max:1000',
             'destination' => 'nullable|string|max:255',
             'vehicle_number' => 'nullable|string|max:255',
             'driver_name' => 'nullable|string|max:255',
@@ -281,6 +282,7 @@ class GatePassController extends Controller
                 'sqft_issued' => $sqftIssued,
                 'weight_issued' => $weightIssued,
                 'stone' => $stockAddition->stone,
+                'particulars' => $item['particulars'] ?? $stockAddition->stone,
             ]);
 
             // Update stock addition available quantities
@@ -330,6 +332,7 @@ class GatePassController extends Controller
             'items' => 'required|array|min:1',
             'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
             'items.*.quantity_issued' => 'required|integer|min:1',
+            'items.*.particulars' => 'nullable|string|max:1000',
         ]);
 
         $createdCount = 0;
@@ -337,6 +340,18 @@ class GatePassController extends Controller
 
         try {
             \DB::beginTransaction();
+
+            // Create a single gate pass for all items
+            $gatePass = GatePass::create([
+                'date' => $request->date,
+                'destination' => $request->destination,
+                'vehicle_number' => $request->vehicle_number,
+                'driver_name' => $request->driver_name,
+                'client_name' => $request->client_name,
+                'client_number' => $request->client_number,
+                'status' => $request->status,
+                'notes' => $request->notes,
+            ]);
 
             foreach ($request->items as $index => $itemData) {
                 // Skip empty rows
@@ -353,36 +368,58 @@ class GatePassController extends Controller
                     continue;
                 }
 
-                // Create gate pass record
-                $gatePass = GatePass::create([
-                    'date' => $request->date,
-                    'destination' => $request->destination,
-                    'vehicle_number' => $request->vehicle_number,
-                    'driver_name' => $request->driver_name,
-                    'client_name' => $request->client_name,
-                    'client_number' => $request->client_number,
-                    'status' => $request->status,
-                    'notes' => $request->notes,
-                ]);
+                // Calculate sqft and weight based on stock addition
+                $sqftIssued = null;
+                $weightIssued = null;
+                
+                if ($stockAddition->condition_status && in_array(strtolower($stockAddition->condition_status), ['block', 'monuments'])) {
+                    // For block/monuments, calculate weight
+                    if ($stockAddition->weight) {
+                        $weightIssued = ($stockAddition->weight / $stockAddition->total_pieces) * $quantityToIssue;
+                    }
+                } else {
+                    // For other conditions, calculate sqft
+                    if ($stockAddition->total_sqft && $stockAddition->total_pieces > 0) {
+                        $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
+                        $sqftIssued = $sqftPerPiece * $quantityToIssue;
+                    }
+                }
 
-                // Create gate pass item
+                // Create gate pass item for the single gate pass
                 $gatePassItem = GatePassItem::create([
                     'gate_pass_id' => $gatePass->id,
                     'stock_addition_id' => $itemData['stock_addition_id'],
                     'quantity_issued' => $quantityToIssue,
+                    'sqft_issued' => $sqftIssued,
+                    'weight_issued' => $weightIssued,
+                    'stone' => $stockAddition->stone,
+                    'particulars' => $itemData['particulars'] ?? $stockAddition->stone,
                 ]);
 
-                // Update stock availability
-                $stockAddition->decrement('available_pieces', $quantityToIssue);
+                // Update stock availability using direct DB update to bypass model restrictions
+                \DB::table('stock_additions')
+                    ->where('id', $stockAddition->id)
+                    ->decrement('available_pieces', $quantityToIssue);
+                
+                if ($sqftIssued) {
+                    \DB::table('stock_additions')
+                        ->where('id', $stockAddition->id)
+                        ->decrement('available_sqft', $sqftIssued);
+                }
 
                 // Create stock log entry
-                StockLog::create([
-                    'stock_addition_id' => $stockAddition->id,
-                    'action' => 'issued',
-                    'quantity' => $quantityToIssue,
-                    'notes' => "Gate pass issued - GP: {$gatePass->id}",
-                    'date' => $request->date,
-                ]);
+                StockLog::logActivity(
+                    'dispatched',
+                    "Gate pass created - {$quantityToIssue} pieces dispatched to {$request->destination}",
+                    $stockAddition->id,
+                    null, // No stock_issued_id for direct gate passes
+                    $gatePass->id,
+                    null,
+                    ['available_pieces' => $stockAddition->available_pieces + $quantityToIssue, 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0)],
+                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                    -$quantityToIssue,
+                    -($sqftIssued ?? 0)
+                );
 
                 $createdCount++;
             }
@@ -396,8 +433,13 @@ class GatePassController extends Controller
 
             \DB::commit();
 
+            // Generate accounting journal entries for the single gate pass
+            if ($createdCount > 0) {
+                $this->generateAccountingEntry($gatePass);
+            }
+
             return redirect()->route('stock-management.gate-pass.index')
-                ->with('success', "Successfully created {$createdCount} gate pass record(s).");
+                ->with('success', "Successfully created gate pass with {$createdCount} item(s).");
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -464,6 +506,7 @@ class GatePassController extends Controller
             'items' => 'required|array|min:1',
             'items.*.stock_addition_id' => 'required|exists:stock_additions,id',
             'items.*.quantity_issued' => 'required|integer|min:1',
+            'items.*.particulars' => 'nullable|string|max:1000',
             'destination' => 'nullable|string|max:255',
             'vehicle_number' => 'nullable|string|max:255',
             'driver_name' => 'nullable|string|max:255',
@@ -506,51 +549,77 @@ class GatePassController extends Controller
             $existingItem = $existingItemsMap->get($stockAddition->id);
 
             if ($existingItem) {
-                // Item exists - check if quantity changed
-                if ($existingItem->quantity_issued != $item['quantity_issued']) {
-                    // Quantity changed - update the item
-                    $quantityDifference = $item['quantity_issued'] - $existingItem->quantity_issued;
-                    $sqftDifference = (($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued']) - $existingItem->sqft_issued;
-
+                // Check if quantity or particulars changed
+                $quantityChanged = $existingItem->quantity_issued != $item['quantity_issued'];
+                $particularsChanged = ($existingItem->particulars ?? $stockAddition->stone) != ($item['particulars'] ?? $stockAddition->stone);
+                
+                if ($quantityChanged || $particularsChanged) {
                     // Update the gate pass item
-                    $existingItem->update([
-                        'quantity_issued' => $item['quantity_issued'],
-                        'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
-                        'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
-                    ]);
-
-                    // Update the corresponding stock issued record
-                    $stockIssued = StockIssued::where('stock_addition_id', $stockAddition->id)
-                        ->where('purpose', 'Gate Pass Dispatch')
-                        ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
-                        ->first();
-
-                    if ($stockIssued) {
-                        $stockIssued->update([
+                    $updateData = [
+                        'particulars' => $item['particulars'] ?? $stockAddition->stone,
+                    ];
+                    
+                    if ($quantityChanged) {
+                        $quantityDifference = $item['quantity_issued'] - $existingItem->quantity_issued;
+                        $sqftDifference = (($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued']) - $existingItem->sqft_issued;
+                        
+                        $updateData = array_merge($updateData, [
                             'quantity_issued' => $item['quantity_issued'],
                             'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
                             'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
                         ]);
                     }
+                    
+                    $existingItem->update($updateData);
 
-                    // Adjust stock quantities
-                    $stockAddition->available_pieces -= $quantityDifference;
-                    $stockAddition->available_sqft -= $sqftDifference;
-                    $stockAddition->save();
+                    // Update the corresponding stock issued record only if quantity changed
+                    if ($quantityChanged) {
+                        $stockIssued = StockIssued::where('stock_addition_id', $stockAddition->id)
+                            ->where('purpose', 'Gate Pass Dispatch')
+                            ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
+                            ->first();
 
-                    // Log the update
-                    StockLog::logActivity(
-                        'updated',
-                        "Gate pass item updated - {$quantityDifference} pieces change",
-                        $stockAddition->id,
-                        $stockIssued->id,
-                        $gatePass->id,
-                        null,
-                        ['available_pieces' => $stockAddition->available_pieces + $quantityDifference, 'available_sqft' => $stockAddition->available_sqft + $sqftDifference],
-                        ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
-                        -$quantityDifference,
-                        -$sqftDifference
-                    );
+                        if ($stockIssued) {
+                            $stockIssued->update([
+                                'quantity_issued' => $item['quantity_issued'],
+                                'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
+                                'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
+                            ]);
+                        }
+
+                        // Adjust stock quantities
+                        $stockAddition->available_pieces -= $quantityDifference;
+                        $stockAddition->available_sqft -= $sqftDifference;
+                        $stockAddition->save();
+
+                        // Log the update
+                        StockLog::logActivity(
+                            'updated',
+                            "Gate pass item updated - {$quantityDifference} pieces change",
+                            $stockAddition->id,
+                            $stockIssued->id,
+                            $gatePass->id,
+                            null,
+                            ['available_pieces' => $stockAddition->available_pieces + $quantityDifference, 'available_sqft' => $stockAddition->available_sqft + $sqftDifference],
+                            ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                            -$quantityDifference,
+                            -$sqftDifference
+                        );
+                    } else {
+                        // Log particulars update
+                        StockLog::logActivity(
+                            'updated',
+                            "Gate pass item particulars updated",
+                            $stockAddition->id,
+                            null,
+                            $gatePass->id,
+                            null,
+                            null,
+                            null,
+                            0,
+                            0
+                        );
+                    }
                 }
             } else {
                 // New item - create it
@@ -573,6 +642,7 @@ class GatePassController extends Controller
                     'sqft_issued' => $stockIssued->sqft_issued,
                     'weight_issued' => $stockIssued->weight_issued,
                     'stone' => $stockAddition->stone,
+                    'particulars' => $item['particulars'] ?? $stockAddition->stone,
                 ]);
 
                 // Adjust stock quantities
@@ -756,6 +826,78 @@ class GatePassController extends Controller
 
         } catch (\Exception $e) {
             \Log::error("Failed to create accounting entry for gate pass #{$gatePass->id}: ".$e->getMessage());
+        }
+    }
+
+    /**
+     * Generate accounting journal entries for multiple gate passes.
+     */
+    private function generateAccountingEntryForMultiple($items)
+    {
+        try {
+            // Get accounts
+            $cogsAccount = ChartOfAccount::where('account_code', '5110')->first(); // Cost of Goods Sold
+            $finishedGoodsAccount = ChartOfAccount::where('account_code', '1160')->first(); // Finished Goods
+
+            if (! $cogsAccount || ! $finishedGoodsAccount) {
+                \Log::warning('Required accounts not found for multiple gate pass accounting entry');
+                return;
+            }
+
+            $totalCost = 0;
+            $costPerSqft = 100; // This should come from your data
+
+            // Calculate total cost from all items
+            foreach ($items as $itemData) {
+                if (empty($itemData['stock_addition_id']) || empty($itemData['quantity_issued'])) {
+                    continue;
+                }
+
+                $stockAddition = StockAddition::find($itemData['stock_addition_id']);
+                if ($stockAddition && $stockAddition->total_sqft && $stockAddition->total_pieces > 0) {
+                    $sqftPerPiece = $stockAddition->total_sqft / $stockAddition->total_pieces;
+                    $sqftIssued = $sqftPerPiece * intval($itemData['quantity_issued']);
+                    $totalCost += $sqftIssued * $costPerSqft;
+                }
+            }
+
+            if ($totalCost > 0) {
+                // Create journal entry
+                $journalEntry = JournalEntry::create([
+                    'entry_date' => now()->format('Y-m-d'),
+                    'description' => "Multiple gate passes created",
+                    'entry_type' => 'AUTO_GATE_PASS_MULTIPLE',
+                    'total_debit' => $totalCost,
+                    'total_credit' => $totalCost,
+                    'status' => 'DRAFT',
+                    'created_by' => auth()->id(),
+                    'notes' => "Auto-generated for multiple gate passes",
+                ]);
+
+                // Create transactions
+                AccountTransaction::create([
+                    'journal_entry_id' => $journalEntry->id,
+                    'account_id' => $cogsAccount->id,
+                    'debit_amount' => $totalCost,
+                    'credit_amount' => 0,
+                    'description' => "Cost of goods sold: Multiple gate passes",
+                    'reference_type' => 'gate_pass_multiple',
+                    'reference_id' => null,
+                ]);
+
+                AccountTransaction::create([
+                    'journal_entry_id' => $journalEntry->id,
+                    'account_id' => $finishedGoodsAccount->id,
+                    'debit_amount' => 0,
+                    'credit_amount' => $totalCost,
+                    'description' => "Finished goods decrease: Multiple gate passes",
+                    'reference_type' => 'gate_pass_multiple',
+                    'reference_id' => null,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Multiple gate pass accounting entry generation failed: ' . $e->getMessage());
         }
     }
 }

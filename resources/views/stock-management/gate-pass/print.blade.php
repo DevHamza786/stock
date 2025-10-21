@@ -275,7 +275,7 @@
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center;">{{ $index + 1 }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->pid ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->product->name ?? 'N/A' }}</td>
-                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stone ?? 'N/A' }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->particulars ?? $item->stone ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->quantity_issued) }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->sqft_issued, 2) }}</td>
                     </tr>
