@@ -82,6 +82,8 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     // Daily Production - Resource routes
     Route::resource('daily-production', DailyProductionController::class);
     Route::get('daily-production/{dailyProduction}/print', [DailyProductionController::class, 'print'])->name('daily-production.print');
+    Route::patch('daily-production/{dailyProduction}/close', [DailyProductionController::class, 'close'])->name('daily-production.close');
+    Route::patch('daily-production/{dailyProduction}/open', [DailyProductionController::class, 'open'])->name('daily-production.open');
     Route::get('daily-production/machine-stats', [DailyProductionController::class, 'getMachineStats'])->name('daily-production.machine-stats');
     Route::get('daily-production/operator-stats', [DailyProductionController::class, 'getOperatorStats'])->name('daily-production.operator-stats');
 

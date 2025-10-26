@@ -260,7 +260,7 @@ class StockAddition extends Model
                 null,
                 ['total_pieces' => $stockAddition->total_pieces, 'total_sqft' => $stockAddition->total_sqft],
                 $stockAddition->total_pieces,
-                $stockAddition->total_sqft
+                $stockAddition->total_sqft ?? 0
             );
         });
 

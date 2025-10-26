@@ -305,6 +305,14 @@
                     <input type="text" name="items[INDEX][product_name]" class="product-name-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
                 </div>
 
+                <!-- Condition Status -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Condition Status</label>
+                    <select name="items[INDEX][condition_status]" class="condition-status-select block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required onchange="updateProductionItemFields(this.closest('.production-item'), this.value)">
+                        <option value="">Select condition...</option>
+                    </select>
+                </div>
+
                 <!-- Size/Weight Field (conditional based on condition status) -->
                 <div id="size-weight-container">
                     <label class="block text-sm font-medium text-gray-700 mb-2" id="size-weight-label">Size (cm) - e.g., 60*90, H*L</label>
@@ -317,17 +325,6 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Diameter (W)</label>
                     <input type="text" name="items[INDEX][diameter]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="e.g., 6cm, 2cm">
-                </div>
-
-                <!-- Condition Status -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Condition Status</label>
-                    <select name="items[INDEX][condition_status]" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
-                        <option value="">Select condition...</option>
-                        @foreach($conditionStatuses as $status)
-                            <option value="{{ $status->name }}">{{ $status->name }}</option>
-                        @endforeach
-                    </select>
                 </div>
 
                 <!-- Special Status -->
@@ -414,6 +411,31 @@
             let itemIndex = 0;
             let stockIssuedData = @json(isset($availableStockIssued) ? $availableStockIssued->keyBy('id') : []);
             let currentStockIssued = null;
+            
+            // Condition statuses data
+            const conditionStatuses = @json($conditionStatuses);
+
+            // Function to populate condition status dropdown
+            function populateConditionStatusSelect(selectElement, selectedValue = '') {
+                console.log('Populating condition status dropdown with selected value:', selectedValue);
+                
+                // Clear existing options
+                selectElement.innerHTML = '<option value="">Select condition...</option>';
+                
+                // Add condition status options
+                conditionStatuses.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status.name;
+                    option.textContent = status.name;
+                    selectElement.appendChild(option);
+                });
+                
+                // Set the selected value AFTER all options are added
+                if (selectedValue) {
+                    selectElement.value = selectedValue;
+                    console.log('Set condition status to:', selectedValue, 'Current value:', selectElement.value);
+                }
+            }
 
             // Initialize search field if there's an old value
             @if(old('stock_issued_id'))
@@ -752,6 +774,23 @@
                 const title = newItem.querySelector('.production-item-title');
                 title.textContent = `Production #${itemIndex + 1}`;
 
+                // Populate condition status dropdown
+                const conditionStatusSelect = newItem.querySelector('.condition-status-select');
+                if (conditionStatusSelect) {
+                    if (currentStockIssued) {
+                        // Set condition status based on stock
+                        const stockAddition = currentStockIssued.stock_addition;
+                        const defaultConditionStatus = stockAddition.condition_status || '';
+                        populateConditionStatusSelect(conditionStatusSelect, defaultConditionStatus);
+                        
+                        // Set initial field visibility based on stock condition status
+                        updateProductionItemFields(newItem, defaultConditionStatus);
+                    } else {
+                        // Just populate without setting value
+                        populateConditionStatusSelect(conditionStatusSelect);
+                    }
+                }
+
                 // Product name input (no auto-fill)
                 const productNameInput = newItem.querySelector('.product-name-input');
                 const totalPiecesInput = newItem.querySelector('.total-pieces-input');
@@ -761,7 +800,7 @@
                 // Add event listeners
                 setupProductionItemEvents(newItem);
 
-                // Set initial piece size display and field visibility
+                // Set initial piece size display
                 if (currentStockIssued) {
                     const stockAddition = currentStockIssued.stock_addition;
                     const isBlock = stockAddition.condition_status && 
@@ -778,9 +817,6 @@
                             pieceSizeDisplay.textContent = sqftPerPiece.toFixed(2);
                         }
                     }
-                    
-                    // Set initial field visibility based on stock condition status
-                    updateProductionItemFields(newItem, stockAddition.condition_status);
                 }
 
                 itemsContainer.appendChild(newItem);

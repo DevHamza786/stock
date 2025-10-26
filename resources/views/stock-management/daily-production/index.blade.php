@@ -108,6 +108,7 @@
                         <table id="dailyProductionTable" class="table table-striped table-hover">
                             <thead>
                                 <tr>
+                                    <th>Status</th>
                                     <th>Stock PID</th>
                                     <th>Product</th>
                                     <th>Diameter</th>
@@ -124,6 +125,23 @@
                             <tbody>
                                 @foreach($dailyProduction as $production)
                                     <tr>
+                                        <td>
+                                            @if($production->status === 'open')
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                    </svg>
+                                                    Open
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                                    </svg>
+                                                    Closed
+                                                </span>
+                                            @endif
+                                        </td>
                                         <td>
                                             <span class="font-mono text-sm">{{ $production->stockAddition->pid ?? 'N/A' }}</span>
                                         </td>
@@ -159,14 +177,28 @@
                                         <td>
                                             <div class="flex space-x-2">
                                                 <a href="{{ route('stock-management.daily-production.show', $production) }}" class="text-blue-600 hover:text-blue-900 text-sm">View</a>
+                                                
                                                 @if($production->status === 'open')
                                                     <a href="{{ route('stock-management.daily-production.edit', $production) }}" class="text-green-600 hover:text-green-900 text-sm">Edit</a>
+                                                    
+                                                    <form method="POST" action="{{ route('stock-management.daily-production.close', $production) }}" class="inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="text-orange-600 hover:text-orange-900 text-sm" onclick="return confirm('Are you sure you want to close this production?')">Close</button>
+                                                    </form>
+                                                    
+                                                    <form method="POST" action="{{ route('stock-management.daily-production.destroy', $production) }}" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this production record?')">Delete</button>
+                                                    </form>
+                                                @else
+                                                    <form method="POST" action="{{ route('stock-management.daily-production.open', $production) }}" class="inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button type="submit" class="text-green-600 hover:text-green-900 text-sm" onclick="return confirm('Are you sure you want to open this production?')">Open</button>
+                                                    </form>
                                                 @endif
-                                                <form method="POST" action="{{ route('stock-management.daily-production.destroy', $production) }}" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this production record?')">Delete</button>
-                                                </form>
                                             </div>
                                         </td>
                                     </tr>
@@ -195,8 +227,9 @@
                         title: 'Daily Production Report',
                         messageTop: 'Generated on: {{ now()->format("d/m/Y H:i") }}',
                         customize: function ( win ) {
-                            // Hide action column
-                            $(win.document.body).find('table th:last-child, table td:last-child').hide();
+                            // Hide action column and status column
+                            $(win.document.body).find('table th:first-child, table td:first-child').hide(); // Hide Status column
+                            $(win.document.body).find('table th:last-child, table td:last-child').hide(); // Hide Actions column
                             
                             // Style the table
                             $(win.document.body).find('table')
@@ -231,7 +264,7 @@
                         title: 'Daily Production Report - {{ now()->format("d-m-Y H-i") }}',
                         filename: 'Daily_Production_{{ now()->format("d-m-Y_H-i") }}',
                         exportOptions: {
-                            columns: ':not(:last-child)' // Exclude Actions column
+                            columns: ':not(:first-child, :last-child)' // Exclude Status and Actions columns
                         },
                         customize: function ( xlsx ) {
                             var sheet = xlsx.xl.worksheets['sheet1.xml'];
@@ -255,9 +288,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[9, 'desc']], // Sort by Date column (descending)
+                order: [[10, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 10 } // Disable sorting on Actions column
+                    { orderable: false, targets: 11 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",

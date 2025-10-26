@@ -211,9 +211,10 @@ class DailyProductionController extends Controller
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
-            'status' => 'required|in:open,close',
+            'status' => 'required|in:open,closed',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
+            'items.*.weight' => 'nullable|numeric|min:0',
             'items.*.size' => 'nullable|string|max:255',
             'items.*.diameter' => 'nullable|string|max:255',
             'items.*.condition_status' => 'required|string|max:255',
@@ -310,6 +311,7 @@ class DailyProductionController extends Controller
 
         // Create production items
         foreach ($processedItems as $itemData) {
+            $itemData['stock_addition_id'] = $stockIssued->stock_addition_id;
             $dailyProduction->items()->create($itemData);
         }
 
@@ -397,10 +399,11 @@ class DailyProductionController extends Controller
             'machine_name' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
-            'status' => 'required|in:open,close',
+            'status' => 'required|in:open,closed',
             'productions' => 'required|array|min:1',
             'productions.*.stock_issued_id' => 'required|exists:stock_issued,id',
             'productions.*.product_name' => 'required|string|max:255',
+            'productions.*.weight' => 'nullable|numeric|min:0',
             'productions.*.size' => 'nullable|string|max:255',
             'productions.*.diameter' => 'nullable|string|max:255',
             'productions.*.condition_status' => 'required|string|max:255',
@@ -478,6 +481,8 @@ class DailyProductionController extends Controller
                 // Create production item
                 $dailyProduction->items()->create([
                     'product_name' => $productionData['product_name'],
+                    'weight' => floatval($productionData['weight'] ?? 0),
+                    'stock_addition_id' => $stockIssued->stock_addition_id,
                     'size' => $productionData['size'] ?? null,
                     'diameter' => $productionData['diameter'] ?? null,
                     'condition_status' => $productionData['condition_status'],
@@ -537,7 +542,7 @@ class DailyProductionController extends Controller
      */
     public function show(DailyProduction $dailyProduction)
     {
-        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator']);
+        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items.stockAddition', 'machine', 'operator']);
         
         // Get produced stock additions
         $producedStockAdditions = $dailyProduction->producedStockAdditions();
@@ -550,7 +555,7 @@ class DailyProductionController extends Controller
      */
     public function print(DailyProduction $dailyProduction)
     {
-        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator']);
+        $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'items.stockAddition', 'machine', 'operator']);
         
         // Get produced stock additions
         $producedStockAdditions = $dailyProduction->producedStockAdditions();
@@ -564,14 +569,13 @@ class DailyProductionController extends Controller
     public function edit(DailyProduction $dailyProduction)
     {
         // Check if production is closed - prevent editing
-        if ($dailyProduction->status === 'close') {
+        if ($dailyProduction->isClosed()) {
             return redirect()->route('stock-management.daily-production.show', $dailyProduction)
                 ->with('error', 'Cannot edit closed production. Production is marked as completed.');
         }
 
         // Load the daily production with its relationships
         $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'stockIssued', 'items']);
-
         // Get stock issued records for production
         $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
             ->orderBy('date', 'desc')
@@ -591,28 +595,49 @@ class DailyProductionController extends Controller
      */
     public function update(Request $request, DailyProduction $dailyProduction)
     {
+        \Log::info('Update method called', [
+            'production_id' => $dailyProduction->id,
+            'request_data' => $request->all()
+        ]);
+        
         // Check if production is closed - prevent updating
-        if ($dailyProduction->status === 'close') {
+        if ($dailyProduction->isClosed()) {
             return redirect()->route('stock-management.daily-production.show', $dailyProduction)
                 ->with('error', 'Cannot update closed production. Production is marked as completed.');
         }
 
-        $request->validate([
+        try {
+            // Custom validation based on condition status
+            foreach ($request->items as $index => $item) {
+                $conditionStatus = $item['condition_status'] ?? '';
+                $isBlock = in_array(strtolower($conditionStatus), ['block', 'monuments']);
+                
+                if ($isBlock) {
+                    // For block/monuments: require total_weight, make total_sqft nullable
+                    $request->merge(["items.{$index}.total_weight" => $item['total_weight'] ?? 0]);
+                } else {
+                    // For slabs/others: require total_sqft, make total_weight nullable
+                    $request->merge(["items.{$index}.total_sqft" => $item['total_sqft'] ?? 0]);
+                }
+            }
+            
+            $request->validate([
             'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
             'operator_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
             'stone' => 'nullable|string|max:255',
             'date' => 'required|date',
-            'status' => 'required|in:open,close',
+            'status' => 'required|in:open,closed',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
+            'items.*.weight' => 'nullable|numeric|min:0',
             'items.*.size' => 'nullable|string|max:255',
             'items.*.diameter' => 'nullable|string|max:255',
             'items.*.condition_status' => 'required|string|max:255',
             'items.*.special_status' => 'nullable|string|max:255',
             'items.*.total_pieces' => 'required|integer|min:1',
-            'items.*.total_sqft' => 'required|numeric|min:0',
+            'items.*.total_sqft' => 'nullable|numeric|min:0',
             'items.*.total_weight' => 'nullable|numeric|min:0',
             'items.*.narration' => 'nullable|string',
         ]);
@@ -711,6 +736,7 @@ class DailyProductionController extends Controller
 
         // Create new production items
         foreach ($processedItems as $itemData) {
+            $itemData['stock_addition_id'] = $stockIssued->stock_addition_id;
             $dailyProduction->items()->create($itemData);
         }
 
@@ -811,9 +837,26 @@ class DailyProductionController extends Controller
             'produced_groups' => count($producedStockGroups)
         ]);
 
-        $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
-        return redirect()->route('stock-management.daily-production.index')
-            ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
+            $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
+        
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed in update', [
+                'errors' => $e->errors()
+            ]);
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            \Log::error('Error updating daily production', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'An error occurred while updating the production: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -822,7 +865,7 @@ class DailyProductionController extends Controller
     public function destroy(DailyProduction $dailyProduction)
     {
         // Check if production is closed - prevent deletion
-        if ($dailyProduction->status === 'close') {
+        if ($dailyProduction->isClosed()) {
             return redirect()->route('stock-management.daily-production.index')
                 ->with('error', 'Cannot delete closed production. Production is marked as completed.');
         }
@@ -831,6 +874,48 @@ class DailyProductionController extends Controller
 
         return redirect()->route('stock-management.daily-production.index')
             ->with('success', 'Daily production deleted successfully.');
+    }
+
+    /**
+     * Close the daily production.
+     */
+    public function close(DailyProduction $dailyProduction)
+    {
+        try {
+            if ($dailyProduction->isClosed()) {
+                return redirect()->route('stock-management.daily-production.index')
+                    ->with('error', 'Production is already closed.');
+            }
+
+            $dailyProduction->close();
+
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('success', 'Production closed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('error', 'Failed to close production: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Open the daily production.
+     */
+    public function open(DailyProduction $dailyProduction)
+    {
+        try {
+            if ($dailyProduction->isOpen()) {
+                return redirect()->route('stock-management.daily-production.index')
+                    ->with('error', 'Production is already open.');
+            }
+
+            $dailyProduction->open();
+
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('success', 'Production opened successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('stock-management.daily-production.index')
+                ->with('error', 'Failed to open production: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -102,6 +102,46 @@ class DailyProduction extends Model
     }
 
     /**
+     * Get the condition status that owns the daily production.
+     */
+    public function conditionStatus(): BelongsTo
+    {
+        return $this->belongsTo(ConditionStatus::class, 'condition_status', 'name');
+    }
+
+    /**
+     * Check if the production is open.
+     */
+    public function isOpen(): bool
+    {
+        return $this->status === 'open';
+    }
+
+    /**
+     * Check if the production is closed.
+     */
+    public function isClosed(): bool
+    {
+        return $this->status === 'closed';
+    }
+
+    /**
+     * Close the production.
+     */
+    public function close(): bool
+    {
+        return $this->update(['status' => 'closed']);
+    }
+
+    /**
+     * Open the production.
+     */
+    public function open(): bool
+    {
+        return $this->update(['status' => 'open']);
+    }
+
+    /**
      * Get the stock additions that were created from this daily production.
      */
     public function producedStockAdditions()

@@ -15,6 +15,8 @@ class DailyProductionItem extends Model
     protected $fillable = [
         'daily_production_id',
         'product_name',
+        'weight',
+        'stock_addition_id',
         'size',
         'diameter',
         'condition_status',
@@ -26,6 +28,7 @@ class DailyProductionItem extends Model
     ];
 
     protected $casts = [
+        'weight' => 'decimal:2',
         'total_sqft' => 'decimal:2',
         'total_weight' => 'decimal:2',
     ];
@@ -36,6 +39,14 @@ class DailyProductionItem extends Model
     protected function setTotalSqftAttribute($value)
     {
         $this->attributes['total_sqft'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the weight attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWeightAttribute($value)
+    {
+        $this->attributes['weight'] = $this->cleanDecimalValue($value);
     }
 
     /**
@@ -77,6 +88,14 @@ class DailyProductionItem extends Model
     public function dailyProduction(): BelongsTo
     {
         return $this->belongsTo(DailyProduction::class);
+    }
+
+    /**
+     * Get the stock addition that this production item is based on.
+     */
+    public function stockAddition(): BelongsTo
+    {
+        return $this->belongsTo(StockAddition::class);
     }
 
     /**

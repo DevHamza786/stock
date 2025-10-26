@@ -122,14 +122,8 @@
                                 <h3 class="font-semibold text-gray-900">Item #{{ $index + 1 }}</h3>
                                 <div class="text-right text-sm">
                                     <div class="font-medium">{{ $item->total_pieces }} pieces</div>
-                                    @php
-                                        // Find the corresponding produced stock addition for this item
-                                        $producedStock = $producedStockAdditions->where('stone', $item->product_name)
-                                            ->where('condition_status', $item->condition_status)
-                                            ->first();
-                                    @endphp
-                                    @if($producedStock)
-                                        <div class="text-green-700">New Stock PID: {{ $producedStock->pid ?? 'N/A' }}</div>
+                                    @if($item->stockAddition)
+                                        <div class="text-green-700">Produced Stock PID: {{ $item->stockAddition->pid ?? 'N/A' }}</div>
                                     @endif
                                 </div>
                             </div>
@@ -175,28 +169,34 @@
                             </div>
 
                             <!-- New Stock Information for Print -->
-                            @if($producedStock)
+                            @if($item->stockAddition)
                             <div class="mt-3 p-2 bg-green-50 border border-green-200 rounded">
-                                <h5 class="text-xs font-semibold text-green-900 mb-1">New Stock Created:</h5>
+                                <h5 class="text-xs font-semibold text-green-900 mb-1">Produced Stock Information:</h5>
                                 <div class="grid grid-cols-2 gap-2 text-xs">
                                     <div>
                                         <span class="font-medium text-green-700">Stock PID:</span>
-                                        <span class="text-green-900 font-mono">{{ $producedStock->pid ?? 'N/A' }}</span>
+                                        <span class="text-green-900 font-mono">{{ $item->stockAddition->pid ?? 'N/A' }}</span>
                                     </div>
                                     <div>
                                         <span class="font-medium text-green-700">Available Pieces:</span>
-                                        <span class="text-green-900">{{ number_format($producedStock->available_pieces) }}</span>
+                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_pieces) }}</span>
                                     </div>
-                                    @if($producedStock->available_sqft > 0)
+                                    @if($item->stockAddition->available_sqft > 0)
                                     <div>
                                         <span class="font-medium text-green-700">Available Sqft:</span>
-                                        <span class="text-green-900">{{ number_format($producedStock->available_sqft, 2) }} sqft</span>
+                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_sqft, 2) }} sqft</span>
                                     </div>
                                     @endif
-                                    @if($producedStock->available_weight > 0)
+                                    @if($item->stockAddition->available_weight > 0)
                                     <div>
                                         <span class="font-medium text-green-700">Available Weight:</span>
-                                        <span class="text-green-900">{{ number_format($producedStock->available_weight, 2) }} kg</span>
+                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_weight, 2) }} kg</span>
+                                    </div>
+                                    @endif
+                                    @if($item->weight)
+                                    <div>
+                                        <span class="font-medium text-green-700">Weight per Piece:</span>
+                                        <span class="text-green-900">{{ number_format($item->weight, 2) }} kg</span>
                                     </div>
                                     @endif
                                 </div>

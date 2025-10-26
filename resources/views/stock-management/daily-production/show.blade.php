@@ -143,23 +143,17 @@
                                             <div class="flex items-center justify-between mb-3">
                                                 <h3 class="text-lg font-semibold text-gray-900">Production Item #{{ $index + 1 }}</h3>
                                                 <div class="flex items-center space-x-2">
-                                                    @php
-                                                        // Find the corresponding produced stock addition for this item
-                                                        $producedStock = $producedStockAdditions->where('stone', $item->product_name)
-                                                            ->where('condition_status', $item->condition_status)
-                                                            ->first();
-                                                    @endphp
-                                                    @if($producedStock)
-                                                        <a href="{{ route('stock-management.stock-additions.show', $producedStock) }}" 
+                                                    @if($item->stockAddition)
+                                                        <a href="{{ route('stock-management.stock-additions.show', $item->stockAddition) }}" 
                                                            class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded hover:bg-green-200 transition-colors duration-200"
-                                                           title="View New Product">
+                                                           title="View Produced Stock">
                                                             <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                                             </svg>
-                                                            New Product
+                                                            Produced Stock
                                                         </a>
-                                                        <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                                                            PID: {{ $producedStock->pid ?? 'N/A' }}
+                                                        <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded font-mono">
+                                                            PID: {{ $item->stockAddition->pid ?? 'N/A' }}
                                                         </span>
                                                     @endif
                                                     
@@ -172,11 +166,11 @@
                                                             </svg>
                                                             Source Stock
                                                         </a>
-                                                        <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded font-mono">
                                                             PID: {{ $dailyProduction->stockAddition->pid ?? 'N/A' }}
                                                         </span>
                                                     @endif
-                                                    <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                                    <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">
                                                         {{ $item->total_pieces }} pieces
                                                     </span>
                                                 </div>
@@ -237,37 +231,43 @@
                                             </div>
 
                                             <!-- New Stock Information -->
-                                            @if($producedStock)
+                                            @if($item->stockAddition)
                                             <div class="bg-green-50 p-3 rounded-lg border border-green-200">
-                                                <h4 class="text-sm font-semibold text-green-900 mb-2">New Stock Created</h4>
+                                                <h4 class="text-sm font-semibold text-green-900 mb-2">Produced Stock Information</h4>
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                                     <div>
                                                         <span class="font-medium text-green-700">Stock PID:</span>
-                                                        <span class="text-green-900 font-mono">{{ $producedStock->pid ?? 'N/A' }}</span>
+                                                        <span class="text-green-900 font-mono">{{ $item->stockAddition->pid ?? 'N/A' }}</span>
                                                     </div>
                                                     <div>
                                                         <span class="font-medium text-green-700">Available Pieces:</span>
-                                                        <span class="text-green-900">{{ number_format($producedStock->available_pieces) }}</span>
+                                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_pieces) }}</span>
                                                     </div>
-                                                    @if($producedStock->available_sqft > 0)
+                                                    @if($item->stockAddition->available_sqft > 0)
                                                     <div>
                                                         <span class="font-medium text-green-700">Available Sqft:</span>
-                                                        <span class="text-green-900">{{ number_format($producedStock->available_sqft, 2) }} sqft</span>
+                                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_sqft, 2) }} sqft</span>
                                                     </div>
                                                     @endif
-                                                    @if($producedStock->available_weight > 0)
+                                                    @if($item->stockAddition->available_weight > 0)
                                                     <div>
                                                         <span class="font-medium text-green-700">Available Weight:</span>
-                                                        <span class="text-green-900">{{ number_format($producedStock->available_weight, 2) }} kg</span>
+                                                        <span class="text-green-900">{{ number_format($item->stockAddition->available_weight, 2) }} kg</span>
+                                                    </div>
+                                                    @endif
+                                                    @if($item->weight)
+                                                    <div>
+                                                        <span class="font-medium text-green-700">Weight per Piece:</span>
+                                                        <span class="text-green-900">{{ number_format($item->weight, 2) }} kg</span>
                                                     </div>
                                                     @endif
                                                     <div class="md:col-span-2">
-                                                        <a href="{{ route('stock-management.stock-additions.show', $producedStock) }}" 
+                                                        <a href="{{ route('stock-management.stock-additions.show', $item->stockAddition) }}" 
                                                            class="inline-flex items-center text-xs text-green-600 hover:text-green-800 transition-colors duration-200">
                                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                                             </svg>
-                                                            View New Stock Addition Details
+                                                            View Stock Addition Details
                                                         </a>
                                                     </div>
                                                 </div>
