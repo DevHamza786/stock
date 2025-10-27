@@ -123,7 +123,11 @@ class DailyProductionController extends Controller
                 break;
         }
 
-        $dailyProduction = $query->with(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator'])->paginate(15)->withQueryString();
+        // Get per_page parameter with default of 200, max of 1000
+        $perPage = $request->get('per_page', 200);
+        $perPage = min($perPage, 1000); // Limit to max 1000 records per page
+        
+        $dailyProduction = $query->with(['stockAddition.product', 'stockAddition.mineVendor', 'items', 'machine', 'operator'])->paginate($perPage)->withQueryString();
 
         // Get filter options
         $products = \App\Models\Product::orderBy('name')->get();

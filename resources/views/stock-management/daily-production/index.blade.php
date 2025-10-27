@@ -36,7 +36,14 @@
                     <!-- Filters -->
                     <div class="mb-6 p-4 bg-white rounded-lg border border-gray-200">
                         <form method="GET" action="{{ route('stock-management.daily-production.index') }}">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <!-- Search Input -->
+                            <div class="mb-4">
+                                <input type="text" name="search" placeholder="Search by product, vendor, machine, operator, stone, size, notes..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       value="{{ request('search') }}">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                                 <!-- Product Filter -->
                                 <div>
                                     <label for="product_id" class="block text-sm font-medium text-gray-700 mb-1">Product</label>
@@ -88,13 +95,25 @@
                                         @endforeach
                                     </select>
                                 </div>
+
+                                <!-- Records Per Page -->
+                                <div>
+                                    <label for="per_page" class="block text-sm font-medium text-gray-700 mb-1">Records Per Page</label>
+                                    <select name="per_page" id="per_page" class="block w-full border-gray-300 focus:border-purple-500 focus:ring-purple-500 rounded-lg shadow-sm">
+                                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
+                                        <option value="200" {{ request('per_page', 200) == '200' ? 'selected' : '' }}>200</option>
+                                        <option value="500" {{ request('per_page') == '500' ? 'selected' : '' }}>500</option>
+                                        <option value="1000" {{ request('per_page') == '1000' ? 'selected' : '' }}>1000</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="flex space-x-4">
                                 <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                     Apply Filters
                                 </button>
-                                @if(request()->hasAny(['product_id', 'vendor_id', 'machine_name', 'condition_status']))
+                                @if(request()->hasAny(['search', 'product_id', 'vendor_id', 'machine_name', 'condition_status', 'per_page']))
                                     <a href="{{ route('stock-management.daily-production.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                         Clear
                                     </a>
@@ -222,6 +241,13 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination -->
+                    @if($dailyProduction->hasPages())
+                        <div class="mt-6">
+                            {{ $dailyProduction->links() }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -306,22 +332,21 @@
                         className: 'btn btn-danger'
                     }
                 ],
-                pageLength: 10,
+                paging: false,
+                searching: false,
+                info: false,
                 order: [[12, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
                     { orderable: false, targets: 13 } // Disable sorting on Actions column
-                ],
-                language: {
-                    search: "Search:",
-                    lengthMenu: "Show _MENU_ entries",
-                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                    paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Previous"
-                    }
-                }
+                ]
+            });
+
+            // Auto-submit form when filter selects change
+            const filterSelects = document.querySelectorAll('#product_id, #vendor_id, #machine_name, #condition_status, #per_page');
+            filterSelects.forEach(select => {
+                select.addEventListener('change', function() {
+                    this.form.submit();
+                });
             });
         });
     </script>

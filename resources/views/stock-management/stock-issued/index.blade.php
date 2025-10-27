@@ -34,6 +34,13 @@
                     <!-- Filters -->
                     <div class="mb-6 p-4 bg-white rounded-lg border border-gray-200">
                         <form method="GET" action="{{ route('stock-management.stock-issued.index') }}">
+                            <!-- Search Input -->
+                            <div class="mb-4">
+                                <input type="text" name="search" placeholder="Search by product, vendor, machine, operator, purpose, stone, size, notes..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                       value="{{ request('search') }}">
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                                 <!-- Product Filter -->
                                 <div>
@@ -104,7 +111,7 @@
                                 <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                     Apply Filters
                                 </button>
-                                @if(request()->hasAny(['product_id', 'vendor_id', 'condition_status', 'purpose', 'per_page']))
+                                @if(request()->hasAny(['search', 'product_id', 'vendor_id', 'condition_status', 'purpose', 'per_page']))
                                     <a href="{{ route('stock-management.stock-issued.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                         Clear
                                 </a>
@@ -191,6 +198,13 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination -->
+                    @if($stockIssued->hasPages())
+                        <div class="mt-6">
+                            {{ $stockIssued->links() }}
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -271,22 +285,13 @@
                         className: 'btn btn-danger'
                     }
                 ],
-                pageLength: {{ $stockIssued->perPage() }},
+                paging: false,
+                searching: false,
+                info: false,
                 order: [[8, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
                     { orderable: false, targets: 9 } // Disable sorting on Actions column
-                ],
-                language: {
-                    search: "Search:",
-                    lengthMenu: "Show _MENU_ entries",
-                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                    paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Previous"
-                    }
-                }
+                ]
             });
 
             // Auto-submit form when filter selects change
