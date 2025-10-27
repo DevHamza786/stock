@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\MineVendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class StockManagementController extends Controller
 {
@@ -52,8 +53,8 @@ class StockManagementController extends Controller
             ->limit(5)
             ->get();
 
-        // Get stock levels by product
-        $stockLevelsByProduct = Product::with(['stockAdditions' => function($query) {
+        // Get stock levels by product with pagination
+        $stockLevelsByProductQuery = Product::with(['stockAdditions' => function($query) {
             $query->where('available_pieces', '>', 0);
         }])
         ->get()
@@ -63,7 +64,23 @@ class StockManagementController extends Controller
                 'available_pieces' => $product->stockAdditions->sum('available_pieces'),
                 'available_sqft' => $product->stockAdditions->sum('available_sqft')
             ];
-        });
+        })
+        ->filter(function($stock) {
+            return $stock['available_pieces'] > 0;
+        })
+        ->sortByDesc('available_pieces');
+        
+        // Paginate manually since it's a collection
+        $currentPage = request()->get('stock_page', 1);
+        $perPage = 10;
+        $total = $stockLevelsByProductQuery->count();
+        $stockLevelsByProduct = new LengthAwarePaginator(
+            $stockLevelsByProductQuery->slice(($currentPage - 1) * $perPage, $perPage)->values(),
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'pageName' => 'stock_page']
+        );
 
         // Get monthly production data
         $monthlyProduction = DailyProduction::join('daily_production_items', 'daily_production.id', '=', 'daily_production_items.daily_production_id')

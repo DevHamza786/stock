@@ -149,17 +149,19 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($stockLevelsByProduct as $stock)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $stock['product'] }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ number_format($stock['available_pieces']) }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ number_format($stock['available_sqft'], 2) }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $stock['available_pieces'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                {{ $stock['available_pieces'] > 0 ? 'In Stock' : 'Out of Stock' }}
-                                            </span>
-                                        </td>
-                                    </tr>
+                                @forelse($stockLevelsByProduct->items() as $stock)
+                                    @if(is_array($stock))
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $stock['product'] }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ number_format($stock['available_pieces']) }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ number_format($stock['available_sqft'], 2) }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $stock['available_pieces'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                    {{ $stock['available_pieces'] > 0 ? 'In Stock' : 'Out of Stock' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @empty
                                     <tr>
                                         <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">No stock available</td>
@@ -168,6 +170,36 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination -->
+                    @if($stockLevelsByProduct->hasPages())
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="text-sm text-gray-700">
+                                Showing {{ $stockLevelsByProduct->firstItem() }} to {{ $stockLevelsByProduct->lastItem() }} of {{ $stockLevelsByProduct->total() }} results
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                @if($stockLevelsByProduct->onFirstPage())
+                                    <span class="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed">Previous</span>
+                                @else
+                                    <a href="{{ $stockLevelsByProduct->previousPageUrl() }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Previous</a>
+                                @endif
+                                
+                                @foreach($stockLevelsByProduct->getUrlRange(max(1, $stockLevelsByProduct->currentPage() - 2), min($stockLevelsByProduct->lastPage(), $stockLevelsByProduct->currentPage() + 2)) as $page => $url)
+                                    @if($page == $stockLevelsByProduct->currentPage())
+                                        <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold">{{ $page }}</span>
+                                    @else
+                                        <a href="{{ $url }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">{{ $page }}</a>
+                                    @endif
+                                @endforeach
+                                
+                                @if($stockLevelsByProduct->hasMorePages())
+                                    <a href="{{ $stockLevelsByProduct->nextPageUrl() }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Next</a>
+                                @else
+                                    <span class="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed">Next</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
