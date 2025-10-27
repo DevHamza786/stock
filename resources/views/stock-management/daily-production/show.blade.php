@@ -15,15 +15,30 @@
                             </svg>
                             Print
                         </a>
+                        @if($dailyProduction->status !== 'closed')
                         <a href="{{ route('stock-management.daily-production.edit', $dailyProduction) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                             Edit Production
                         </a>
+                        @endif
                         <a href="{{ route('stock-management.daily-production.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                             Back to List
                         </a>
                     </div>
                 </div>
             </div>
+
+            <!-- Flash Messages -->
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             <div class="w-full">
                 <!-- Main Production Information -->

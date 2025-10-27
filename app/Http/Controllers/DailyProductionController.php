@@ -148,8 +148,11 @@ class DailyProductionController extends Controller
                 ->findOrFail($stockIssuedId);
         }
 
-        // Get stock issued records for production (where purpose is 'Production')
+        // Get stock issued records for production (exclude those with closed daily productions)
         $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
+            ->whereDoesntHave('dailyProduction', function ($query) {
+                $query->where('status', 'closed');
+            })
             ->orderBy('date', 'desc')
             ->get();
 
@@ -186,7 +189,7 @@ class DailyProductionController extends Controller
         // Get available stock issued for production
         $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->whereDoesntHave('dailyProduction', function ($query) {
-                $query->where('status', 'close');
+                $query->where('status', 'closed');
             })
             ->orderBy('date', 'desc')
             ->get();
@@ -204,6 +207,11 @@ class DailyProductionController extends Controller
      */
     public function store(Request $request)
     {
+        try {
+            \Log::info('Store method called', [
+                'request_data' => $request->all()
+            ]);
+            
         $request->validate([
             'stock_issued_id' => 'required|exists:stock_issued,id',
             'machine_name' => 'required|string|max:255',
@@ -220,17 +228,44 @@ class DailyProductionController extends Controller
             'items.*.condition_status' => 'required|string|max:255',
             'items.*.special_status' => 'nullable|string|max:255',
             'items.*.total_pieces' => 'required|integer|min:1',
-            'items.*.total_sqft' => 'required|numeric|min:0',
+                'items.*.total_sqft' => 'nullable|numeric|min:0',
             'items.*.total_weight' => 'nullable|numeric|min:0',
             'items.*.narration' => 'nullable|string',
         ]);
+            
+            // Additional conditional validation based on condition status
+            foreach ($request->items as $index => $item) {
+                $isBlockOrMonuments = in_array(strtolower($item['condition_status'] ?? ''), ['block', 'monuments']);
+                
+                if ($isBlockOrMonuments) {
+                    // For block/monuments, total_weight is required
+                    if (empty($item['total_weight'])) {
+                        return redirect()->back()
+                            ->withInput()
+                            ->withErrors(["items.{$index}.total_weight" => 'Total weight is required for block or monuments production.']);
+                    }
+                } else {
+                    // For slabs/other products, total_sqft is required
+                    if (empty($item['total_sqft'])) {
+                        return redirect()->back()
+                            ->withInput()
+                            ->withErrors(["items.{$index}.total_sqft" => 'Total sqft is required for slab production.']);
+                    }
+                }
+            }
+            
+            \Log::info('Validation passed');
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Calculate total pieces and measurement from all items
+        // Calculate total pieces and measurement from all items (handle null values)
         $totalPieces = collect($request->items)->sum('total_pieces');
-        $totalSqft = collect($request->items)->sum('total_sqft');
-        $totalWeight = collect($request->items)->sum('total_weight');
+        $totalSqft = collect($request->items)->sum(function($item) {
+            return is_numeric($item['total_sqft']) ? $item['total_sqft'] : 0;
+        });
+        $totalWeight = collect($request->items)->sum(function($item) {
+            return is_numeric($item['total_weight']) ? $item['total_weight'] : 0;
+        });
         
         // Check if this is a block/monuments or sqft-based product
         $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
@@ -267,6 +302,9 @@ class DailyProductionController extends Controller
             $wastageWeight = 0;
         }
 
+        // Convert date string to Carbon instance
+        $date = \Carbon\Carbon::parse($request->date);
+
         // Create daily production record
         $dailyProduction = DailyProduction::create([
             'stock_addition_id' => $stockIssued->stock_addition_id,
@@ -275,7 +313,7 @@ class DailyProductionController extends Controller
             'operator_name' => $request->operator_name,
             'notes' => $request->notes,
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
-            'date' => $request->date,
+            'date' => $date,
             'status' => $request->status,
             'wastage_sqft' => $wastageSqft, // Store sqft wastage for sqft products
         ]);
@@ -292,11 +330,16 @@ class DailyProductionController extends Controller
                 $itemData['special_status'] ?? null
             );
 
+            // Ensure null values are converted to 0 before processing
+            $itemData['total_sqft'] = $itemData['total_sqft'] ?? 0;
+            $itemData['total_weight'] = $itemData['total_weight'] ?? 0;
+
             // Check if similar product already exists in processed items
             if (isset($processedItems[$productKey])) {
                 // Merge quantities
                 $processedItems[$productKey]['total_pieces'] += $itemData['total_pieces'];
                 $processedItems[$productKey]['total_sqft'] += $itemData['total_sqft'];
+                $processedItems[$productKey]['total_weight'] += $itemData['total_weight'];
 
                 // Merge narration if provided
                 if (!empty($itemData['narration'])) {
@@ -311,81 +354,37 @@ class DailyProductionController extends Controller
 
         // Create production items
         foreach ($processedItems as $itemData) {
+            // Values are already sanitized above
+            
             $itemData['stock_addition_id'] = $stockIssued->stock_addition_id;
             $dailyProduction->items()->create($itemData);
         }
-
-        // Create new stock addition entries for produced items
-        $originalStockAddition = $stockIssued->stockAddition;
-
-        // Group produced items by product specifications
-        $producedStockGroups = [];
-        foreach ($processedItems as $itemData) {
-            $key = $itemData['product_name'] . '|' . ($itemData['size'] ?? '') . '|' . ($itemData['diameter'] ?? '') . '|' . $itemData['condition_status'] . '|' . ($itemData['special_status'] ?? '');
-
-            if (!isset($producedStockGroups[$key])) {
-                $producedStockGroups[$key] = [
-                    'product_name' => $itemData['product_name'],
-                    'size' => $itemData['size'] ?? '',
-                    'diameter' => $itemData['diameter'] ?? '',
-                    'condition_status' => $itemData['condition_status'],
-                    'special_status' => $itemData['special_status'] ?? '',
-                    'total_pieces' => 0,
-                    'total_sqft' => 0,
-                ];
-            }
-
-            $producedStockGroups[$key]['total_pieces'] += $itemData['total_pieces'];
-            $producedStockGroups[$key]['total_sqft'] += $itemData['total_sqft'];
-        }
-
-        // Check if machine can add stock before creating stock additions
-        $machine = \App\Models\Machine::where('name', $request->machine_name)->first();
-        
-        if ($machine && $machine->can_add_stock) {
-            // Create new stock addition entries for each group
-            foreach ($producedStockGroups as $group) {
-                // Use the original product instead of creating new ones
-                // Auto-generate production name based on date and machine
-                $productionName = "Production " . $request->date->format('Y-m-d') . " - " . $request->machine_name;
-                
-                // Create stock addition for produced items using original product
-                \App\Models\StockAddition::create([
-                    'product_id' => $originalStockAddition->product_id, // Use original product
-                    'mine_vendor_id' => $originalStockAddition->mine_vendor_id, // Same vendor
-                    'stone' => $productionName, // Use auto-generated production name
-                    'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
-                    'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
-                    'total_pieces' => $group['total_pieces'],
-                    'total_sqft' => $group['total_sqft'],
-                    'condition_status' => $group['condition_status'],
-                    'available_pieces' => $group['total_pieces'],
-                    'available_sqft' => $group['total_sqft'],
-                    'date' => $request->date,
-                ]);
-            }
-        } else {
-            \Log::warning("Stock additions not created - Machine cannot add stock", [
-                'machine_name' => $request->machine_name,
-                'can_add_stock' => $machine ? $machine->can_add_stock : 'Machine not found'
-            ]);
-        }
-
-        // Log the stock creation for debugging
-        \Log::info("New Stock Additions Created", [
-            'original_stock_addition_id' => $originalStockAddition->id,
-            'produced_groups' => count($producedStockGroups),
-            'total_produced_pieces' => $totalPieces,
-            'total_produced_sqft' => $totalSqft,
-            'total_produced_weight' => $totalWeight
-        ]);
 
         // Generate accounting journal entry
         $this->generateAccountingEntry($dailyProduction);
 
         $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
         return redirect()->route('stock-management.daily-production.index')
-            ->with('success', "Daily production recorded successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . ' product(s). New stock additions created for produced items.');
+            ->with('success', "Daily production recorded successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . ' product(s).');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed in store', [
+                'errors' => $e->errors()
+            ]);
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            \Log::error('Error in store method', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'An error occurred while saving the production: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -472,9 +471,6 @@ class DailyProductionController extends Controller
                     'stone' => $stockIssued->stockAddition->stone,
                     'date' => $request->date,
                     'status' => $request->status,
-                    'total_pieces' => intval($productionData['total_pieces']),
-                    'total_sqft' => floatval($productionData['total_sqft']),
-                    'total_weight' => floatval($productionData['total_weight'] ?? 0),
                     'wastage_sqft' => $wastageSqft,
                 ]);
 
@@ -491,25 +487,6 @@ class DailyProductionController extends Controller
                     'total_sqft' => floatval($productionData['total_sqft']),
                     'total_weight' => floatval($productionData['total_weight'] ?? 0),
                     'narration' => $productionData['narration'] ?? null,
-                ]);
-
-                // Create stock addition for produced items
-                $stockAddition = StockAddition::create([
-                    'product_id' => $stockIssued->stockAddition->product_id,
-                    'mine_vendor_id' => $stockIssued->stockAddition->mine_vendor_id,
-                    'stone' => $productionData['product_name'],
-                    'condition_status' => $productionData['condition_status'],
-                    'length' => null,
-                    'height' => null,
-                    'diameter' => $productionData['diameter'] ?? null,
-                    'weight' => $isBlockOrMonuments ? floatval($productionData['total_weight'] ?? 0) : null,
-                    'total_pieces' => intval($productionData['total_pieces']),
-                    'total_sqft' => $isBlockOrMonuments ? null : floatval($productionData['total_sqft']),
-                    'available_sqft' => $isBlockOrMonuments ? null : floatval($productionData['total_sqft']),
-                    'available_weight' => $isBlockOrMonuments ? floatval($productionData['total_weight'] ?? 0) : 0,
-                    'available_pieces' => intval($productionData['total_pieces']),
-                    'date' => $request->date,
-                    // Let the system auto-generate STK- format PID
                 ]);
 
                 $createdCount++;
@@ -576,8 +553,16 @@ class DailyProductionController extends Controller
 
         // Load the daily production with its relationships
         $dailyProduction->load(['stockAddition.product', 'stockAddition.mineVendor', 'stockIssued', 'items']);
+        
         // Get stock issued records for production
+        // Exclude stock issued items used in closed productions, but include the current one
         $availableStockIssued = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor'])
+            ->where(function ($query) use ($dailyProduction) {
+                $query->whereDoesntHave('dailyProduction', function ($dailyQuery) {
+                    $dailyQuery->where('status', 'closed');
+                })
+                ->orWhere('id', $dailyProduction->stock_issued_id); // Include current stock issued
+            })
             ->orderBy('date', 'desc')
             ->get();
 
@@ -644,10 +629,14 @@ class DailyProductionController extends Controller
 
         $stockIssued = StockIssued::with('stockAddition')->findOrFail($request->stock_issued_id);
 
-        // Calculate total pieces and measurement from all items
+        // Calculate total pieces and measurement from all items (handle null values)
         $totalPieces = collect($request->items)->sum('total_pieces');
-        $totalSqft = collect($request->items)->sum('total_sqft');
-        $totalWeight = collect($request->items)->sum('total_weight');
+        $totalSqft = collect($request->items)->sum(function($item) {
+            return is_numeric($item['total_sqft']) ? $item['total_sqft'] : 0;
+        });
+        $totalWeight = collect($request->items)->sum(function($item) {
+            return is_numeric($item['total_weight']) ? $item['total_weight'] : 0;
+        });
         
         // Check if this is a block/monuments or sqft-based product
         $isBlockOrMonuments = in_array(strtolower($stockIssued->stockAddition->condition_status), ['block', 'monuments']);
@@ -684,10 +673,10 @@ class DailyProductionController extends Controller
             $wastageWeight = 0;
         }
 
-        // Store old production data for stock adjustment
-        $oldTotalPieces = $dailyProduction->items->sum('total_pieces');
-        $oldTotalSqft = $dailyProduction->items->sum('total_sqft');
-        $oldTotalWeight = $dailyProduction->items->sum('total_weight');
+        // Store old production data for wastage calculation
+
+        // Convert date string to Carbon instance
+        $date = \Carbon\Carbon::parse($request->date);
 
         // Update daily production record
         $dailyProduction->update([
@@ -697,9 +686,10 @@ class DailyProductionController extends Controller
             'operator_name' => $request->operator_name,
             'notes' => $request->notes,
             'stone' => $stockIssued->stone ?? $stockIssued->stockAddition->stone,
-            'date' => $request->date,
+            'date' => $date,
             'status' => $request->status,
-            'wastage_sqft' => $wastageSqft, // Store sqft wastage for sqft products
+            'wastage_sqft' => $wastageSqft,
+            'wastage_weight' => $wastageWeight,
         ]);
 
         // Delete existing production items
@@ -717,11 +707,16 @@ class DailyProductionController extends Controller
                 $itemData['special_status'] ?? null
             );
 
+            // Ensure null values are converted to 0 before processing
+            $itemData['total_sqft'] = $itemData['total_sqft'] ?? 0;
+            $itemData['total_weight'] = $itemData['total_weight'] ?? 0;
+
             // Check if similar product already exists in processed items
             if (isset($processedItems[$productKey])) {
                 // Merge quantities
                 $processedItems[$productKey]['total_pieces'] += $itemData['total_pieces'];
                 $processedItems[$productKey]['total_sqft'] += $itemData['total_sqft'];
+                $processedItems[$productKey]['total_weight'] += $itemData['total_weight'];
 
                 // Merge narration if provided
                 if (!empty($itemData['narration'])) {
@@ -740,106 +735,19 @@ class DailyProductionController extends Controller
             $dailyProduction->items()->create($itemData);
         }
 
-        // Calculate the difference in production
-        $piecesDifference = $totalPieces - $oldTotalPieces;
-        $sqftDifference = $totalSqft - $oldTotalSqft;
-        $weightDifference = $totalWeight - $oldTotalWeight;
-
-        // Update stock additions for produced items (not the original block)
-        $originalStockAddition = $stockIssued->stockAddition;
-
-        // Get existing stock additions that were created from this daily production
-        $existingProducedStockAdditions = \App\Models\StockAddition::where('date', $dailyProduction->date)
-            ->where('mine_vendor_id', $originalStockAddition->mine_vendor_id)
-            ->where('condition_status', '!=', $originalStockAddition->condition_status) // Different from original
-            ->get();
-
-        // Group produced items by product specifications
-        $producedStockGroups = [];
-        foreach ($processedItems as $itemData) {
-            $key = $itemData['product_name'] . '|' . ($itemData['size'] ?? '') . '|' . ($itemData['diameter'] ?? '') . '|' . $itemData['condition_status'] . '|' . ($itemData['special_status'] ?? '');
-
-            if (!isset($producedStockGroups[$key])) {
-                $producedStockGroups[$key] = [
-                    'product_name' => $itemData['product_name'],
-                    'size' => $itemData['size'] ?? '',
-                    'diameter' => $itemData['diameter'] ?? '',
-                    'condition_status' => $itemData['condition_status'],
-                    'special_status' => $itemData['special_status'] ?? '',
-                    'total_pieces' => 0,
-                    'total_sqft' => 0,
-                ];
-            }
-
-            $producedStockGroups[$key]['total_pieces'] += $itemData['total_pieces'];
-            $producedStockGroups[$key]['total_sqft'] += $itemData['total_sqft'];
-        }
-
-        // Delete existing produced stock additions
-        foreach ($existingProducedStockAdditions as $existingStock) {
-            $existingStock->delete();
-            \Log::info("Deleted existing produced stock addition", [
-                'stock_addition_id' => $existingStock->id,
-                'product' => $existingStock->product->name
-            ]);
-        }
-
-        // Check if machine can add stock before creating stock additions
-        $machine = \App\Models\Machine::where('name', $request->machine_name)->first();
-        
-        if ($machine && $machine->can_add_stock) {
-            // Create new stock addition entries for each produced item group
-            foreach ($producedStockGroups as $group) {
-                // Use the original product instead of creating new ones
-                // Auto-generate production name based on date and machine
-                $productionName = "Production " . $request->date->format('Y-m-d') . " - " . $request->machine_name;
-                
-                // Create new stock addition for produced items using original product
-                \App\Models\StockAddition::create([
-                    'product_id' => $originalStockAddition->product_id, // Use original product
-                    'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
-                    'stone' => $productionName, // Use auto-generated production name
-                    'length' => explode('*', $group['size'] ?? '1')[0] ?? 1,
-                    'height' => explode('*', $group['size'] ?? '1')[1] ?? 1,
-                    'total_pieces' => $group['total_pieces'],
-                    'total_sqft' => $group['total_sqft'],
-                    'condition_status' => $group['condition_status'],
-                    'available_pieces' => $group['total_pieces'],
-                    'available_sqft' => $group['total_sqft'],
-                    'date' => $request->date,
-                ]);
-
-                \Log::info("Created new stock addition for produced item", [
-                    'production_name' => $productionName,
-                    'total_pieces' => $group['total_pieces'],
-                    'total_sqft' => $group['total_sqft']
-                ]);
-            }
-        } else {
-            \Log::warning("Stock additions not created - Machine cannot add stock", [
-                'machine_name' => $request->machine_name,
-                'can_add_stock' => $machine ? $machine->can_add_stock : 'Machine not found'
-            ]);
-        }
-
         // Log the production update
         \Log::info("Daily Production Updated", [
             'daily_production_id' => $dailyProduction->id,
-            'old_production_pieces' => $oldTotalPieces,
-            'new_production_pieces' => $totalPieces,
-            'pieces_difference' => $piecesDifference,
-            'old_production_sqft' => $oldTotalSqft,
-            'new_production_sqft' => $totalSqft,
-            'sqft_difference' => $sqftDifference,
-            'old_production_weight' => $oldTotalWeight,
-            'new_production_weight' => $totalWeight,
-            'weight_difference' => $weightDifference,
-            'produced_groups' => count($producedStockGroups)
+            'total_pieces' => $totalPieces,
+            'total_sqft' => $totalSqft,
+            'total_weight' => $totalWeight,
+            'wastage_sqft' => $wastageSqft,
+            'wastage_weight' => $wastageWeight
         ]);
 
             $measurementText = $isBlockOrMonuments ? "{$totalWeight} kg" : "{$totalSqft} sqft";
             return redirect()->route('stock-management.daily-production.index')
-                ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . " product(s). Stock additions updated for produced items.");
+                ->with('success', "Daily production updated successfully with {$totalPieces} pieces ({$measurementText}) across " . count($processedItems) . " product(s).");
         
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Validation failed in update', [
@@ -887,11 +795,118 @@ class DailyProductionController extends Controller
                     ->with('error', 'Production is already closed.');
             }
 
+            // Load relationships
+            $dailyProduction->load(['items', 'stockIssued.stockAddition.product', 'stockIssued.stockAddition.mineVendor']);
+            
+            // Get the original stock addition
+            $originalStockAddition = $dailyProduction->stockIssued->stockAddition;
+
+            // Check if machine can add stock (case-insensitive search)
+            $machine = \App\Models\Machine::whereRaw('LOWER(name) = LOWER(?)', [$dailyProduction->machine_name])->first();
+            
+            \Log::info("Machine check before closing production", [
+                'machine_name' => $dailyProduction->machine_name,
+                'machine_found' => $machine ? 'yes' : 'no',
+                'can_add_stock' => $machine ? ($machine->can_add_stock ? 'true' : 'false') : 'N/A',
+                'items_count' => $dailyProduction->items->count(),
+                'items_details' => $dailyProduction->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_name' => $item->product_name,
+                        'condition_status' => $item->condition_status,
+                        'total_pieces' => $item->total_pieces,
+                        'total_sqft' => $item->total_sqft,
+                        'total_weight' => $item->total_weight
+                    ];
+                })
+            ]);
+            
+            $stockAdditionsCreated = 0;
+            $firstStockAdditionId = null;
+            
+            if ($machine && $machine->can_add_stock) {
+                // Create a UNIQUE stock addition for EACH production item
+                foreach ($dailyProduction->items as $item) {
+                    // Determine if this is a weight-based product
+                    $isBlockOrMonuments = in_array(strtolower($item->condition_status ?? ''), ['block', 'monuments']);
+                    
+                    // Split size if present
+                    $sizeParts = explode('*', $item->size ?? '1');
+                    
+                    // Create UNIQUE stock addition for this specific production item
+                    $newStockAddition = \App\Models\StockAddition::create([
+                        'product_id' => $originalStockAddition->product_id,
+                        'mine_vendor_id' => $originalStockAddition->mine_vendor_id,
+                        'stone' => $item->product_name,
+                        'diameter' => $item->diameter ?? null,
+                        'length' => $sizeParts[0] ?? null,
+                        'height' => $sizeParts[1] ?? null,
+                        'total_pieces' => $item->total_pieces,
+                        'total_sqft' => $isBlockOrMonuments ? null : $item->total_sqft,
+                        'weight' => $isBlockOrMonuments ? $item->total_weight : null,
+                        'total_weight' => $isBlockOrMonuments ? $item->total_weight : null,
+                        'available_pieces' => $item->total_pieces,
+                        'available_sqft' => $isBlockOrMonuments ? null : $item->total_sqft,
+                        'available_weight' => $isBlockOrMonuments ? $item->total_weight : 0,
+                        'condition_status' => $item->condition_status,
+                        'date' => $dailyProduction->date,
+                    ]);
+                    
+                    // Update this production item to link it to the newly created stock addition
+                    // Note: we OVERWRITE the stock_addition_id from the original (input) to the produced (output)
+                    $item->stock_addition_id = $newStockAddition->id;
+                    $item->save();
+                    
+                    // Store the first created stock addition ID for the daily production
+                    if ($firstStockAdditionId === null) {
+                        $firstStockAdditionId = $newStockAddition->id;
+                    }
+                    
+                    $stockAdditionsCreated++;
+                    
+                    \Log::info("Created stock addition for production item", [
+                        'production_item_id' => $item->id,
+                        'stock_addition_id' => $newStockAddition->id,
+                        'product_name' => $item->product_name,
+                        'total_pieces' => $item->total_pieces
+                    ]);
+                }
+                
+                // Update the daily production with the first produced stock addition ID
+                if ($firstStockAdditionId) {
+                    $dailyProduction->produced_stock_addition_id = $firstStockAdditionId;
+                    $dailyProduction->save();
+                }
+                
+                \Log::info("Stock additions created when closing production", [
+                    'daily_production_id' => $dailyProduction->id,
+                    'stock_additions_created' => $stockAdditionsCreated,
+                    'total_items' => $dailyProduction->items->count()
+                ]);
+            } else {
+                \Log::warning("Stock additions not created - Machine cannot add stock", [
+                    'machine_name' => $dailyProduction->machine_name,
+                    'can_add_stock' => $machine ? $machine->can_add_stock : 'Machine not found'
+                ]);
+            }
+
+            // Close the production (this will update status)
             $dailyProduction->close();
 
+            $message = $stockAdditionsCreated > 0 
+                ? "Production closed successfully. {$stockAdditionsCreated} stock addition(s) created for produced items."
+                : "Production closed successfully.";
+
             return redirect()->route('stock-management.daily-production.index')
-                ->with('success', 'Production closed successfully.');
+                ->with('success', $message);
+                
         } catch (\Exception $e) {
+            \Log::error('Error closing production', [
+                'daily_production_id' => $dailyProduction->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->route('stock-management.daily-production.index')
                 ->with('error', 'Failed to close production: ' . $e->getMessage());
         }

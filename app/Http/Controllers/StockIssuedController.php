@@ -20,7 +20,7 @@ class StockIssuedController extends Controller
     {
         $query = StockIssued::with(['stockAddition.product', 'stockAddition.mineVendor', 'machine', 'operator'])
             ->whereDoesntHave('dailyProduction', function ($dailyQuery) {
-                $dailyQuery->where('status', 'close');
+                $dailyQuery->where('status', 'closed');
             });
 
         // Search functionality
@@ -281,7 +281,7 @@ class StockIssuedController extends Controller
     public function update(Request $request, StockIssued $stockIssued)
     {
         // Check if this stock issue is linked to a closed daily production
-        $closedProduction = $stockIssued->dailyProduction()->where('status', 'close')->first();
+        $closedProduction = $stockIssued->dailyProduction()->where('status', 'closed')->first();
         if ($closedProduction) {
             return redirect()->back()
                 ->with('error', 'Cannot update stock issue that is linked to a closed daily production.');
@@ -345,7 +345,7 @@ class StockIssuedController extends Controller
     public function destroy(StockIssued $stockIssued)
     {
         // Check if this stock issue is linked to a closed daily production
-        $closedProduction = $stockIssued->dailyProduction()->where('status', 'close')->first();
+        $closedProduction = $stockIssued->dailyProduction()->where('status', 'closed')->first();
         if ($closedProduction) {
             return redirect()->route('stock-management.stock-issued.index')
                 ->with('error', 'Cannot delete stock issue that is linked to a closed daily production.');

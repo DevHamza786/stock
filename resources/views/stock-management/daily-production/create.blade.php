@@ -131,7 +131,7 @@
                                 <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Production Status</label>
                                 <select id="status" name="status" class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent @error('status') border-red-500 @enderror" required>
                                     <option value="open" {{ old('status', 'open') == 'open' ? 'selected' : '' }}>Open</option>
-                                    <option value="close" {{ old('status') == 'close' ? 'selected' : '' }}>Close</option>
+                                    <option value="closed" {{ old('status') == 'closed' ? 'selected' : '' }}>Closed</option>
                                 </select>
                                 @error('status')
                                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -302,7 +302,8 @@
                 <!-- Product Name -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
-                    <input type="text" name="items[INDEX][product_name]" class="product-name-input block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" required>
+                    <input type="text" name="items[INDEX][product_name]" class="product-name-input block w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" readonly required>
+                    <p class="text-xs text-gray-500 mt-1">Product name matches the stock issue</p>
                 </div>
 
                 <!-- Condition Status -->
@@ -791,9 +792,19 @@
                     }
                 }
 
-                // Product name input (no auto-fill)
+                // Product name input - auto-fill from stock issue
                 const productNameInput = newItem.querySelector('.product-name-input');
                 const totalPiecesInput = newItem.querySelector('.total-pieces-input');
+                
+                // Auto-fill product name from stock issue
+                if (currentStockIssued && productNameInput) {
+                    // Use the product name from stock addition
+                    const productName = (currentStockIssued.stock_addition && 
+                                       currentStockIssued.stock_addition.product && 
+                                       currentStockIssued.stock_addition.product.name) || 
+                                       currentStockIssued.stone || '';
+                    productNameInput.value = productName;
+                }
 
                 // No max limit for pieces input - allow any number of pieces
 

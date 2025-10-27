@@ -17,18 +17,21 @@ class DailyProduction extends Model
     protected $fillable = [
         'stock_addition_id',
         'stock_issued_id',
+        'produced_stock_addition_id',
         'machine_name',
         'operator_name',
         'notes',
         'stone',
         'date',
         'status',
-        'wastage_sqft'
+        'wastage_sqft',
+        'wastage_weight'
     ];
 
     protected $casts = [
         'date' => 'datetime',
         'wastage_sqft' => 'decimal:2',
+        'wastage_weight' => 'decimal:2',
     ];
 
     /**
@@ -37,6 +40,14 @@ class DailyProduction extends Model
     protected function setWastageSqftAttribute($value)
     {
         $this->attributes['wastage_sqft'] = $this->cleanDecimalValue($value);
+    }
+
+    /**
+     * Set the wastage_weight attribute - convert empty strings to null and strip non-numeric characters
+     */
+    protected function setWastageWeightAttribute($value)
+    {
+        $this->attributes['wastage_weight'] = $this->cleanDecimalValue($value);
     }
 
     /**
@@ -67,6 +78,14 @@ class DailyProduction extends Model
     public function stockAddition(): BelongsTo
     {
         return $this->belongsTo(StockAddition::class);
+    }
+
+    /**
+     * Get the produced stock addition from this daily production.
+     */
+    public function producedStockAddition(): BelongsTo
+    {
+        return $this->belongsTo(StockAddition::class, 'produced_stock_addition_id');
     }
 
     /**

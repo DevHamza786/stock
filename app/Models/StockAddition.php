@@ -24,6 +24,7 @@ class StockAddition extends Model
         'total_pieces',
         'total_sqft',
         'condition_status',
+        'special_status',
         'available_pieces',
         'available_sqft',
         'available_weight',

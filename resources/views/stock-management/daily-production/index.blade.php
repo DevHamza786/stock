@@ -116,7 +116,9 @@
                                     <th>Operator</th>
                                     <th>Pieces Produced</th>
                                     <th>Sqft Produced</th>
+                                    <th>Weight Produced</th>
                                     <th>Wastage</th>
+                                    <th>Weight Wastage</th>
                                     <th>Condition</th>
                                     <th>Date</th>
                                     <th>Actions</th>
@@ -162,7 +164,21 @@
                                             <span class="text-sm">{{ number_format($production->total_sqft, 2) }}</span>
                                         </td>
                                         <td>
+                                            @if($production->total_weight > 0)
+                                                <span class="text-sm">{{ number_format($production->total_weight, 2) }} kg</span>
+                                            @else
+                                                <span class="text-gray-500 text-sm">N/A</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             <span class="text-sm text-red-600">{{ number_format($production->wastage_sqft ?? 0, 2) }} sqft</span>
+                                        </td>
+                                        <td>
+                                            @if($production->wastage_weight && $production->wastage_weight > 0)
+                                                <span class="text-sm text-red-600">{{ number_format($production->wastage_weight, 2) }} kg</span>
+                                            @else
+                                                <span class="text-gray-500 text-sm">N/A</span>
+                                            @endif
                                         </td>
                                         <td>
                                             @if($production->conditionStatus)
@@ -231,6 +247,9 @@
                             $(win.document.body).find('table th:first-child, table td:first-child').hide(); // Hide Status column
                             $(win.document.body).find('table th:last-child, table td:last-child').hide(); // Hide Actions column
                             
+                            // Add weight column header
+                            $(win.document.body).find('table thead tr th').eq(8).text('Weight (kg)');
+                            
                             // Style the table
                             $(win.document.body).find('table')
                                 .addClass('compact')
@@ -273,7 +292,7 @@
                             $('row:first c', sheet).attr('s', '2');
                             
                             // Set column widths
-                            var colWidths = [12, 20, 12, 18, 18, 15, 15, 12, 15, 12];
+                            var colWidths = [12, 20, 12, 18, 18, 15, 15, 12, 15, 15, 12, 12, 12];
                             $('col', sheet).each(function(index) {
                                 if (index < colWidths.length) {
                                     $(this).attr('width', colWidths[index]);
@@ -288,9 +307,9 @@
                     }
                 ],
                 pageLength: 10,
-                order: [[10, 'desc']], // Sort by Date column (descending)
+                order: [[12, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
-                    { orderable: false, targets: 11 } // Disable sorting on Actions column
+                    { orderable: false, targets: 13 } // Disable sorting on Actions column
                 ],
                 language: {
                     search: "Search:",
