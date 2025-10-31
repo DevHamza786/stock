@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ConditionStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ConditionStatusController extends Controller
 {
@@ -123,13 +124,47 @@ class ConditionStatusController extends Controller
             'is_active' => 'nullable|in:on,1,true,0,false'
         ]);
 
+        $oldName = $conditionStatus->name;
         $data = $request->only(['name', 'description', 'color', 'sort_order']);
         $data['is_active'] = $request->has('is_active');
+        $newName = $data['name'];
 
-        $conditionStatus->update($data);
-
-        return redirect()->route('stock-management.condition-statuses.index')
-            ->with('success', 'Condition status updated successfully.');
+        // Use database transaction to ensure data consistency
+        DB::beginTransaction();
+        
+        try {
+            // Update related stock_additions if name changed
+            if ($oldName !== $newName) {
+                $stockAdditionsUpdated = DB::table('stock_additions')
+                    ->where('condition_status', $oldName)
+                    ->update(['condition_status' => $newName]);
+                
+                // Update related daily_production_items if name changed
+                $dailyProductionItemsUpdated = DB::table('daily_production_items')
+                    ->where('condition_status', $oldName)
+                    ->update(['condition_status' => $newName]);
+            }
+            
+            // Update the condition status itself
+            $conditionStatus->update($data);
+            
+            DB::commit();
+            
+            $message = 'Condition status updated successfully.';
+            if ($oldName !== $newName) {
+                $message .= ' Related records have been updated.';
+            }
+            
+            return redirect()->route('stock-management.condition-statuses.index')
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to update condition status: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to update condition status: ' . $e->getMessage());
+        }
     }
 
     /**

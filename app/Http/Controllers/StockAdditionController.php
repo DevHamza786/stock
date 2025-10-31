@@ -6,6 +6,7 @@ use App\Models\StockAddition;
 use App\Models\Product;
 use App\Models\MineVendor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StockAdditionController extends Controller
 {
@@ -398,15 +399,22 @@ class StockAdditionController extends Controller
             'date' => 'required|date',
         ]);
 
-        // Debug: Log validation success
-        \Log::info('Validation passed successfully', [
+        // Debug: Log validation success WITH condition_status
+        \Log::info('=== STEP 1: Validation passed ===', [
             'mine_vendor_id' => $request->mine_vendor_id,
             'product_id' => $request->product_id,
-            'stone' => $request->stone
+            'stone' => $request->stone,
+            'condition_status' => $request->condition_status ?? 'NOT_PROVIDED',
+            'condition_status_exists' => $request->has('condition_status'),
+            'all_request_keys' => array_keys($request->all())
         ]);
 
         // Custom validation based on condition status
         $conditionStatus = strtolower(trim($request->condition_status));
+        \Log::info('=== STEP 2: Condition status processed ===', [
+            'condition_status' => $conditionStatus,
+            'is_block_or_monuments' => ($conditionStatus === 'block' || $conditionStatus === 'monuments')
+        ]);
         if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
             // For block condition, weight is required, length/height are not
             $request->validate([
@@ -420,24 +428,34 @@ class StockAdditionController extends Controller
             ]);
         }
 
+        \Log::info('=== STEP 3: Starting validation checks ===');
+        
         // Validate available quantities don't exceed total quantities
         if ($request->filled('available_pieces') && $request->available_pieces > $request->total_pieces) {
+            \Log::warning('=== EARLY RETURN: Available pieces validation failed ===');
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Available pieces cannot be greater than total pieces.');
         }
+        \Log::info('=== STEP 3.1: Available pieces validation passed ===');
 
         // For Block/Monuments, validate available weight
         if (($conditionStatus === 'block' || $conditionStatus === 'monuments') && $request->filled('available_weight')) {
             $totalWeight = ($request->weight ?? 0) * ($request->total_pieces ?? 0);
             if ($request->available_weight > $totalWeight) {
+                \Log::warning('=== EARLY RETURN: Available weight validation failed ===');
                 return redirect()->back()
                     ->withInput()
                     ->with('error', 'Available weight cannot be greater than total weight (' . number_format($totalWeight, 2) . ' kg).');
             }
         }
+        \Log::info('=== STEP 3.2: Available weight validation passed ===');
 
         // For other conditions, validate available sqft
+        // But be lenient if condition_status is changing - allow update and recalculate later
+        $oldConditionStatus = strtolower(trim($stockAddition->condition_status ?? ''));
+        $isConditionStatusChanging = $conditionStatus !== $oldConditionStatus;
+        
         if (!in_array($conditionStatus, ['block', 'monuments']) && $request->filled('available_sqft')) {
             if ($request->filled('length') && $request->filled('height')) {
                 $cmToSqft = 0.00107639;
@@ -445,27 +463,61 @@ class StockAdditionController extends Controller
                 $singlePieceSizeSqft = $singlePieceSizeCm * $cmToSqft;
                 $totalSqft = $singlePieceSizeSqft * ($request->total_pieces ?? 0);
                 
-                if ($request->available_sqft > $totalSqft) {
+                \Log::info('=== STEP 3.3: Checking available sqft ===', [
+                    'available_sqft' => $request->available_sqft,
+                    'calculated_total_sqft' => $totalSqft,
+                    'is_condition_status_changing' => $isConditionStatusChanging,
+                    'old_condition_status' => $oldConditionStatus,
+                    'new_condition_status' => $conditionStatus
+                ]);
+                
+                // Only validate if condition_status is NOT changing
+                // If condition_status is changing, we'll recalculate available_sqft in the update logic
+                if (!$isConditionStatusChanging && $request->available_sqft > $totalSqft) {
+                    \Log::warning('=== EARLY RETURN: Available sqft validation failed ===', [
+                        'available_sqft' => $request->available_sqft,
+                        'total_sqft' => $totalSqft
+                    ]);
                     return redirect()->back()
                         ->withInput()
                         ->with('error', 'Available sqft cannot be greater than total sqft (' . number_format($totalSqft, 2) . ' sqft).');
                 }
+                
+                if ($isConditionStatusChanging) {
+                    \Log::info('=== STEP 3.3: Skipping available_sqft validation - condition_status is changing ===');
+                }
+            } else {
+                \Log::info('=== STEP 3.3: Length/height not provided, skipping available_sqft validation ===');
             }
+        } else {
+            \Log::info('=== STEP 3.3: Available sqft validation skipped (block/monuments or not filled) ===');
         }
+        \Log::info('=== STEP 3.3: Available sqft validation passed ===');
+        \Log::info('=== STEP 4: All validations passed, entering try block ===');
 
         try {
+            \Log::info('=== STEP 5: Inside try block ===');
 
             // Show what data will be updated
+            \Log::info('=== STEP 6: Preparing update data ===');
             $updateData = $request->all();
             unset($updateData['_token'], $updateData['_method']);
             
+            \Log::info('=== STEP 7: Update data prepared ===', [
+                'update_data_keys' => array_keys($updateData),
+                'condition_status_in_data' => isset($updateData['condition_status']),
+                'condition_status_value' => $updateData['condition_status'] ?? 'NOT_SET'
+            ]);
+            
             // Debug: Log the request data
-            \Log::info('Request data received:', [
+            \Log::info('=== STEP 8: Request data details ===', [
                 'mine_vendor_id' => $request->mine_vendor_id,
                 'product_id' => $request->product_id,
                 'stone' => $request->stone,
                 'condition_status' => $request->condition_status,
-                'all_request_data' => $request->all()
+                'condition_status_received' => $request->has('condition_status'),
+                'current_condition_status' => $stockAddition->condition_status,
+                'all_request_keys' => array_keys($request->all())
             ]);
             
             // Debug: Check if stock has been issued
@@ -478,7 +530,7 @@ class StockAdditionController extends Controller
             ]);
             
             // For issued stock, only block updates to quantity/dimension fields
-            // Product Name, Mine Vendor, and Particulars can always be updated
+            // Product Name, Mine Vendor, Particulars, and Condition Status can always be updated
             if ($stockAddition->hasBeenIssued()) {
                 $quantityDimensionFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft', 'weight', 'available_pieces', 'available_sqft', 'available_weight'];
                 
@@ -509,70 +561,105 @@ class StockAdditionController extends Controller
                     \Log::info('Blocking update due to quantity/dimension field changes');
                     return redirect()->back()
                         ->withInput()
-                        ->with('error', "Cannot update quantity or dimension fields for issued stock. Product Name, Mine Vendor, and Particulars can be updated freely.");
+                        ->with('error', "Cannot update quantity or dimension fields for issued stock. Product Name, Mine Vendor, Particulars, and Condition Status can be updated freely.");
                 }
                 
-                \Log::info('No quantity/dimension changes detected, allowing update of product/vendor/particulars');
+                \Log::info('No quantity/dimension changes detected, allowing update of product/vendor/particulars/condition_status');
+            }
+            
+            // Ensure condition_status is always included in update data - use exact value from request
+            if ($request->has('condition_status')) {
+                $updateData['condition_status'] = trim($request->condition_status);
+                \Log::info('Condition status from request:', [
+                    'raw_value' => $request->condition_status,
+                    'trimmed_value' => trim($request->condition_status),
+                    'current_db_value' => $stockAddition->condition_status
+                ]);
             }
             
             // Handle NULL values based on condition status
             $conditionStatus = strtolower(trim($updateData['condition_status'] ?? ''));
+            $oldConditionStatus = strtolower(trim($stockAddition->condition_status ?? ''));
+            $isConditionStatusChange = $conditionStatus !== $oldConditionStatus;
+            
+            \Log::info('Condition status comparison:', [
+                'request_condition_status' => $updateData['condition_status'] ?? 'NOT_SET',
+                'current_db_condition_status' => $stockAddition->condition_status,
+                'lowercase_request' => $conditionStatus,
+                'lowercase_current' => $oldConditionStatus,
+                'is_change' => $isConditionStatusChange
+            ]);
+            
+            // Log condition status change
+            if ($isConditionStatusChange) {
+                \Log::info('Condition status change detected:', [
+                    'old_status' => $stockAddition->condition_status,
+                    'new_status' => $updateData['condition_status']
+                ]);
+            }
+            
+            // Preserve existing values when condition status doesn't change and stock is issued
+            $preserveExisting = $stockAddition->hasBeenIssued() && !$isConditionStatusChange;
             
             if ($conditionStatus === 'block' || $conditionStatus === 'monuments') {
                 // For Block/Monuments condition: only keep weight and total_pieces, set others to NULL
+                // Always use condition_status directly from request to ensure it's the exact value
                 $blockData = [
                     'product_id' => $updateData['product_id'],
                     'mine_vendor_id' => $updateData['mine_vendor_id'],
                     'stone' => $updateData['stone'],
-                    'condition_status' => $updateData['condition_status'],
+                    'condition_status' => $request->has('condition_status') ? trim($request->condition_status) : $updateData['condition_status'],
                     'date' => $updateData['date'],
-                    'weight' => !empty($updateData['weight']) ? $updateData['weight'] : null,
+                    'weight' => !empty($updateData['weight']) ? $updateData['weight'] : ($preserveExisting ? $stockAddition->weight : null),
                     'total_pieces' => $updateData['total_pieces'],
                     
                     // Use submitted available_pieces if provided, otherwise use total_pieces
                     'available_pieces' => isset($updateData['available_pieces']) 
                         ? $updateData['available_pieces'] 
-                        : $updateData['total_pieces'],
+                        : ($preserveExisting ? $stockAddition->available_pieces : $updateData['total_pieces']),
                     
-                    // Set dimension fields to NULL for Block/Monuments
-                    'length' => null,
-                    'height' => null,
-                    'diameter' => null,
-                    'total_sqft' => null,
-                    'available_sqft' => null,
-                    'size_3d' => null,
+                    // Set dimension fields to NULL for Block/Monuments (unless preserving existing)
+                    'length' => $preserveExisting ? $stockAddition->length : null,
+                    'height' => $preserveExisting ? $stockAddition->height : null,
+                    'diameter' => $preserveExisting ? $stockAddition->diameter : null,
+                    'total_sqft' => $preserveExisting ? $stockAddition->total_sqft : null,
+                    'available_sqft' => $preserveExisting ? $stockAddition->available_sqft : null,
+                    'size_3d' => $preserveExisting ? $stockAddition->size_3d : null,
                     
                     // Use submitted available_weight if provided, otherwise calculate
                     'available_weight' => isset($updateData['available_weight']) 
                         ? $updateData['available_weight']
-                        : (!empty($updateData['weight']) && !empty($updateData['total_pieces']) 
-                            ? ($updateData['weight'] * $updateData['total_pieces']) 
-                            : 0)
+                        : ($preserveExisting ? $stockAddition->available_weight : (
+                            !empty($updateData['weight']) && !empty($updateData['total_pieces']) 
+                                ? ($updateData['weight'] * $updateData['total_pieces']) 
+                                : 0
+                        ))
                 ];
                 
                 $updateData = $blockData;
             } else {
                 // For other conditions: keep dimension fields, set weight to NULL
+                // Always use condition_status directly from request to ensure it's the exact value
                 $sizeData = [
                     'product_id' => $updateData['product_id'],
                     'mine_vendor_id' => $updateData['mine_vendor_id'],
                     'stone' => $updateData['stone'],
-                    'condition_status' => $updateData['condition_status'],
+                    'condition_status' => $request->has('condition_status') ? trim($request->condition_status) : $updateData['condition_status'],
                     'date' => $updateData['date'],
                     'total_pieces' => $updateData['total_pieces'],
                     
                     // Use submitted available_pieces if provided, otherwise use total_pieces
                     'available_pieces' => isset($updateData['available_pieces']) 
                         ? $updateData['available_pieces'] 
-                        : $updateData['total_pieces'],
+                        : ($preserveExisting ? $stockAddition->available_pieces : $updateData['total_pieces']),
                     
-                    'length' => !empty($updateData['length']) ? $updateData['length'] : null,
-                    'height' => !empty($updateData['height']) ? $updateData['height'] : null,
-                    'diameter' => !empty($updateData['diameter']) ? $updateData['diameter'] : null,
+                    'length' => !empty($updateData['length']) ? $updateData['length'] : ($preserveExisting ? $stockAddition->length : null),
+                    'height' => !empty($updateData['height']) ? $updateData['height'] : ($preserveExisting ? $stockAddition->height : null),
+                    'diameter' => !empty($updateData['diameter']) ? $updateData['diameter'] : ($preserveExisting ? $stockAddition->diameter : null),
                     
-                    // Set weight to NULL for non-Block/Monuments conditions
-                    'weight' => null,
-                    'available_weight' => 0
+                    // Set weight to NULL for non-Block/Monuments conditions (unless preserving existing)
+                    'weight' => $preserveExisting ? $stockAddition->weight : null,
+                    'available_weight' => $preserveExisting ? $stockAddition->available_weight : 0
                 ];
                 
                 // Calculate total_sqft for non-Block/Monuments conditions
@@ -586,13 +673,13 @@ class StockAdditionController extends Controller
                     // Use submitted available_sqft if provided, otherwise calculate
                     $sizeData['available_sqft'] = isset($updateData['available_sqft']) 
                         ? $updateData['available_sqft']
-                        : ($singlePieceSizeSqft * $totalPieces);
+                        : ($preserveExisting ? $stockAddition->available_sqft : ($singlePieceSizeSqft * $totalPieces));
                 } else {
-                    // Set to NULL if no dimensions provided
-                    $sizeData['total_sqft'] = null;
+                    // Set to NULL if no dimensions provided (or preserve existing)
+                    $sizeData['total_sqft'] = $preserveExisting ? $stockAddition->total_sqft : null;
                     $sizeData['available_sqft'] = isset($updateData['available_sqft']) 
                         ? $updateData['available_sqft']
-                        : null;
+                        : ($preserveExisting ? $stockAddition->available_sqft : null);
                 }
                 
                 $updateData = $sizeData;
@@ -600,10 +687,28 @@ class StockAdditionController extends Controller
             
             \Log::info('Update data prepared:', $updateData);
             
+            // Explicitly ensure condition_status is in update data - always use request value
+            if ($request->has('condition_status')) {
+                $updateData['condition_status'] = trim($request->condition_status);
+                \Log::info('Condition status explicitly set in update data (final check):', [
+                    'condition_status' => $updateData['condition_status'],
+                    'request_value' => $request->condition_status,
+                    'current_db_value' => $stockAddition->condition_status,
+                    'will_change' => $updateData['condition_status'] !== $stockAddition->condition_status
+                ]);
+            } else {
+                \Log::warning('Condition status NOT in request!', [
+                    'update_data_has_it' => isset($updateData['condition_status']),
+                    'update_data_value' => $updateData['condition_status'] ?? 'NOT_SET'
+                ]);
+            }
+            
             // Debug: Check if mine_vendor_id is in update data
             \Log::info('Vendor update check:', [
                 'mine_vendor_id_in_update_data' => isset($updateData['mine_vendor_id']),
                 'mine_vendor_id_value' => $updateData['mine_vendor_id'] ?? 'NOT_SET',
+                'condition_status_in_update_data' => isset($updateData['condition_status']),
+                'condition_status_value' => $updateData['condition_status'] ?? 'NOT_SET',
                 'update_data_keys' => array_keys($updateData)
             ]);
             
@@ -612,6 +717,7 @@ class StockAdditionController extends Controller
             \Log::info('Before update - Current values:', [
                 'mine_vendor_id' => $stockAddition->mine_vendor_id,
                 'product_id' => $stockAddition->product_id,
+                'condition_status' => $stockAddition->condition_status,
                 'weight' => $stockAddition->weight,
                 'total_pieces' => $stockAddition->total_pieces,
                 'available_pieces' => $stockAddition->available_pieces,
@@ -621,14 +727,89 @@ class StockAdditionController extends Controller
             // Debug: Check if update was successful
             \Log::info('Update method called', [
                 'update_data_keys' => array_keys($updateData),
+                'condition_status_in_update' => isset($updateData['condition_status']),
+                'condition_status_value' => $updateData['condition_status'] ?? 'NOT_SET',
+                'current_condition_status' => $stockAddition->condition_status,
                 'about_to_update' => true
             ]);
             
-            $updateResult = $stockAddition->update($updateData);
+            // Log condition_status before update
+            $oldConditionStatus = $stockAddition->condition_status;
+            $newConditionStatus = $updateData['condition_status'] ?? null;
+            
+            \Log::info('About to update condition_status:', [
+                'old_value' => $oldConditionStatus,
+                'new_value' => $newConditionStatus,
+                'will_change' => $oldConditionStatus !== $newConditionStatus
+            ]);
+            
+            // Use update() method which handles mass assignment properly
+            // But first manually set condition_status to ensure it's included
+            if (isset($updateData['condition_status'])) {
+                $stockAddition->condition_status = $updateData['condition_status'];
+            }
+            
+            // Use fill() and save() to ensure all fields are updated
+            $stockAddition->fill($updateData);
+            
+            // Force condition_status to be set
+            if (isset($updateData['condition_status'])) {
+                $stockAddition->condition_status = trim($updateData['condition_status']);
+            }
+            
+            // Check if condition_status is dirty
+            if ($stockAddition->isDirty('condition_status')) {
+                \Log::info('Condition status IS dirty - will be saved', [
+                    'old' => $stockAddition->getOriginal('condition_status'),
+                    'new' => $stockAddition->getAttribute('condition_status')
+                ]);
+            } else {
+                \Log::warning('Condition status NOT dirty after fill!', [
+                    'original' => $stockAddition->getOriginal('condition_status'),
+                    'current' => $stockAddition->getAttribute('condition_status'),
+                    'update_data_value' => $updateData['condition_status'] ?? 'NOT_SET',
+                    'are_equal' => $stockAddition->getOriginal('condition_status') === $stockAddition->getAttribute('condition_status')
+                ]);
+                // Force it to be dirty if values are different
+                if ($oldConditionStatus !== $newConditionStatus && $newConditionStatus !== null) {
+                    $stockAddition->condition_status = $newConditionStatus;
+                    \Log::info('Force set condition_status to make it dirty');
+                }
+            }
+            
+            // Try saving
+            $updateResult = $stockAddition->save();
+            
+            // If condition_status didn't update via save(), try direct DB update as fallback
+            if (isset($updateData['condition_status']) && $oldConditionStatus !== $newConditionStatus) {
+                // Check if it actually changed
+                if (!$stockAddition->wasChanged('condition_status')) {
+                    \Log::warning('Condition status was NOT changed by save(), using direct DB update');
+                    $dbUpdated = DB::table('stock_additions')
+                        ->where('id', $stockAddition->id)
+                        ->update(['condition_status' => trim($updateData['condition_status'])]);
+                    
+                    \Log::info('Direct DB update result:', [
+                        'db_update_result' => $dbUpdated,
+                        'condition_status_set_to' => trim($updateData['condition_status']),
+                        'rows_affected' => $dbUpdated
+                    ]);
+                    
+                    // Refresh to get updated value
+                    $stockAddition->refresh();
+                } else {
+                    \Log::info('Condition status was successfully changed by save()');
+                }
+            }
             
             \Log::info('Update result:', [
                 'update_successful' => $updateResult,
-                'update_data_keys' => array_keys($updateData)
+                'update_data_keys' => array_keys($updateData),
+                'dirty_fields_after_save' => array_keys($stockAddition->getDirty()),
+                'condition_status_was_changed' => $stockAddition->wasChanged('condition_status'),
+                'condition_status_after_save' => $stockAddition->condition_status,
+                'condition_status_changed_from' => $oldConditionStatus,
+                'condition_status_changed_to' => $stockAddition->condition_status
             ]);
             
             // Refresh and log after update
@@ -636,6 +817,7 @@ class StockAdditionController extends Controller
             \Log::info('After update - Updated values:', [
                 'mine_vendor_id' => $stockAddition->mine_vendor_id,
                 'product_id' => $stockAddition->product_id,
+                'condition_status' => $stockAddition->condition_status,
                 'weight' => $stockAddition->weight,
                 'total_pieces' => $stockAddition->total_pieces,
                 'available_pieces' => $stockAddition->available_pieces,

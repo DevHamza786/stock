@@ -268,8 +268,11 @@ class StockAddition extends Model
         static::updating(function ($stockAddition) {
             // Check if there are any stock issues for this stock addition
             if ($stockAddition->stockIssued()->count() > 0) {
+                // Allow condition_status changes - this may require dimension/weight changes
+                $isConditionStatusChange = $stockAddition->isDirty('condition_status');
+                
                 // Only block updates to quantity/dimension fields
-                // Product Name, Mine Vendor, and Particulars can always be updated
+                // Product Name, Mine Vendor, Particulars, and Condition Status can always be updated
                 $quantityDimensionFields = ['length', 'height', 'size_3d', 'total_pieces', 'total_sqft', 'weight', 'available_pieces', 'available_sqft', 'available_weight'];
                 $hasQuantityDimensionChanges = false;
                 
@@ -282,6 +285,17 @@ class StockAddition extends Model
                             continue;
                         }
                         
+                        // If condition_status is changing, allow dimension/weight changes as they're required
+                        if ($isConditionStatusChange) {
+                            \Log::info("Model: Allowing {$field} change due to condition_status change", [
+                                'old_value' => $stockAddition->getOriginal($field),
+                                'new_value' => $stockAddition->getAttribute($field),
+                                'old_condition_status' => $stockAddition->getOriginal('condition_status'),
+                                'new_condition_status' => $stockAddition->getAttribute('condition_status')
+                            ]);
+                            continue; // Skip blocking for this field
+                        }
+                        
                         $hasQuantityDimensionChanges = true;
                         \Log::info("Model: Quantity/dimension field change detected: {$field}", [
                             'old_value' => $stockAddition->getOriginal($field),
@@ -291,16 +305,17 @@ class StockAddition extends Model
                     }
                 }
                 
-                if ($hasQuantityDimensionChanges) {
+                if ($hasQuantityDimensionChanges && !$isConditionStatusChange) {
                     \Log::info('Model: Blocking update due to quantity/dimension field changes');
-                    throw new \Exception('Cannot update stock dimensions or quantities after stock has been issued. Product Name, Mine Vendor, and Particulars can be updated freely.');
+                    throw new \Exception('Cannot update stock dimensions or quantities after stock has been issued. Product Name, Mine Vendor, Particulars, and Condition Status can be updated freely.');
                 }
                 
-                // Log that product/vendor/particulars fields are being updated for issued stock
-                \Log::info('Updating product/vendor/particulars fields for issued stock', [
+                // Log that product/vendor/particulars/condition_status fields are being updated for issued stock
+                \Log::info('Updating product/vendor/particulars/condition_status fields for issued stock', [
                     'stock_id' => $stockAddition->id,
                     'dirty_fields' => array_keys($stockAddition->getDirty()),
-                    'has_stock_issuances' => $stockAddition->stockIssued()->count()
+                    'has_stock_issuances' => $stockAddition->stockIssued()->count(),
+                    'condition_status_changing' => $isConditionStatusChange
                 ]);
             }
             
