@@ -187,19 +187,21 @@
                         }
                     } else {
                         // Calculate sqft for regular conditions
-                        if (sqftInput && stockAddition.size_3d) {
-                            // Extract dimensions from size_3d (e.g., 20143 = 20x14x3)
-                            const size3d = stockAddition.size_3d;
-                            if (size3d.length >= 3) {
-                                const length = parseInt(size3d.substring(0, 2));
-                                const width = parseInt(size3d.substring(2, 4));
-                                const height = parseInt(size3d.substring(4, 5));
-
-                                if (length && width) {
-                                    const sqftPerPiece = length * width;
-                                    const totalSqft = sqftPerPiece * quantity;
-                                    sqftInput.value = totalSqft.toFixed(2);
-                                }
+                        // Use total_sqft and total_pieces to calculate sqft per piece
+                        if (sqftInput && stockAddition.total_sqft && stockAddition.total_pieces > 0) {
+                            const sqftPerPiece = parseFloat(stockAddition.total_sqft) / parseFloat(stockAddition.total_pieces);
+                            const totalSqft = sqftPerPiece * quantity;
+                            sqftInput.value = totalSqft.toFixed(2);
+                        } else if (sqftInput && stockAddition.length && stockAddition.height) {
+                            // Fallback: Calculate from length and height if available
+                            const length = parseFloat(stockAddition.length) || 0;
+                            const height = parseFloat(stockAddition.height) || 0;
+                            if (length > 0 && height > 0) {
+                                // Convert cm² to sqft (1 sqft = 929.0304 cm²)
+                                const areaCm = length * height;
+                                const sqftPerPiece = areaCm / 929.0304;
+                                const totalSqft = sqftPerPiece * quantity;
+                                sqftInput.value = totalSqft.toFixed(2);
                             }
                         }
                     }
