@@ -146,13 +146,18 @@ class StockIssued extends Model
 
         static::created(function ($stockIssued) {
             // Update available quantities in stock addition
+            // Use withoutEvents to bypass observer that blocks updates after stock has been issued
             $stockAddition = $stockIssued->stockAddition;
-            $stockAddition->available_pieces -= $stockIssued->quantity_issued;
-            // Only update sqft if it's not null
-            if ($stockIssued->sqft_issued !== null) {
-                $stockAddition->available_sqft -= $stockIssued->sqft_issued;
+            if ($stockAddition) {
+                \App\Models\StockAddition::withoutEvents(function() use ($stockAddition, $stockIssued) {
+                    $stockAddition->available_pieces -= $stockIssued->quantity_issued;
+                    // Only update sqft if it's not null
+                    if ($stockIssued->sqft_issued !== null) {
+                        $stockAddition->available_sqft -= $stockIssued->sqft_issued;
+                    }
+                    $stockAddition->save();
+                });
             }
-            $stockAddition->save();
 
             // Log stock issued creation
             \App\Models\StockLog::logActivity(
@@ -169,7 +174,8 @@ class StockIssued extends Model
                     'purpose' => $stockIssued->purpose
                 ],
                 $stockIssued->quantity_issued,
-                $stockIssued->sqft_issued
+                (float)($stockIssued->sqft_issued ?? 0),
+                (float)($stockIssued->weight_issued ?? 0)
             );
         });
 
@@ -187,29 +193,39 @@ class StockIssued extends Model
                 if ($originalStockAdditionId != $newStockAdditionId) {
                     $oldStockAddition = StockAddition::find($originalStockAdditionId);
                     if ($oldStockAddition) {
-                        $oldStockAddition->available_pieces += $originalQuantity;
-                        $oldStockAddition->available_sqft += $originalSqft;
-                        $oldStockAddition->save();
+                        \App\Models\StockAddition::withoutEvents(function() use ($oldStockAddition, $originalQuantity, $originalSqft) {
+                            $oldStockAddition->available_pieces += $originalQuantity;
+                            $oldStockAddition->available_sqft += $originalSqft;
+                            $oldStockAddition->save();
+                        });
                     }
 
                     // Then subtract from new stock addition
                     $newStockAddition = $stockIssued->stockAddition;
-                    $newStockAddition->available_pieces -= $newQuantity;
-                    if ($newSqft !== null) {
-                        $newStockAddition->available_sqft -= $newSqft;
+                    if ($newStockAddition) {
+                        \App\Models\StockAddition::withoutEvents(function() use ($newStockAddition, $newQuantity, $newSqft) {
+                            $newStockAddition->available_pieces -= $newQuantity;
+                            if ($newSqft !== null) {
+                                $newStockAddition->available_sqft -= $newSqft;
+                            }
+                            $newStockAddition->save();
+                        });
                     }
-                    $newStockAddition->save();
                 } else {
                     // Same stock addition, just adjust the difference
                     $stockAddition = $stockIssued->stockAddition;
-                    $quantityDiff = $newQuantity - $originalQuantity;
-                    $sqftDiff = ($newSqft ?? 0) - ($originalSqft ?? 0);
+                    if ($stockAddition) {
+                        $quantityDiff = $newQuantity - $originalQuantity;
+                        $sqftDiff = ($newSqft ?? 0) - ($originalSqft ?? 0);
 
-                    $stockAddition->available_pieces -= $quantityDiff;
-                    if ($sqftDiff != 0) {
-                        $stockAddition->available_sqft -= $sqftDiff;
+                        \App\Models\StockAddition::withoutEvents(function() use ($stockAddition, $quantityDiff, $sqftDiff) {
+                            $stockAddition->available_pieces -= $quantityDiff;
+                            if ($sqftDiff != 0) {
+                                $stockAddition->available_sqft -= $sqftDiff;
+                            }
+                            $stockAddition->save();
+                        });
                     }
-                    $stockAddition->save();
                 }
             }
         });
@@ -220,6 +236,11 @@ class StockIssued extends Model
                 $originalQuantity = $stockIssued->getOriginal('quantity_issued');
                 $newQuantity = $stockIssued->quantity_issued;
 
+                $originalSqft = $stockIssued->getOriginal('sqft_issued') ?? 0;
+                $newSqft = $stockIssued->sqft_issued ?? 0;
+                $originalWeight = $stockIssued->getOriginal('weight_issued') ?? 0;
+                $newWeight = $stockIssued->weight_issued ?? 0;
+                
                 \App\Models\StockLog::logActivity(
                     'updated',
                     "Stock issued updated - quantity changed from {$originalQuantity} to {$newQuantity} pieces",
@@ -229,14 +250,17 @@ class StockIssued extends Model
                     null,
                     [
                         'quantity_issued' => $originalQuantity,
-                        'sqft_issued' => $stockIssued->getOriginal('sqft_issued')
+                        'sqft_issued' => $stockIssued->getOriginal('sqft_issued'),
+                        'weight_issued' => $stockIssued->getOriginal('weight_issued')
                     ],
                     [
                         'quantity_issued' => $newQuantity,
-                        'sqft_issued' => $stockIssued->sqft_issued
+                        'sqft_issued' => $stockIssued->sqft_issued,
+                        'weight_issued' => $stockIssued->weight_issued
                     ],
                     $newQuantity - $originalQuantity,
-                    $stockIssued->sqft_issued - $stockIssued->getOriginal('sqft_issued')
+                    (float)($newSqft - $originalSqft),
+                    (float)($newWeight - $originalWeight)
                 );
             }
         });
@@ -257,11 +281,13 @@ class StockIssued extends Model
                 // Only restore stock if this is not a gatepass deletion
                 $stockAddition = $stockIssued->stockAddition;
                 if ($stockAddition) {
-                    $stockAddition->available_pieces += $stockIssued->quantity_issued;
-                    if ($stockIssued->sqft_issued !== null) {
-                        $stockAddition->available_sqft += $stockIssued->sqft_issued;
-                    }
-                    $stockAddition->save();
+                    \App\Models\StockAddition::withoutEvents(function() use ($stockAddition, $stockIssued) {
+                        $stockAddition->available_pieces += $stockIssued->quantity_issued;
+                        if ($stockIssued->sqft_issued !== null) {
+                            $stockAddition->available_sqft += $stockIssued->sqft_issued;
+                        }
+                        $stockAddition->save();
+                    });
                 }
             }
 
@@ -269,7 +295,8 @@ class StockIssued extends Model
             $stockIssuedId = $stockIssued->id;
             $stockAdditionId = $stockIssued->stock_addition_id;
             $quantityIssued = $stockIssued->quantity_issued;
-            $sqftIssued = $stockIssued->sqft_issued;
+            $sqftIssued = $stockIssued->sqft_issued ?? 0;
+            $weightIssued = $stockIssued->weight_issued ?? 0;
             $gatePassId = $stockIssued->gate_pass_id_for_log ?? null;
 
             // Log stock issued deletion (don't reference the deleted record to avoid FK constraint)
@@ -287,8 +314,8 @@ class StockIssued extends Model
                 ],
                 null,
                 $quantityIssued,
-                $sqftIssued,
-                0
+                (float)$sqftIssued,
+                (float)$weightIssued
             );
         });
     }

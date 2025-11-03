@@ -146,7 +146,7 @@ class GatePassController extends Controller
         // Get filter options
         $products = \App\Models\Product::orderBy('name')->get();
         $vendors = \App\Models\MineVendor::orderBy('name')->get();
-        $statuses = GatePass::distinct()->pluck('status')->filter()->sort()->values();
+        $statuses = ['Pending', 'Approved', 'Completed'];
         $destinations = GatePass::distinct()->pluck('destination')->filter()->sort()->values();
         $vehicles = GatePass::distinct()->pluck('vehicle_number')->filter()->sort()->values();
         $drivers = GatePass::distinct()->pluck('driver_name')->filter()->sort()->values();
@@ -285,25 +285,31 @@ class GatePassController extends Controller
                 'particulars' => $item['particulars'] ?? $stockAddition->stone,
             ]);
 
-            // Update stock addition available quantities
-            $stockAddition->available_pieces -= $item['quantity_issued'];
-            if ($sqftIssued) {
-                $stockAddition->available_sqft -= $sqftIssued;
-            }
-            $stockAddition->save();
+            // Update stock addition available quantities directly using withoutEvents to bypass observer
+            StockAddition::withoutEvents(function() use ($stockAddition, $item, $sqftIssued, $weightIssued) {
+                $stockAddition->available_pieces -= $item['quantity_issued'];
+                if ($sqftIssued) {
+                    $stockAddition->available_sqft -= $sqftIssued;
+                }
+                if ($weightIssued && isset($stockAddition->available_weight)) {
+                    $stockAddition->available_weight -= $weightIssued;
+                }
+                $stockAddition->save();
+            });
 
             // Log stock activity
             StockLog::logActivity(
                 'dispatched',
                 "Gate pass created - {$item['quantity_issued']} pieces dispatched to {$request->destination}",
                 $stockAddition->id,
-                null, // No stock_issued_id for direct gate passes
+                null, // No stock_issued_id - gate pass doesn't use stock_issued table
                 $gatePass->id,
                 null,
-                ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0)],
-                ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0), 'available_weight' => isset($stockAddition->available_weight) ? $stockAddition->available_weight + ($weightIssued ?? 0) : null],
+                ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft, 'available_weight' => $stockAddition->available_weight ?? null],
                 -$item['quantity_issued'],
-                -($sqftIssued ?? 0)
+                (float)-($sqftIssued ?? 0),
+                (float)-($weightIssued ?? 0)
             );
         }
 
@@ -396,29 +402,31 @@ class GatePassController extends Controller
                     'particulars' => $itemData['particulars'] ?? $stockAddition->stone,
                 ]);
 
-                // Update stock availability using direct DB update to bypass model restrictions
-                \DB::table('stock_additions')
-                    ->where('id', $stockAddition->id)
-                    ->decrement('available_pieces', $quantityToIssue);
-                
-                if ($sqftIssued) {
-                    \DB::table('stock_additions')
-                        ->where('id', $stockAddition->id)
-                        ->decrement('available_sqft', $sqftIssued);
-                }
+                // Update stock quantities directly using withoutEvents to bypass observer
+                StockAddition::withoutEvents(function() use ($stockAddition, $quantityToIssue, $sqftIssued, $weightIssued) {
+                    $stockAddition->available_pieces -= $quantityToIssue;
+                    if ($sqftIssued) {
+                        $stockAddition->available_sqft -= $sqftIssued;
+                    }
+                    if ($weightIssued && isset($stockAddition->available_weight)) {
+                        $stockAddition->available_weight -= $weightIssued;
+                    }
+                    $stockAddition->save();
+                });
 
                 // Create stock log entry
                 StockLog::logActivity(
                     'dispatched',
                     "Gate pass created - {$quantityToIssue} pieces dispatched to {$request->destination}",
                     $stockAddition->id,
-                    null, // No stock_issued_id for direct gate passes
+                    null, // No stock_issued_id - gate pass doesn't use stock_issued table
                     $gatePass->id,
                     null,
-                    ['available_pieces' => $stockAddition->available_pieces + $quantityToIssue, 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0)],
-                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                    ['available_pieces' => $stockAddition->available_pieces + $quantityToIssue, 'available_sqft' => $stockAddition->available_sqft + ($sqftIssued ?? 0), 'available_weight' => isset($stockAddition->available_weight) ? $stockAddition->available_weight + ($weightIssued ?? 0) : null],
+                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft, 'available_weight' => $stockAddition->available_weight ?? null],
                     -$quantityToIssue,
-                    -($sqftIssued ?? 0)
+                    (float)-($sqftIssued ?? 0),
+                    (float)-($weightIssued ?? 0)
                 );
 
                 $createdCount++;
@@ -474,10 +482,67 @@ class GatePassController extends Controller
         
         $stockAdditions = StockAddition::with(['product', 'mineVendor', 'stockIssued'])
             ->where(function($query) use ($usedStockIds) {
-                // Include stock with available pieces OR stock already used in this gate pass
-                $query->where('available_pieces', '>', 0);
                 if (!empty($usedStockIds)) {
-                    $query->orWhereIn('id', $usedStockIds);
+                    // Show either available stock OR stock already in this gate pass
+                    $query->where(function($q) use ($usedStockIds) {
+                        // Available stock that's not already in gate pass
+                        $q->where(function($subQ) {
+                            // Block and Monuments condition - check available_pieces OR available_weight > 0
+                            $subQ->where(function($blockQ) {
+                                $blockQ->whereRaw("LOWER(condition_status) IN ('block', 'monuments')")
+                                       ->where(function($bQ) {
+                                           $bQ->where('available_pieces', '>', 0)
+                                              ->orWhere(function($wQ) {
+                                                  $wQ->whereNotNull('available_weight')
+                                                     ->where('available_weight', '>', 0);
+                                              });
+                                       });
+                            })
+                            // Other conditions - check available_pieces OR available_sqft > 0
+                            ->orWhere(function($otherQ) {
+                                $otherQ->where(function($notBlockQ) {
+                                    $notBlockQ->whereRaw("LOWER(condition_status) NOT IN ('block', 'monuments')")
+                                              ->orWhereNull('condition_status');
+                                })
+                                ->where(function($oQ) {
+                                    $oQ->where('available_pieces', '>', 0)
+                                       ->orWhere(function($sqftQ) {
+                                           $sqftQ->whereNotNull('available_sqft')
+                                                 ->where('available_sqft', '>', 0);
+                                       });
+                                });
+                            });
+                        })
+                        ->whereNotIn('id', $usedStockIds); // Exclude stock already in gate pass
+                    })->orWhereIn('id', $usedStockIds); // OR stock already in this gate pass
+                } else {
+                    // If no used stock, show available stock only
+                    $query->where(function($q) {
+                        $q->where(function($blockQ) {
+                            // Block and Monuments - available_pieces > 0 OR available_weight > 0
+                            $blockQ->whereRaw("LOWER(condition_status) IN ('block', 'monuments')")
+                                   ->where(function($bQ) {
+                                       $bQ->where('available_pieces', '>', 0)
+                                          ->orWhere(function($wQ) {
+                                              $wQ->whereNotNull('available_weight')
+                                                 ->where('available_weight', '>', 0);
+                                          });
+                                   });
+                        })->orWhere(function($otherQ) {
+                            // Other conditions - available_pieces > 0 OR available_sqft > 0
+                            $otherQ->where(function($notBlockQ) {
+                                $notBlockQ->whereRaw("LOWER(condition_status) NOT IN ('block', 'monuments')")
+                                          ->orWhereNull('condition_status');
+                            })
+                            ->where(function($oQ) {
+                                $oQ->where('available_pieces', '>', 0)
+                                   ->orWhere(function($sqftQ) {
+                                       $sqftQ->whereNotNull('available_sqft')
+                                             ->where('available_sqft', '>', 0);
+                                   });
+                            });
+                        });
+                    });
                 }
             })
             ->whereHas('product')
@@ -485,8 +550,24 @@ class GatePassController extends Controller
             ->orderBy('date', 'desc')
             ->get()
             ->filter(function ($stockAddition) use ($usedStockIds) {
-                // Show stock with available pieces OR the currently used stock in this gate pass
-                return $stockAddition->hasAvailableStock() || in_array($stockAddition->id, $usedStockIds);
+                // If already in gate pass, always show it
+                if (in_array($stockAddition->id, $usedStockIds)) {
+                    return true;
+                }
+                
+                // For Block and Monuments: check available_pieces OR available_weight
+                $conditionStatus = strtolower($stockAddition->condition_status ?? '');
+                if (in_array($conditionStatus, ['block', 'monuments'])) {
+                    // Must have at least one available: pieces OR weight (handle NULL)
+                    $hasPieces = ($stockAddition->available_pieces ?? 0) > 0;
+                    $hasWeight = ($stockAddition->available_weight ?? 0) > 0;
+                    return $hasPieces || $hasWeight;
+                } else {
+                    // For other conditions: check available_pieces OR available_sqft (handle NULL)
+                    $hasPieces = ($stockAddition->available_pieces ?? 0) > 0;
+                    $hasSqft = ($stockAddition->available_sqft ?? 0) > 0;
+                    return $hasPieces || $hasSqft;
+                }
             });
 
         // Debug logging
@@ -561,49 +642,47 @@ class GatePassController extends Controller
                     
                     if ($quantityChanged) {
                         $quantityDifference = $item['quantity_issued'] - $existingItem->quantity_issued;
-                        $sqftDifference = (($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued']) - $existingItem->sqft_issued;
+                        $newSqftIssued = ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'];
+                        $newWeightIssued = ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'];
+                        $sqftDifference = $newSqftIssued - ($existingItem->sqft_issued ?? 0);
+                        $weightDifference = $newWeightIssued - ($existingItem->weight_issued ?? 0);
                         
                         $updateData = array_merge($updateData, [
                             'quantity_issued' => $item['quantity_issued'],
-                            'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
-                            'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
+                            'sqft_issued' => $newSqftIssued,
+                            'weight_issued' => $newWeightIssued,
                         ]);
                     }
                     
                     $existingItem->update($updateData);
 
-                    // Update the corresponding stock issued record only if quantity changed
+                    // Adjust stock quantities if quantity changed
                     if ($quantityChanged) {
-                        $stockIssued = StockIssued::where('stock_addition_id', $stockAddition->id)
-                            ->where('purpose', 'Gate Pass Dispatch')
-                            ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
-                            ->first();
-
-                        if ($stockIssued) {
-                            $stockIssued->update([
-                                'quantity_issued' => $item['quantity_issued'],
-                                'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
-                                'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
-                            ]);
-                        }
-
-                        // Adjust stock quantities
-                        $stockAddition->available_pieces -= $quantityDifference;
-                        $stockAddition->available_sqft -= $sqftDifference;
-                        $stockAddition->save();
+                        // Adjust stock quantities using withoutEvents to bypass observer
+                        StockAddition::withoutEvents(function() use ($stockAddition, $quantityDifference, $sqftDifference, $weightDifference) {
+                            $stockAddition->available_pieces -= $quantityDifference;
+                            if ($sqftDifference != 0) {
+                                $stockAddition->available_sqft -= $sqftDifference;
+                            }
+                            if ($weightDifference != 0 && isset($stockAddition->available_weight)) {
+                                $stockAddition->available_weight -= $weightDifference;
+                            }
+                            $stockAddition->save();
+                        });
 
                         // Log the update
                         StockLog::logActivity(
                             'updated',
                             "Gate pass item updated - {$quantityDifference} pieces change",
                             $stockAddition->id,
-                            $stockIssued->id,
+                            null,
                             $gatePass->id,
                             null,
                             ['available_pieces' => $stockAddition->available_pieces + $quantityDifference, 'available_sqft' => $stockAddition->available_sqft + $sqftDifference],
                             ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
                             -$quantityDifference,
-                            -$sqftDifference
+                            (float)-$sqftDifference,
+                            (float)0
                         );
                     } else {
                         // Log particulars update
@@ -617,51 +696,52 @@ class GatePassController extends Controller
                             null,
                             null,
                             0,
-                            0
+                            0.0,
+                            0.0
                         );
                     }
                 }
             } else {
                 // New item - create it
-                $stockIssued = StockIssued::create([
-            'stock_addition_id' => $stockAddition->id,
-                    'quantity_issued' => $item['quantity_issued'],
-                    'sqft_issued' => ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'],
-                    'weight_issued' => ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'],
-                    'purpose' => 'Gate Pass Dispatch',
-                    'notes' => 'Auto-created for gate pass dispatch',
-            'stone' => $stockAddition->stone,
-            'date' => $request->date,
-        ]);
+                $sqftIssued = ($stockAddition->total_sqft / $stockAddition->total_pieces) * $item['quantity_issued'];
+                $weightIssued = ($stockAddition->weight / $stockAddition->total_pieces) * $item['quantity_issued'];
 
                 // Create gate pass item
                 GatePassItem::create([
                     'gate_pass_id' => $gatePass->id,
                     'stock_addition_id' => $stockAddition->id,
                     'quantity_issued' => $item['quantity_issued'],
-                    'sqft_issued' => $stockIssued->sqft_issued,
-                    'weight_issued' => $stockIssued->weight_issued,
+                    'sqft_issued' => $sqftIssued,
+                    'weight_issued' => $weightIssued,
                     'stone' => $stockAddition->stone,
                     'particulars' => $item['particulars'] ?? $stockAddition->stone,
                 ]);
 
-                // Adjust stock quantities
-                $stockAddition->available_pieces -= $item['quantity_issued'];
-                $stockAddition->available_sqft -= $stockIssued->sqft_issued;
-                $stockAddition->save();
+                // Adjust stock quantities using withoutEvents to bypass observer
+                StockAddition::withoutEvents(function() use ($stockAddition, $item, $sqftIssued, $weightIssued) {
+                    $stockAddition->available_pieces -= $item['quantity_issued'];
+                    if ($sqftIssued) {
+                        $stockAddition->available_sqft -= $sqftIssued;
+                    }
+                    if ($weightIssued && isset($stockAddition->available_weight)) {
+                        $stockAddition->available_weight -= $weightIssued;
+                    }
+                    $stockAddition->save();
+                });
 
                 // Log the addition
                 StockLog::logActivity(
                     'dispatched',
                     "Gate pass item added - {$item['quantity_issued']} pieces dispatched",
                     $stockAddition->id,
-                    $stockIssued->id,
+                    null,
                     $gatePass->id,
                     null,
-                    ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + $stockIssued->sqft_issued],
+                    ['available_pieces' => $stockAddition->available_pieces + $item['quantity_issued'], 'available_sqft' => $stockAddition->available_sqft + $sqftIssued],
                     ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
                     -$item['quantity_issued'],
-                    -$stockIssued->sqft_issued
+                    (float)-$sqftIssued,
+                    (float)-($weightIssued ?? 0)
                 );
             }
 
@@ -671,37 +751,34 @@ class GatePassController extends Controller
         // Remove items that are no longer in the request
         $itemsToRemove = $existingItems->whereNotIn('stock_addition_id', $processedStockAdditionIds);
         foreach ($itemsToRemove as $itemToRemove) {
-            // Find and delete the corresponding stock issued record
-            $stockIssued = StockIssued::where('stock_addition_id', $itemToRemove->stock_addition_id)
-                ->where('purpose', 'Gate Pass Dispatch')
-                ->where('notes', 'like', '%Auto-created for gate pass dispatch%')
-                ->first();
-
-            if ($stockIssued) {
-                // Restore stock
-                $stockAddition = $stockIssued->stockAddition;
-                if ($stockAddition) {
-                    $stockAddition->available_pieces += $stockIssued->quantity_issued;
-                    $stockAddition->available_sqft += $stockIssued->sqft_issued;
+            // Restore stock using withoutEvents to bypass observer
+            $stockAddition = $itemToRemove->stockAddition;
+            if ($stockAddition) {
+                StockAddition::withoutEvents(function() use ($stockAddition, $itemToRemove) {
+                    $stockAddition->available_pieces += $itemToRemove->quantity_issued;
+                    if ($itemToRemove->sqft_issued) {
+                        $stockAddition->available_sqft += $itemToRemove->sqft_issued;
+                    }
+                    if ($itemToRemove->weight_issued && isset($stockAddition->available_weight)) {
+                        $stockAddition->available_weight += $itemToRemove->weight_issued;
+                    }
                     $stockAddition->save();
+                });
 
-                    // Log the removal
-        StockLog::logActivity(
-                        'restored',
-                        "Gate pass item removed - {$stockIssued->quantity_issued} pieces restored",
-            $stockAddition->id,
-                        $stockIssued->id,
-            $gatePass->id,
-            null,
-                        ['available_pieces' => $stockAddition->available_pieces - $stockIssued->quantity_issued, 'available_sqft' => $stockAddition->available_sqft - $stockIssued->sqft_issued],
-                        ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
-                        $stockIssued->quantity_issued,
-                        $stockIssued->sqft_issued
-                    );
-                }
-
-                // Delete the stock issued record
-                $stockIssued->deleteQuietly();
+                // Log the removal
+                StockLog::logActivity(
+                    'restored',
+                    "Gate pass item removed - {$itemToRemove->quantity_issued} pieces restored",
+                    $stockAddition->id,
+                    null,
+                    $gatePass->id,
+                    null,
+                    ['available_pieces' => $stockAddition->available_pieces - $itemToRemove->quantity_issued, 'available_sqft' => $stockAddition->available_sqft - ($itemToRemove->sqft_issued ?? 0)],
+                    ['available_pieces' => $stockAddition->available_pieces, 'available_sqft' => $stockAddition->available_sqft],
+                    $itemToRemove->quantity_issued,
+                    (float)($itemToRemove->sqft_issued ?? 0),
+                    (float)($itemToRemove->weight_issued ?? 0)
+                );
             }
 
             // Delete the gate pass item
@@ -901,3 +978,4 @@ class GatePassController extends Controller
         }
     }
 }
+

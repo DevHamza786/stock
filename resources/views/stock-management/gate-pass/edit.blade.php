@@ -168,6 +168,7 @@
             const addItemBtn = document.getElementById('add-item-btn');
             const itemsContainer = document.getElementById('items-container');
             const existingItems = @json($gatePass->items ?? []);
+            const usedStockIds = existingItems.map(item => item.stock_addition_id);
 
             // Add existing items first
             if (existingItems.length > 0) {
@@ -248,12 +249,65 @@
             function generateStockOptions() {
                 let options = '';
                 Object.values(stockData).forEach(stock => {
-                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
+                    // Check if stock has available quantity based on condition
+                    const conditionStatus = (stock.condition_status || '').toLowerCase();
+                    const isBlockOrMonument = conditionStatus === 'block' || conditionStatus === 'monuments';
+                    
+                    // Filter out items with zero stock (unless already in gate pass)
+                    const availablePieces = stock.available_pieces || 0;
+                    let hasAvailable = false;
+                    let availabilityText = '';
+                    
+                    if (isBlockOrMonument) {
+                        const availableWeight = stock.available_weight || 0;
+                        hasAvailable = availablePieces > 0 || availableWeight > 0;
+                        // Always show pieces and weight together for Block/Monuments
+                        if (availableWeight > 0) {
+                            availabilityText = `${availablePieces} pieces, ${parseFloat(availableWeight).toFixed(2)} kg`;
+                        } else if (availablePieces > 0) {
+                            availabilityText = `${availablePieces} pieces`;
+                        } else {
+                            availabilityText = `${availablePieces} pieces, 0.00 kg`;
+                        }
+                    } else {
+                        const availableSqft = stock.available_sqft || 0;
+                        hasAvailable = availablePieces > 0 || availableSqft > 0;
+                        // Always show pieces and sqft together for other conditions
+                        if (availableSqft > 0) {
+                            availabilityText = `${availablePieces} pieces, ${parseFloat(availableSqft).toFixed(2)} sqft`;
+                        } else if (availablePieces > 0) {
+                            availabilityText = `${availablePieces} pieces`;
+                        } else {
+                            availabilityText = `${availablePieces} pieces, 0.00 sqft`;
+                        }
+                    }
+                    
+                    // Skip items with 0 available pieces (unless already in gate pass)
+                    // Only show items that have at least some available pieces
+                    if (availablePieces === 0 && !usedStockIds.includes(stock.id)) {
+                        return;
+                    }
+                    
+                    // Skip items with no available stock at all (unless already in gate pass)
+                    if (!hasAvailable && !usedStockIds.includes(stock.id)) {
+                        return;
+                    }
+                    
+                    // For items already in gate pass, show 0 if no availability
+                    if (!hasAvailable && usedStockIds.includes(stock.id)) {
+                        if (isBlockOrMonument) {
+                            availabilityText = '0 pieces, 0 kg';
+                        } else {
+                            availabilityText = '0 pieces, 0 sqft';
+                        }
+                    }
+                    
+                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${availabilityText}) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
                     options += `
                         <div class="stock-option px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0" data-value="${stock.id}" data-text="${displayText}">
                             <div class="font-medium text-gray-900">${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'}</div>
                             <div class="text-sm text-gray-600">
-                                ${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft
+                                ${availabilityText} available
                                 ${stock.pid ? ` | PID: ${stock.pid}` : ''}
                             </div>
                             <div class="text-xs text-gray-500">${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</div>
@@ -276,7 +330,31 @@
                 // Initialize with existing item data if provided
                 if (existingItem && stockData[existingItem.stock_addition_id]) {
                     const stock = stockData[existingItem.stock_addition_id];
-                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${stock.available_pieces} pieces available, ${parseFloat(stock.available_sqft).toFixed(2)} sqft) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
+                    const conditionStatus = (stock.condition_status || '').toLowerCase();
+                    const isBlockOrMonument = conditionStatus === 'block' || conditionStatus === 'monuments';
+                    
+                    let availabilityText = '';
+                    if (isBlockOrMonument) {
+                        const availablePieces = stock.available_pieces || 0;
+                        const availableWeight = stock.available_weight || 0;
+                        // Always show pieces and weight together for Block/Monuments
+                        if (availableWeight > 0 || availablePieces > 0) {
+                            availabilityText = `${availablePieces} pieces, ${parseFloat(availableWeight).toFixed(2)} kg`;
+                        } else {
+                            availabilityText = '0 pieces, 0.00 kg';
+                        }
+                    } else {
+                        const availablePieces = stock.available_pieces || 0;
+                        const availableSqft = stock.available_sqft || 0;
+                        // Always show pieces and sqft together for other conditions
+                        if (availableSqft > 0 || availablePieces > 0) {
+                            availabilityText = `${availablePieces} pieces, ${parseFloat(availableSqft).toFixed(2)} sqft`;
+                        } else {
+                            availabilityText = '0 pieces, 0.00 sqft';
+                        }
+                    }
+                    
+                    const displayText = `${stock.product?.name || 'N/A'} - ${stock.mine_vendor?.name || 'N/A'} (${availabilityText}) - ${stock.date ? new Date(stock.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}${stock.pid ? ` - PID: ${stock.pid}` : ''}`;
                     stockSearch.value = displayText;
                     updateStockInfo(existingItem.stock_addition_id);
                 }

@@ -267,6 +267,7 @@
                         <th style="padding: 12px; text-align: left; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Particulars</th>
                         <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Pieces</th>
                         <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Sqft</th>
+                        <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #d1d5db;">Weight (kg)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -277,13 +278,15 @@
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->stockAddition->product->name ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db;">{{ $item->particulars ?? $item->stone ?? 'N/A' }}</td>
                         <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->quantity_issued) }}</td>
-                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->sqft_issued, 2) }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->sqft_issued ?? 0, 2) }}</td>
+                        <td style="padding: 10px; border: 1px solid #d1d5db; text-align: center; font-weight: bold;">{{ number_format($item->weight_issued ?? 0, 2) }}</td>
                     </tr>
                     @endforeach
                     <tr style="background: #f9fafb; font-weight: bold; border-top: 2px solid #d1d5db;">
                         <td colspan="4" style="padding: 12px; border: 1px solid #d1d5db; text-align: right;">TOTAL:</td>
                         <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->quantity_issued) }}</td>
                         <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->sqft_issued, 2) }}</td>
+                        <td style="padding: 12px; border: 1px solid #d1d5db; text-align: center; color: #f97316;">{{ number_format($gatePass->weight_issued, 2) }}</td>
                     </tr>
                 </tbody>
             </table>

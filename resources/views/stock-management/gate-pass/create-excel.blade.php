@@ -39,9 +39,9 @@
                                 <div>
                                     <x-input-label for="status" :value="__('Status')" />
                                     <select id="status" name="status" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                        <option value="pending" {{ old('status', 'pending') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                        <option value="approved" {{ old('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                                        <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                                        <option value="Pending" {{ old('status', 'Pending') == 'Pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="Approved" {{ old('status') == 'Approved' ? 'selected' : '' }}>Approved</option>
+                                        <option value="Completed" {{ old('status') == 'Completed' ? 'selected' : '' }}>Completed</option>
                                     </select>
                                     <x-input-error :messages="$errors->get('status')" class="mt-2" />
                                 </div>
@@ -167,6 +167,44 @@
     </div>
 
     @if($stockAdditions->count() > 0)
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <style>
+        /* Select2 custom styling for better fit */
+        .select2-container--default .select2-selection--single {
+            height: auto !important;
+            min-height: 38px;
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.375rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px;
+            padding-left: 8px;
+            font-size: 0.75rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px;
+        }
+        .select2-dropdown {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 6px;
+        }
+        .select2-results__option {
+            font-size: 0.75rem;
+            padding: 8px;
+        }
+    </style>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let rowCounter = 0;
@@ -219,6 +257,17 @@
                 
                 tableBody.appendChild(row);
                 
+                // Initialize Select2 on the new dropdown
+                const selectElement = row.querySelector('.stock-addition-select');
+                $(selectElement).select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: 'Select Stock Item',
+                    allowClear: true,
+                    dropdownParent: $('body'), // Use body to avoid z-index issues in table
+                    minimumResultsForSearch: 0 // Always show search box
+                });
+                
                 // Add event listeners to new row
                 setupRowEventListeners(row);
                 
@@ -231,10 +280,12 @@
                 const quantityInput = row.querySelector('.quantity-input');
                 const removeBtn = row.querySelector('.remove-row');
                 
-                // Stock addition selection handler
-                stockAdditionSelect.addEventListener('change', function() {
-                    const selectedOption = this.options[this.selectedIndex];
-                    if (selectedOption.value) {
+                // Stock addition selection handler (using jQuery for Select2 compatibility)
+                $(stockAdditionSelect).on('change', function() {
+                    const selectedValue = $(this).val();
+                    const selectedOption = this.querySelector(`option[value="${selectedValue}"]`);
+                    
+                    if (selectedOption && selectedValue) {
                         const product = selectedOption.dataset.product;
                         const condition = selectedOption.dataset.condition;
                         const available = selectedOption.dataset.available;
@@ -272,6 +323,11 @@
                 // Remove row handler
                 removeBtn.addEventListener('click', function() {
                     if (rowCounter > 1) {
+                        // Destroy Select2 before removing row
+                        const selectElement = row.querySelector('.stock-addition-select');
+                        if ($(selectElement).hasClass('select2-hidden-accessible')) {
+                            $(selectElement).select2('destroy');
+                        }
                         row.remove();
                         renumberRows();
                         updateSummary();
@@ -311,6 +367,12 @@
             
             function clearAllRows() {
                 if (confirm('Are you sure you want to clear all rows? This action cannot be undone.')) {
+                    // Destroy all Select2 instances before clearing
+                    tableBody.querySelectorAll('.stock-addition-select').forEach(select => {
+                        if ($(select).hasClass('select2-hidden-accessible')) {
+                            $(select).select2('destroy');
+                        }
+                    });
                     tableBody.innerHTML = '';
                     rowCounter = 0;
                     addRow();
@@ -327,8 +389,9 @@
                     const stockSelect = row.querySelector('.stock-addition-select');
                     const quantityInput = row.querySelector('.quantity-input');
                     const quantity = parseInt(quantityInput.value) || 0;
+                    const selectedValue = $(stockSelect).val(); // Use jQuery to get Select2 value
                     
-                    if (stockSelect.value && quantity > 0) {
+                    if (selectedValue && quantity > 0) {
                         totalRows++;
                         totalItems++;
                         totalQuantity += quantity;
@@ -348,8 +411,9 @@
                 rows.forEach(row => {
                     const stockSelect = row.querySelector('.stock-addition-select');
                     const quantityInput = row.querySelector('.quantity-input');
+                    const selectedValue = $(stockSelect).val(); // Use jQuery to get Select2 value
                     
-                    if (stockSelect && stockSelect.value && quantityInput && quantityInput.value) {
+                    if (stockSelect && selectedValue && quantityInput && quantityInput.value) {
                         hasValidRows = true;
                     }
                 });
