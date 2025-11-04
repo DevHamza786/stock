@@ -9,9 +9,11 @@
                         <p class="mt-2 text-gray-600">View gate pass details and dispatch information</p>
                     </div>
                     <div class="flex space-x-3">
-                        <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                            Edit Gate Pass
-                        </a>
+                        @if(auth()->user()->canEdit('gate-pass'))
+                            <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Edit Gate Pass
+                            </a>
+                        @endif
                         <a href="{{ route('stock-management.gate-pass.print', $gatePass) }}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200" target="_blank">
                             Print Gate Pass
                         </a>
@@ -250,22 +252,26 @@
                         </div>
                         <div class="p-6">
                             <div class="space-y-3">
-                                <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
-                                    Edit Gate Pass
-                                </a>
+                                @if(auth()->user()->canEdit('gate-pass'))
+                                    <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                        Edit Gate Pass
+                                    </a>
+                                @endif
                                 <a href="{{ route('stock-management.gate-pass.print', $gatePass) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center" target="_blank">
                                     Print Gate Pass
                                 </a>
                                 <a href="{{ route('stock-management.gate-pass.create') }}" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
                                     Create New Gate Pass
                                 </a>
-                                <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" onsubmit="return confirm('Are you sure you want to delete this gate pass?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                                        Delete Gate Pass
-                                    </button>
-                                </form>
+                                @if(auth()->user()->canDelete('gate-pass'))
+                                    <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" onsubmit="return confirm('Are you sure you want to delete this gate pass?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                            Delete Gate Pass
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                     </div>

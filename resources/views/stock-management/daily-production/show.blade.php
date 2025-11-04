@@ -15,10 +15,10 @@
                             </svg>
                             Print
                         </a>
-                        @if($dailyProduction->status !== 'closed')
-                        <a href="{{ route('stock-management.daily-production.edit', $dailyProduction) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                            Edit Production
-                        </a>
+                        @if($dailyProduction->status !== 'closed' && auth()->user()->canEdit('daily-production'))
+                            <a href="{{ route('stock-management.daily-production.edit', $dailyProduction) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Edit Production
+                            </a>
                         @endif
                         <a href="{{ route('stock-management.daily-production.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                             Back to List

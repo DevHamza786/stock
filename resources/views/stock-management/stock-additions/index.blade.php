@@ -219,12 +219,16 @@
                                         <td>
                                             <div class="flex space-x-2">
                                                 <a href="{{ route('stock-management.stock-additions.show', $addition) }}" class="text-blue-600 hover:text-blue-900 text-sm">View</a>
-                                                <a href="{{ route('stock-management.stock-additions.edit', $addition) }}" class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</a>
-                                                <form method="POST" action="{{ route('stock-management.stock-additions.destroy', $addition) }}" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this stock addition?')">Delete</button>
-                                                </form>
+                                                @if(auth()->user()->canEdit('stock-additions'))
+                                                    <a href="{{ route('stock-management.stock-additions.edit', $addition) }}" class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</a>
+                                                @endif
+                                                @if(auth()->user()->canDelete('stock-additions'))
+                                                    <form method="POST" action="{{ route('stock-management.stock-additions.destroy', $addition) }}" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this stock addition?')">Delete</button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>

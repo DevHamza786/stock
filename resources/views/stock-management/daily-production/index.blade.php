@@ -214,7 +214,9 @@
                                                 <a href="{{ route('stock-management.daily-production.show', $production) }}" class="text-blue-600 hover:text-blue-900 text-sm">View</a>
                                                 
                                                 @if($production->status === 'open')
-                                                    <a href="{{ route('stock-management.daily-production.edit', $production) }}" class="text-green-600 hover:text-green-900 text-sm">Edit</a>
+                                                    @if(auth()->user()->canEdit('daily-production'))
+                                                        <a href="{{ route('stock-management.daily-production.edit', $production) }}" class="text-green-600 hover:text-green-900 text-sm">Edit</a>
+                                                    @endif
                                                     
                                                     <form method="POST" action="{{ route('stock-management.daily-production.close', $production) }}" class="inline">
                                                         @csrf
@@ -222,17 +224,21 @@
                                                         <button type="submit" class="text-orange-600 hover:text-orange-900 text-sm" onclick="return confirm('Are you sure you want to close this production?')">Close</button>
                                                     </form>
                                                     
-                                                    <form method="POST" action="{{ route('stock-management.daily-production.destroy', $production) }}" class="inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this production record?')">Delete</button>
-                                                    </form>
+                                                    @if(auth()->user()->canDelete('daily-production'))
+                                                        <form method="POST" action="{{ route('stock-management.daily-production.destroy', $production) }}" class="inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this production record?')">Delete</button>
+                                                        </form>
+                                                    @endif
                                                 @else
-                                                    <form method="POST" action="{{ route('stock-management.daily-production.open', $production) }}" class="inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <button type="submit" class="text-green-600 hover:text-green-900 text-sm" onclick="return confirm('Are you sure you want to open this production?')">Open</button>
-                                                    </form>
+                                                    @if(auth()->user()->canEdit('daily-production'))
+                                                        <form method="POST" action="{{ route('stock-management.daily-production.open', $production) }}" class="inline">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <button type="submit" class="text-green-600 hover:text-green-900 text-sm" onclick="return confirm('Are you sure you want to open this production?')">Open</button>
+                                                        </form>
+                                                    @endif
                                                 @endif
                                             </div>
                                         </td>

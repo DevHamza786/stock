@@ -21,9 +21,11 @@
                             </svg>
                             Download PDF
                         </button>
-                        <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                            Edit Issuance
-                        </a>
+                        @if(auth()->user()->canEdit('stock-issued'))
+                            <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Edit Issuance
+                            </a>
+                        @endif
                         <a href="{{ route('stock-management.stock-issued.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                             Back to List
                         </a>
@@ -77,9 +79,11 @@
                     </div>
                     <div class="p-6">
                         <div class="space-y-3">
-                            <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
-                                Edit Issuance
-                            </a>
+                            @if(auth()->user()->canEdit('stock-issued'))
+                                <a href="{{ route('stock-management.stock-issued.edit', $stockIssued) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                    Edit Issuance
+                                </a>
+                            @endif
                             <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockIssued->stockAddition->id]) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
                                 Record Production
                             </a>

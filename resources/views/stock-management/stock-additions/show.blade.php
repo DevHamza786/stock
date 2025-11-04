@@ -9,9 +9,11 @@
                         <p class="mt-2 text-gray-600">View stock addition details and related information</p>
                     </div>
                     <div class="flex space-x-3">
-                        <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
-                            Edit Stock
-                        </a>
+                        @if(auth()->user()->canEdit('stock-additions'))
+                            <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                                Edit Stock
+                            </a>
+                        @endif
                         <a href="{{ route('stock-management.stock-additions.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                             Back to List
                         </a>
@@ -290,9 +292,11 @@
                                 <a href="{{ route('stock-management.daily-production.create', ['stock_addition_id' => $stockAddition->id]) }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
                                     Record Production
                                 </a>
-                                <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
-                                    Edit Stock
-                                </a>
+                                @if(auth()->user()->canEdit('stock-additions'))
+                                    <a href="{{ route('stock-management.stock-additions.edit', $stockAddition) }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 block text-center">
+                                        Edit Stock
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     </div>

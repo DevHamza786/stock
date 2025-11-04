@@ -174,12 +174,16 @@
                                         <td>
                                             <div class="flex space-x-2">
                                                 <a href="{{ route('stock-management.gate-pass.show', $gatePass) }}" class="text-blue-600 hover:text-blue-900 text-sm">View</a>
-                                                <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="text-green-600 hover:text-green-900 text-sm">Edit</a>
-                                                <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this gate pass?')">Delete</button>
-                                                </form>
+                                                @if(auth()->user()->canEdit('gate-pass'))
+                                                    <a href="{{ route('stock-management.gate-pass.edit', $gatePass) }}" class="text-green-600 hover:text-green-900 text-sm">Edit</a>
+                                                @endif
+                                                @if(auth()->user()->canDelete('gate-pass'))
+                                                    <form method="POST" action="{{ route('stock-management.gate-pass.destroy', $gatePass) }}" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm" onclick="return confirm('Are you sure you want to delete this gate pass?')">Delete</button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
