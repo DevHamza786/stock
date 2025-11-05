@@ -47,8 +47,10 @@ Route::middleware(['auth', 'verified'])->prefix('stock-management')->name('stock
     Route::get('/available-stock', [StockManagementController::class, 'getAvailableStock'])->name('available-stock');
 
     // Stock Additions - Excel routes (must come before resource routes)
-    Route::get('stock-additions/edit-excel', [StockAdditionController::class, 'editExcel'])->name('stock-additions.edit-excel');
-    Route::put('stock-additions/update-multiple', [StockAdditionController::class, 'updateMultiple'])->name('stock-additions.update-multiple');
+    // Excel Edit routes - Admin only
+    Route::get('stock-additions/edit-excel', [StockAdditionController::class, 'editExcel'])->middleware('admin')->name('stock-additions.edit-excel');
+    Route::put('stock-additions/update-multiple', [StockAdditionController::class, 'updateMultiple'])->middleware('admin')->name('stock-additions.update-multiple');
+    // Excel Add routes - Accessible to all authenticated users
     Route::post('stock-additions/store-multiple', [StockAdditionController::class, 'storeMultiple'])->name('stock-additions.store-multiple');
     Route::post('stock-additions/calculate-sqft', [StockAdditionController::class, 'calculateSqft'])->name('stock-additions.calculate-sqft');
     
