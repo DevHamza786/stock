@@ -57,13 +57,26 @@
                 <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 rounded-3xl"></div>
                 <!-- Card Header -->
                 <div class="text-center mb-8 relative z-10">
-                    <div class="mx-auto h-12 w-12 bg-white/30 backdrop-blur-sm rounded-lg flex items-center justify-center mb-4 border border-white/40 shadow-lg">
-                        <svg class="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
+                    <div class="mx-auto mb-4 flex items-center justify-center">
+                        <!-- PMI Logo Icon -->
+                        <div class="h-16 w-16 flex items-center justify-center">
+                            <svg viewBox="0 0 64 64" class="h-16 w-16" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Outer eight-pointed star (octagram) -->
+                                <path d="M32 2 L35.5 18 L50 18 L39.5 28 L43 44 L32 34 L21 44 L24.5 28 L14 18 L28.5 18 Z" fill="#D4AF37" stroke="#1E3A5F" stroke-width="0.3"/>
+                                <!-- Rotated square (diamond) -->
+                                <rect x="24" y="24" width="16" height="16" fill="#1E3A5F" transform="rotate(45 32 32)"/>
+                                <!-- Inner square aligned with star -->
+                                <rect x="26" y="26" width="12" height="12" fill="#D4AF37" opacity="0.9"/>
+                                <!-- Center circle with compass design -->
+                                <circle cx="32" cy="32" r="6" fill="#1E3A5F"/>
+                                <circle cx="32" cy="32" r="4" fill="#D4AF37"/>
+                                <line x1="32" y1="28" x2="32" y2="36" stroke="#1E3A5F" stroke-width="0.8"/>
+                                <line x1="28" y1="32" x2="36" y2="32" stroke="#1E3A5F" stroke-width="0.8"/>
+                            </svg>
+                        </div>
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-2 drop-shadow-sm">Sign in with email</h2>
-                    <p class="text-sm text-gray-600 drop-shadow-sm">Make a new doc to bring your words, data, and teams together. For free</p>
+                    <p class="text-sm text-gray-600 drop-shadow-sm">Popular Marble Industries - Stock Management System</p>
                 </div>
 
                 <form method="POST" action="{{ route('login') }}" class="space-y-6 relative z-10">

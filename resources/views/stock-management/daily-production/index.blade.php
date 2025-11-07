@@ -38,7 +38,7 @@
                         <form method="GET" action="{{ route('stock-management.daily-production.index') }}">
                             <!-- Search Input -->
                             <div class="mb-4">
-                                <input type="text" name="search" placeholder="Search by product, vendor, machine, operator, stone, size, notes..."
+                                <input type="text" name="search" placeholder="Search by stock PID, product, vendor, machine, operator, stone, size, notes..."
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                        value="{{ request('search') }}">
                             </div>

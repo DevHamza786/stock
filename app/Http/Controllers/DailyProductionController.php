@@ -39,7 +39,8 @@ class DailyProductionController extends Controller
                   })
                   ->orWhereHas('stockAddition', function ($stockQuery) use ($search) {
                       $stockQuery->where('stone', 'like', "%{$search}%")
-                                ->orWhere('size_3d', 'like', "%{$search}%");
+                                ->orWhere('size_3d', 'like', "%{$search}%")
+                                ->orWhere('pid', 'like', "%{$search}%");
                   });
             });
         }

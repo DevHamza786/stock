@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }} - Stock Management</title>
+        <title>Popular Marble Industries - Stock Management</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -430,18 +430,36 @@
             <!-- Navigation -->
             <nav class="bg-white shadow-lg border-b border-gray-200">
                 <div class="w-full px-4 sm:px-6 lg:px-8">
-                    <div class="flex justify-between items-center h-16">
+                    <div class="flex justify-between items-center h-20">
                         <!-- Left side - Logo and Navigation -->
                         <div class="flex items-center space-x-8">
                             <!-- Logo -->
                             <div class="flex-shrink-0">
                                 <a href="{{ route('stock-management.dashboard') }}" class="flex items-center">
-                                    <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                    <!-- PMI Logo Icon -->
+                                    <div class="h-10 w-10 mr-3 flex items-center justify-center">
+                                        <svg viewBox="0 0 64 64" class="h-10 w-10" xmlns="http://www.w3.org/2000/svg">
+                                            <!-- Outer eight-pointed star (octagram) -->
+                                            <path d="M32 2 L35.5 18 L50 18 L39.5 28 L43 44 L32 34 L21 44 L24.5 28 L14 18 L28.5 18 Z" fill="#D4AF37" stroke="#1E3A5F" stroke-width="0.3"/>
+                                            <!-- Rotated square (diamond) -->
+                                            <rect x="24" y="24" width="16" height="16" fill="#1E3A5F" transform="rotate(45 32 32)"/>
+                                            <!-- Inner square aligned with star -->
+                                            <rect x="26" y="26" width="12" height="12" fill="#D4AF37" opacity="0.9"/>
+                                            <!-- Center circle with compass design -->
+                                            <circle cx="32" cy="32" r="6" fill="#1E3A5F"/>
+                                            <circle cx="32" cy="32" r="4" fill="#D4AF37"/>
+                                            <line x1="32" y1="28" x2="32" y2="36" stroke="#1E3A5F" stroke-width="0.8"/>
+                                            <line x1="28" y1="32" x2="36" y2="32" stroke="#1E3A5F" stroke-width="0.8"/>
                                         </svg>
                                     </div>
-                                    <span class="text-xl font-bold text-gray-900">StockPro</span>
+                                    <!-- Company Name -->
+                                    <div class="flex flex-col">
+                                        <div class="flex items-center">
+                                            <span class="text-2xl font-bold text-gray-900" style="background: linear-gradient(to bottom, #D4AF37, #8B6914); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">PMI</span>
+                                            <span class="ml-3 text-lg font-semibold text-gray-800">Popular Marble Industries</span>
+                                        </div>
+                                        <span class="text-xs text-yellow-600 font-medium mt-0.5">Quarry-Manufacturer-Exporter-Importer-Project</span>
+                                    </div>
                                 </a>
                             </div>
 

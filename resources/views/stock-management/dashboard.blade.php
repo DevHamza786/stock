@@ -4,7 +4,7 @@
             <!-- Page Header -->
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-                <p class="mt-2 text-gray-600">Welcome to StockPro - Your comprehensive stock management solution</p>
+                <p class="mt-2 text-gray-600">Welcome to Popular Marble Industries - Your comprehensive stock management solution</p>
             </div>
 
             <!-- Summary Cards -->

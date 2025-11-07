@@ -323,7 +323,7 @@
                 <div class="print:flex print:justify-between print:items-center">
                     <div>
                         <h1 class="print:text-2xl print:font-bold print:text-gray-900">STOCK ISSUANCE SLIP</h1>
-                        <p class="print:text-sm print:text-gray-600">StockPro Management System</p>
+                        <p class="print:text-sm print:text-gray-600">Popular Marble Industries Management System</p>
                     </div>
                     <div class="print:text-right">
                         <p class="print:text-sm print:text-gray-600">Issue Date: {{ $stockIssued->date->format('M d, Y') }}</p>
@@ -461,7 +461,7 @@
                 <div class="print:flex print:justify-between print:items-center">
                     <div>
                         <p class="print:text-xs print:text-gray-600">Generated on: {{ now()->format('M d, Y H:i:s') }}</p>
-                        <p class="print:text-xs print:text-gray-600">StockPro Management System</p>
+                        <p class="print:text-xs print:text-gray-600">Popular Marble Industries Management System</p>
                     </div>
                     <div class="print:text-right">
                         <p class="print:text-xs print:text-gray-600">Authorized by: ________________</p>
@@ -751,7 +751,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #000;">STOCK ISSUANCE SLIP</h1>
-                            <p style="margin: 5px 0; font-size: 12px; color: #333;">StockPro Management System</p>
+                            <p style="margin: 5px 0; font-size: 12px; color: #333;">Popular Marble Industries Management System</p>
                         </div>
                         <div style="text-align: right;">
                             <p style="margin: 2px 0; font-size: 12px; color: #333;">Issue Date: ${stockData.issueDate}</p>
@@ -880,7 +880,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <p style="margin: 2px 0; font-size: 10px; color: #333;">Generated on: ${stockData.generatedOn}</p>
-                            <p style="margin: 2px 0; font-size: 10px; color: #333;">StockPro Management System</p>
+                            <p style="margin: 2px 0; font-size: 10px; color: #333;">Popular Marble Industries Management System</p>
                         </div>
                         <div style="text-align: right;">
                             <p style="margin: 2px 0; font-size: 10px; color: #333;">Authorized by: ________________</p>
