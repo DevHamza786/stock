@@ -149,8 +149,16 @@ class JournalEntryController extends Controller
         $journalEntry->load(['transactions.account']);
         $accounts = ChartOfAccount::active()->orderBy('account_code')->get();
         $entryTypes = JournalEntry::getEntryTypes();
+        $transactionFormData = $journalEntry->transactions->map(function ($transaction) {
+            return [
+                'account_id' => $transaction->account_id,
+                'description' => $transaction->description,
+                'debit_amount' => $transaction->debit_amount,
+                'credit_amount' => $transaction->credit_amount,
+            ];
+        })->values()->all();
 
-        return view('accounting.journal-entries.edit', compact('journalEntry', 'accounts', 'entryTypes'));
+        return view('accounting.journal-entries.edit', compact('journalEntry', 'accounts', 'entryTypes', 'transactionFormData'));
     }
 
     /**
