@@ -12,6 +12,7 @@ use App\Http\Controllers\GatePassController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\BankPaymentVoucherController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\DatabaseViewController;
@@ -183,6 +184,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('accounting')->name('ac
     Route::post('journal-entries/{journalEntry}/reverse', [JournalEntryController::class, 'reverse'])->name('journal-entries.reverse');
     Route::post('journal-entries/{journalEntry}/approve', [JournalEntryController::class, 'approve'])->name('journal-entries.approve');
     Route::get('journal-entries/{journalEntry}/details', [JournalEntryController::class, 'getDetails'])->name('journal-entries.details');
+
+    // Bank Payment Vouchers
+    Route::resource('bank-payment-vouchers', BankPaymentVoucherController::class)->only(['index', 'create', 'store', 'show']);
 
     // Auto-generate entries for ERM transactions
     Route::post('/generate-auto-entries', [AccountingController::class, 'generateAutoEntries'])->name('generate-auto-entries');

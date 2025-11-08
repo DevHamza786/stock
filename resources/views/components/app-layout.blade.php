@@ -536,6 +536,7 @@
                                                     <a href="{{ route('accounting.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Accounting Dashboard</a>
                                                     <a href="{{ route('accounting.chart-of-accounts.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Chart of Accounts</a>
                                                     <a href="{{ route('accounting.journal-entries.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Journal Entries</a>
+                                                    <a href="{{ route('accounting.bank-payment-vouchers.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Bank Payment Vouchers</a>
                                                     <div class="border-t border-gray-100 my-1"></div>
                                                     <a href="{{ route('accounting.trial-balance') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Trial Balance</a>
                                                     <a href="{{ route('accounting.balance-sheet') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Balance Sheet</a>
@@ -575,6 +576,10 @@
                                         <a href="{{ route('stock-management.stock-issued.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Issue Stock</a>
                                         <a href="{{ route('stock-management.daily-production.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Record Production</a>
                                         <a href="{{ route('stock-management.gate-pass.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Create Gate Pass</a>
+                                        @if(auth()->user()->isAdmin())
+                                            <div class="border-t border-gray-100 my-1"></div>
+                                            <a href="{{ route('accounting.bank-payment-vouchers.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Bank Payment Voucher</a>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
