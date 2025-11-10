@@ -36,7 +36,7 @@
                     <!-- Filters -->
                     <div class="mb-6 p-4 bg-white rounded-lg border border-gray-200">
                         <form method="GET" action="{{ route('stock-management.gate-pass.index') }}">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                                 <!-- Product Filter -->
                                 <div>
                                     <label for="product_id" class="block text-sm font-medium text-gray-700 mb-1">Product</label>
@@ -88,19 +88,44 @@
                                         @endforeach
                                     </select>
                                 </div>
+
+                                <!-- Records Per Page -->
+                                <div>
+                                    <label for="per_page" class="block text-sm font-medium text-gray-700 mb-1">Records Per Page</label>
+                                    <select name="per_page" id="per_page" class="block w-full border-gray-300 focus:border-orange-500 focus:ring-orange-500 rounded-lg shadow-sm">
+                                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100</option>
+                                        <option value="200" {{ request('per_page', 200) == '200' ? 'selected' : '' }}>200</option>
+                                        <option value="500" {{ request('per_page') == '500' ? 'selected' : '' }}>500</option>
+                                        <option value="1000" {{ request('per_page') == '1000' ? 'selected' : '' }}>1000</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="flex space-x-4">
                                 <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                     Apply Filters
                                 </button>
-                                @if(request()->hasAny(['product_id', 'vendor_id', 'status', 'destination']))
+                                @if(request()->hasAny(['product_id', 'vendor_id', 'status', 'destination', 'per_page']))
                                     <a href="{{ route('stock-management.gate-pass.index') }}" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
                                         Clear
                                     </a>
                                 @endif
                             </div>
                         </form>
+                    </div>
+
+                    <!-- Records Info -->
+                    <div class="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div class="flex justify-between items-center text-sm text-orange-700">
+                            <div>
+                                <span class="font-medium">Showing {{ $gatePasses->count() }} of {{ $gatePasses->total() }} records</span>
+                                <span class="ml-4">({{ $gatePasses->perPage() }} per page)</span>
+                            </div>
+                            <div class="text-xs text-orange-600">
+                                Page {{ $gatePasses->currentPage() }} of {{ $gatePasses->lastPage() }}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- DataTable -->
@@ -285,7 +310,7 @@
                         className: 'btn btn-danger'
                     }
                 ],
-                pageLength: 10,
+                pageLength: {{ $gatePasses->perPage() }},
                 order: [[8, 'desc']], // Sort by Date column (descending)
                 columnDefs: [
                     { orderable: false, targets: 9 } // Disable sorting on Actions column
@@ -300,6 +325,11 @@
                         next: "Next",
                         previous: "Previous"
                     }
+                },
+                initComplete: function() {
+                    console.log('Gate pass DataTable initialized');
+                    console.log('Gate pass buttons container:', $('.dt-buttons').length);
+                    console.log('Gate pass button count:', $('.dt-buttons button').length);
                 }
             });
             
@@ -313,6 +343,12 @@
             } else {
                 console.error('Excel HTML5 button is NOT available');
             }
+            const filterSelects = document.querySelectorAll('#product_id, #vendor_id, #status, #destination, #per_page');
+            filterSelects.forEach(select => {
+                select.addEventListener('change', function() {
+                    this.form.submit();
+                });
+            });
         });
     </script>
 </x-app-layout>

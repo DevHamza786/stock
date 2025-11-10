@@ -141,7 +141,11 @@ class GatePassController extends Controller
                 break;
         }
 
-        $gatePasses = $query->paginate(15)->withQueryString();
+        // Get per_page parameter with default of 200, max of 1000
+        $perPage = (int) $request->get('per_page', 200);
+        $perPage = max(1, min($perPage, 1000));
+
+        $gatePasses = $query->paginate($perPage)->withQueryString();
 
         // Get filter options
         $products = \App\Models\Product::orderBy('name')->get();
