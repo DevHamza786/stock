@@ -13,6 +13,8 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\BankPaymentVoucherController;
+use App\Http\Controllers\CashPaymentVoucherController;
+use App\Http\Controllers\PurchaseVoucherController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\DatabaseViewController;
@@ -187,6 +189,8 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('accounting')->name('ac
 
     // Bank Payment Vouchers
     Route::resource('bank-payment-vouchers', BankPaymentVoucherController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('cash-payment-vouchers', CashPaymentVoucherController::class)->only(['index', 'create', 'store']);
+    Route::resource('purchase-vouchers', PurchaseVoucherController::class)->only(['index', 'create', 'store']);
 
     // Auto-generate entries for ERM transactions
     Route::post('/generate-auto-entries', [AccountingController::class, 'generateAutoEntries'])->name('generate-auto-entries');

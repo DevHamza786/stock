@@ -7,16 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class BankPaymentVoucher extends Model
+class CashPaymentVoucher extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'voucher_number',
         'payment_date',
-        'bank_account_id',
+        'cash_account_id',
         'amount',
-        'payment_method',
         'reference_number',
         'notes',
         'created_by',
@@ -27,11 +26,9 @@ class BankPaymentVoucher extends Model
         'amount' => 'decimal:2',
     ];
 
-    protected static function boot()
+    protected static function booted(): void
     {
-        parent::boot();
-
-        static::creating(function (BankPaymentVoucher $voucher) {
+        static::creating(function (self $voucher) {
             if (empty($voucher->voucher_number)) {
                 $voucher->voucher_number = self::generateVoucherNumber();
             }
@@ -45,35 +42,32 @@ class BankPaymentVoucher extends Model
     public static function generateVoucherNumber(): string
     {
         $year = date('Y');
-        $prefix = "BPV-{$year}-";
+        $prefix = "CPV-{$year}-";
 
-        $lastVoucher = self::where('voucher_number', 'like', $prefix . '%')
+        $lastVoucher = self::where('voucher_number', 'like', "{$prefix}%")
             ->orderBy('voucher_number', 'desc')
             ->first();
 
-        if ($lastVoucher) {
-            $lastNumber = (int) substr($lastVoucher->voucher_number, -5);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
+        $number = $lastVoucher
+            ? ((int) substr($lastVoucher->voucher_number, -5)) + 1
+            : 1;
 
-        return $prefix . str_pad($newNumber, 5, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($number, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'cash_account_id');
+    }
+
+    public function lines(): HasMany
+    {
+        return $this->hasMany(CashPaymentVoucherLine::class);
     }
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function bankAccount(): BelongsTo
-    {
-        return $this->belongsTo(ChartOfAccount::class, 'bank_account_id');
-    }
-
-    public function lines(): HasMany
-    {
-        return $this->hasMany(BankPaymentVoucherLine::class);
     }
 }
 

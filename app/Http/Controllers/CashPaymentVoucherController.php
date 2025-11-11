@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BankPaymentVoucher;
-use App\Models\BankPaymentVoucherLine;
+use App\Models\CashPaymentVoucher;
+use App\Models\CashPaymentVoucherLine;
 use App\Models\ChartOfAccount;
 use App\Models\VendorBill;
 use App\Models\VendorBillPayment;
@@ -13,33 +13,26 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class BankPaymentVoucherController extends Controller
+class CashPaymentVoucherController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $vouchers = BankPaymentVoucher::with(['bankAccount'])
+        $vouchers = CashPaymentVoucher::with(['cashAccount'])
             ->orderByDesc('payment_date')
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return view('accounting.bank-payment-vouchers.index', compact('vouchers'));
+        return view('accounting.cash-payment-vouchers.index', compact('vouchers'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        $nextVoucherNumber = BankPaymentVoucher::generateVoucherNumber();
+        $nextVoucherNumber = CashPaymentVoucher::generateVoucherNumber();
 
-        $bankAccounts = ChartOfAccount::active()
-            ->where('account_type', 'ASSET')
-            ->whereIn('account_subtype', ['CASH', 'BANK'])
+        $cashAccounts = ChartOfAccount::active()
+            ->where('account_subtype', 'CASH')
             ->orderBy('account_code')
-            ->get(['id', 'account_code', 'account_name', 'account_subtype']);
+            ->get(['id', 'account_code', 'account_name']);
 
         $accounts = ChartOfAccount::active()
             ->orderBy('account_code')
@@ -51,22 +44,19 @@ class BankPaymentVoucherController extends Controller
             ->get()
             ->groupBy('chart_of_account_id');
 
-        return view('accounting.bank-payment-vouchers.create', [
+        return view('accounting.cash-payment-vouchers.create', [
             'nextVoucherNumber' => $nextVoucherNumber,
-            'bankAccounts' => $bankAccounts,
+            'cashAccounts' => $cashAccounts,
             'accounts' => $accounts,
             'vendorBills' => $vendorBills,
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'payment_date' => ['required', 'date'],
-            'bank_account_id' => ['required', 'exists:chart_of_accounts,id'],
+            'cash_account_id' => ['required', 'exists:chart_of_accounts,id'],
             'reference_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'lines' => ['required', 'array', 'min:1'],
@@ -74,8 +64,6 @@ class BankPaymentVoucherController extends Controller
             'lines.*.type' => ['required', 'in:Dr,Cr'],
             'lines.*.amount' => ['required', 'numeric', 'min:0.01'],
             'lines.*.particulars' => ['nullable', 'string', 'max:1000'],
-            'lines.*.cheque_no' => ['nullable', 'string', 'max:100'],
-            'lines.*.cheque_date' => ['nullable', 'date'],
             'lines.*.bill_id' => ['nullable', 'exists:vendor_bills,id'],
             'lines.*.bill_amount' => ['nullable', 'numeric', 'min:0.01'],
             'lines.*.bill_adjustment' => ['nullable', 'string', 'max:255'],
@@ -97,27 +85,33 @@ class BankPaymentVoucherController extends Controller
 
         $totals = $this->calculateTotals($lineItems);
 
-        if ($totals['netBankAmount'] <= 0) {
+        if ($totals['netCashAmount'] <= 0) {
             throw ValidationException::withMessages([
-                'lines' => __('Total debits must exceed credits to create a bank payment.'),
+                'lines' => __('Total debits must exceed credits to create a cash payment.'),
             ]);
         }
 
-        $bankAccount = ChartOfAccount::findOrFail($validated['bank_account_id']);
+        $cashAccount = ChartOfAccount::findOrFail($validated['cash_account_id']);
 
-        $voucher = DB::transaction(function () use ($request, $validated, $lineItems, $totals, $bankAccount) {
-            $voucher = BankPaymentVoucher::create([
+        $voucher = DB::transaction(function () use ($request, $validated, $lineItems, $totals, $cashAccount) {
+            $voucher = CashPaymentVoucher::create([
                 'payment_date' => $validated['payment_date'],
-                'bank_account_id' => $bankAccount->id,
-                'amount' => $totals['netBankAmount'],
-                'payment_method' => $bankAccount->account_code . ' — ' . $bankAccount->account_name,
+                'cash_account_id' => $cashAccount->id,
+                'amount' => $totals['netCashAmount'],
                 'reference_number' => $validated['reference_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => $request->user()->id,
             ]);
 
             foreach ($lineItems as $line) {
-                $voucherLine = $this->createVoucherLine($voucher, $line, $request->user()->id);
+                $voucherLine = $voucher->lines()->create([
+                    'chart_of_account_id' => $line['account_id'],
+                    'vendor_bill_id' => $line['bill_id'] ?? null,
+                    'entry_type' => $line['type'],
+                    'amount' => $line['amount'],
+                    'particulars' => $line['particulars'] ?? null,
+                    'bill_adjustment' => $line['bill_adjustment'] ?? null,
+                ]);
 
                 if (! empty($line['bill_id'])) {
                     $this->applyBill(
@@ -130,79 +124,35 @@ class BankPaymentVoucherController extends Controller
                 }
             }
 
-            // Record the bank credit line automatically
             $voucher->lines()->create([
-                'chart_of_account_id' => $bankAccount->id,
-                'vendor_bill_id' => null,
+                'chart_of_account_id' => $cashAccount->id,
                 'entry_type' => 'Cr',
-                'amount' => $totals['netBankAmount'],
-                'particulars' => __('Bank payment'),
-                'cheque_no' => null,
-                'cheque_date' => null,
-                'bill_adjustment' => null,
+                'amount' => $totals['netCashAmount'],
+                'particulars' => __('Cash payment'),
             ]);
 
             return $voucher;
         });
 
         return redirect()
-            ->route('accounting.bank-payment-vouchers.show', $voucher)
-            ->with('success', __('Bank payment voucher created successfully.'));
+            ->route('accounting.cash-payment-vouchers.index')
+            ->with('success', __('Cash payment voucher :number recorded successfully.', ['number' => $voucher->voucher_number]));
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(BankPaymentVoucher $bankPaymentVoucher)
-    {
-        $bankPaymentVoucher->load([
-            'bankAccount',
-            'creator',
-            'lines.account',
-            'lines.billPayments.bill',
-        ]);
-
-        return view('accounting.bank-payment-vouchers.show', compact('bankPaymentVoucher'));
-    }
-
-    /**
-     * Calculate totals for voucher lines.
-     *
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $lines
-     */
     protected function calculateTotals(Collection $lines): array
     {
-        $debitTotal = $lines
-            ->where('type', 'Dr')
-            ->sum('amount');
-
-        $creditTotal = $lines
-            ->where('type', 'Cr')
-            ->sum('amount');
+        $debitTotal = $lines->where('type', 'Dr')->sum('amount');
+        $creditTotal = $lines->where('type', 'Cr')->sum('amount');
 
         return [
             'debitTotal' => $debitTotal,
             'creditTotal' => $creditTotal,
-            'netBankAmount' => $debitTotal - $creditTotal,
+            'netCashAmount' => $debitTotal - $creditTotal,
         ];
     }
 
-    protected function createVoucherLine(BankPaymentVoucher $voucher, array $line, ?int $userId = null): BankPaymentVoucherLine
-    {
-        return $voucher->lines()->create([
-            'chart_of_account_id' => $line['account_id'],
-            'vendor_bill_id' => $line['bill_id'] ?? null,
-            'entry_type' => $line['type'],
-            'amount' => $line['amount'],
-            'particulars' => $line['particulars'] ?? null,
-            'cheque_no' => $line['cheque_no'] ?? null,
-            'cheque_date' => $line['cheque_date'] ?? null,
-            'bill_adjustment' => $line['bill_adjustment'] ?? null,
-        ]);
-    }
-
     protected function applyBill(
-        BankPaymentVoucherLine $voucherLine,
+        CashPaymentVoucherLine $voucherLine,
         int $billId,
         float $applyAmount,
         ?int $userId,
@@ -236,7 +186,7 @@ class BankPaymentVoucherController extends Controller
 
         VendorBillPayment::create([
             'vendor_bill_id' => $bill->id,
-            'bank_payment_voucher_line_id' => $voucherLine->id,
+            'cash_payment_voucher_line_id' => $voucherLine->id,
             'amount' => $applyAmount,
             'applied_at' => $appliedDate,
             'created_by' => $userId,
@@ -245,3 +195,4 @@ class BankPaymentVoucherController extends Controller
         $bill->applyPayment($applyAmount);
     }
 }
+
