@@ -27,8 +27,10 @@ class BankPaymentVoucherController extends Controller
     public function create()
     {
         $vendors = MineVendor::orderBy('name')->get();
+        $accounts = \App\Models\ChartOfAccount::orderBy('account_code')->get(['id', 'account_code', 'account_name']);
+        $nextVoucherNumber = BankPaymentVoucher::generateVoucherNumber();
 
-        return view('accounting.bank-payment-vouchers.create', compact('vendors'));
+        return view('accounting.bank-payment-vouchers.create', compact('vendors', 'accounts', 'nextVoucherNumber'));
     }
 
     /**
