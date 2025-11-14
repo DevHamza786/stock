@@ -17,7 +17,8 @@ class MineVendor extends Model
         'phone',
         'email',
         'address',
-        'is_active'
+        'is_active',
+        'chart_of_account_id',
     ];
 
     protected $casts = [
@@ -46,5 +47,13 @@ class MineVendor extends Model
     public function getTotalSqftPurchasedAttribute()
     {
         return $this->stockAdditions()->sum('total_sqft');
+    }
+
+    /**
+     * Get the chart of account (accounts payable) for this vendor.
+     */
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(\App\Models\ChartOfAccount::class, 'chart_of_account_id');
     }
 }

@@ -25,6 +25,23 @@ class CashPaymentVoucherController extends Controller
         return view('accounting.cash-payment-vouchers.index', compact('vouchers'));
     }
 
+    /**
+     * Display the print view for the voucher.
+     */
+    public function print(CashPaymentVoucher $cashPaymentVoucher)
+    {
+        $cashPaymentVoucher->load([
+            'cashAccount',
+            'creator',
+            'lines.account',
+        ]);
+
+        $debitLines = $cashPaymentVoucher->lines->where('entry_type', 'Dr')->sortBy('account.account_code');
+        $creditLines = $cashPaymentVoucher->lines->where('entry_type', 'Cr')->sortBy('account.account_code');
+
+        return view('accounting.cash-payment-vouchers.print', compact('cashPaymentVoucher', 'debitLines', 'creditLines'));
+    }
+
     public function create()
     {
         $nextVoucherNumber = CashPaymentVoucher::generateVoucherNumber();
@@ -131,6 +148,9 @@ class CashPaymentVoucherController extends Controller
                 'particulars' => __('Cash payment'),
             ]);
 
+            // Create journal entry and transactions
+            $this->createJournalEntry($voucher, $request->user()->id);
+
             return $voucher;
         });
 
@@ -193,6 +213,47 @@ class CashPaymentVoucherController extends Controller
         ]);
 
         $bill->applyPayment($applyAmount);
+    }
+
+    /**
+     * Create journal entry and transactions from voucher.
+     */
+    protected function createJournalEntry(CashPaymentVoucher $voucher, ?int $userId): void
+    {
+        $voucher->load('lines.account');
+
+        // Calculate totals
+        $totalDebit = $voucher->lines->where('entry_type', 'Dr')->sum('amount');
+        $totalCredit = $voucher->lines->where('entry_type', 'Cr')->sum('amount');
+
+        // Create journal entry
+        $journalEntry = \App\Models\JournalEntry::create([
+            'entry_date' => $voucher->payment_date,
+            'description' => 'Cash Payment Voucher: ' . $voucher->voucher_number,
+            'entry_type' => 'MANUAL',
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'status' => 'POSTED',
+            'created_by' => $userId,
+            'posted_at' => now(),
+            'notes' => $voucher->notes,
+        ]);
+
+        // Create account transactions from voucher lines
+        foreach ($voucher->lines as $line) {
+            \App\Models\AccountTransaction::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_id' => $line->chart_of_account_id,
+                'debit_amount' => $line->entry_type === 'Dr' ? $line->amount : 0,
+                'credit_amount' => $line->entry_type === 'Cr' ? $line->amount : 0,
+                'description' => $line->particulars ?? 'Cash Payment',
+                'reference_type' => 'cash_payment_voucher',
+                'reference_id' => $voucher->id,
+            ]);
+
+            // Update account balance
+            $line->account->updateBalance();
+        }
     }
 }
 

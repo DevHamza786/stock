@@ -180,6 +180,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('accounting')->name('ac
     Route::get('chart-of-accounts-api/accounts', [ChartOfAccountController::class, 'getAccounts'])->name('chart-of-accounts.accounts');
     Route::post('chart-of-accounts/{chartOfAccount}/update-balance', [ChartOfAccountController::class, 'updateBalance'])->name('chart-of-accounts.update-balance');
 
+    // Voucher Postings
+    Route::get('voucher-postings', [AccountingController::class, 'voucherPostings'])->name('voucher-postings.index');
+
     // Journal Entries
     Route::resource('journal-entries', JournalEntryController::class);
     Route::post('journal-entries/{journalEntry}/post', [JournalEntryController::class, 'post'])->name('journal-entries.post');
@@ -189,8 +192,11 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('accounting')->name('ac
 
     // Bank Payment Vouchers
     Route::resource('bank-payment-vouchers', BankPaymentVoucherController::class)->only(['index', 'create', 'store', 'show']);
+    Route::get('bank-payment-vouchers/{bankPaymentVoucher}/print', [BankPaymentVoucherController::class, 'print'])->name('bank-payment-vouchers.print');
     Route::resource('cash-payment-vouchers', CashPaymentVoucherController::class)->only(['index', 'create', 'store']);
-    Route::resource('purchase-vouchers', PurchaseVoucherController::class)->only(['index', 'create', 'store']);
+    Route::get('cash-payment-vouchers/{cashPaymentVoucher}/print', [CashPaymentVoucherController::class, 'print'])->name('cash-payment-vouchers.print');
+    Route::resource('purchase-vouchers', PurchaseVoucherController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+    Route::get('purchase-vouchers/{purchaseVoucher}/print', [PurchaseVoucherController::class, 'print'])->name('purchase-vouchers.print');
 
     // Auto-generate entries for ERM transactions
     Route::post('/generate-auto-entries', [AccountingController::class, 'generateAutoEntries'])->name('generate-auto-entries');

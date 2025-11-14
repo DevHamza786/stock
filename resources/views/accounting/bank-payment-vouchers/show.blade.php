@@ -1,8 +1,10 @@
 @php
-    $lines = $bankPaymentVoucher->lines->sortByDesc(fn ($line) => $line->entry_type === 'Dr');
+    // Separate debit and credit entries for clear double-entry display
+    $debitLines = $bankPaymentVoucher->lines->where('entry_type', 'Dr')->sortBy('account.account_code');
+    $creditLines = $bankPaymentVoucher->lines->where('entry_type', 'Cr')->sortBy('account.account_code');
     $totals = [
-        'debit' => $lines->where('entry_type', 'Dr')->sum('amount'),
-        'credit' => $lines->where('entry_type', 'Cr')->sum('amount'),
+        'debit' => $debitLines->sum('amount'),
+        'credit' => $creditLines->sum('amount'),
     ];
 @endphp
 
@@ -32,11 +34,11 @@
                        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
                         {{ __('Back to list') }}
                     </a>
-                    <button type="button"
-                            onclick="window.print()"
-                            class="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700">
+                    <a href="{{ route('accounting.bank-payment-vouchers.print', $bankPaymentVoucher) }}"
+                       target="_blank"
+                       class="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700">
                         🖨️ {{ __('Print') }}
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -72,9 +74,109 @@
                 </div>
 
                 <div class="px-6 py-6 space-y-8">
+                    <!-- Double Entry Display -->
+                    <div class="grid gap-6 md:grid-cols-2">
+                        <!-- Debit Side -->
+                        <div class="overflow-hidden rounded-xl border-2 border-green-200 bg-green-50">
+                            <div class="bg-green-600 px-4 py-3">
+                                <h3 class="text-sm font-bold uppercase tracking-wide text-white">Debit (Dr)</h3>
+                            </div>
+                            <div class="divide-y divide-green-100">
+                                @forelse($debitLines as $line)
+                                    <div class="px-4 py-3 hover:bg-green-100 transition">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="font-semibold text-gray-900">
+                                                    {{ optional($line->account)->account_code ?? '—' }}
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    {{ optional($line->account)->account_name ?? '—' }}
+                                                </div>
+                                                @if($line->particulars)
+                                                    <div class="text-xs text-gray-500 mt-1">{{ $line->particulars }}</div>
+                                                @endif
+                                                @if($line->billPayments->isNotEmpty())
+                                                    <div class="mt-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                                                        @foreach($line->billPayments as $payment)
+                                                            <div>{{ optional($payment->bill)->bill_number ?? __('Bill') }}: {{ number_format($payment->amount, 2) }}</div>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-lg font-bold text-green-700">
+                                                    {{ number_format($line->amount, 2) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-4 py-8 text-center text-gray-500">No debit entries</div>
+                                @endforelse
+                                <div class="bg-green-200 px-4 py-3 border-t-2 border-green-300">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-gray-900">Total Debit:</span>
+                                        <span class="text-lg font-bold text-green-800">{{ number_format($totals['debit'], 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Credit Side -->
+                        <div class="overflow-hidden rounded-xl border-2 border-red-200 bg-red-50">
+                            <div class="bg-red-600 px-4 py-3">
+                                <h3 class="text-sm font-bold uppercase tracking-wide text-white">Credit (Cr)</h3>
+                            </div>
+                            <div class="divide-y divide-red-100">
+                                @forelse($creditLines as $line)
+                                    <div class="px-4 py-3 hover:bg-red-100 transition">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="font-semibold text-gray-900">
+                                                    {{ optional($line->account)->account_code ?? '—' }}
+                                                </div>
+                                                <div class="text-sm text-gray-600">
+                                                    {{ optional($line->account)->account_name ?? '—' }}
+                                                </div>
+                                                @if($line->particulars)
+                                                    <div class="text-xs text-gray-500 mt-1">{{ $line->particulars }}</div>
+                                                @endif
+                                                @if($line->cheque_no || $line->cheque_date)
+                                                    <div class="text-xs text-gray-500 mt-1">
+                                                        Cheque: {{ $line->cheque_no ?? '—' }} 
+                                                        @if($line->cheque_date)
+                                                            ({{ $line->cheque_date->format('M d, Y') }})
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-lg font-bold text-red-700">
+                                                    {{ number_format($line->amount, 2) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="px-4 py-8 text-center text-gray-500">No credit entries</div>
+                                @endforelse
+                                <div class="bg-red-200 px-4 py-3 border-t-2 border-red-300">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-gray-900">Total Credit:</span>
+                                        <span class="text-lg font-bold text-red-800">{{ number_format($totals['credit'], 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Table View (for reference) -->
                     <div class="overflow-hidden rounded-xl border border-gray-200">
+                        <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-600">Detailed Entry List</h3>
+                        </div>
                         <table class="min-w-full divide-y divide-gray-200 text-sm font-medium text-gray-900">
-                            <thead class="bg-gray-100 uppercase tracking-wide text-xs text-gray-500">
+                            <thead class="bg-gray-50 uppercase tracking-wide text-xs text-gray-500">
                                 <tr>
                                     <th class="px-4 py-3 text-left">{{ __('Account') }}</th>
                                     <th class="px-4 py-3 text-left hidden lg:table-cell">{{ __('Details') }}</th>
@@ -85,7 +187,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                @foreach($lines as $line)
+                                @foreach($bankPaymentVoucher->lines->sortByDesc(fn ($line) => $line->entry_type === 'Dr') as $line)
                                     <tr class="bg-white hover:bg-gray-50 transition">
                                         <td class="px-4 py-3 align-top">
                                             <div class="font-semibold text-gray-900">
@@ -138,17 +240,6 @@
                                     </tr>
                                 @endforeach
                             </tbody>
-                            <tfoot class="bg-gray-50 text-sm text-gray-700">
-                                <tr>
-                                    <td colspan="3" class="px-4 py-3 text-right font-semibold uppercase tracking-wide text-gray-600">
-                                        {{ __('Totals') }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-semibold text-gray-900">
-                                        {{ number_format($totals['debit'], 2) }} / {{ number_format($totals['credit'], 2) }}
-                                    </td>
-                                    <td colspan="2"></td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
 

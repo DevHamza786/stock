@@ -12,7 +12,9 @@ class PurchaseVoucher extends Model
 
     protected $fillable = [
         'voucher_number',
+        'status',
         'vendor_bill_id',
+        'stock_addition_id',
         'invoice_reference',
         'total_amount',
         'notes',
@@ -60,6 +62,31 @@ class PurchaseVoucher extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function stockAddition(): BelongsTo
+    {
+        return $this->belongsTo(StockAddition::class);
+    }
+
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
+    public function scopePosted($query)
+    {
+        return $query->where('status', 'posted');
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    public function isPosted(): bool
+    {
+        return $this->status === 'posted';
     }
 }
 

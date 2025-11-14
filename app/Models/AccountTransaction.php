@@ -58,6 +58,8 @@ class AccountTransaction extends Model
             'gate_pass' => GatePass::class,
             'product' => Product::class,
             'mine_vendor' => MineVendor::class,
+            'bank_payment_voucher' => BankPaymentVoucher::class,
+            'cash_payment_voucher' => CashPaymentVoucher::class,
             default => null
         };
 

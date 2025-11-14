@@ -13,6 +13,7 @@ class BankPaymentVoucher extends Model
 
     protected $fillable = [
         'voucher_number',
+        'voucher_type',
         'payment_date',
         'bank_account_id',
         'amount',
@@ -42,10 +43,11 @@ class BankPaymentVoucher extends Model
         });
     }
 
-    public static function generateVoucherNumber(): string
+    public static function generateVoucherNumber(string $type = 'payment'): string
     {
         $year = date('Y');
-        $prefix = "BPV-{$year}-";
+        // BPV for bank payment, BRV for bank receipt
+        $prefix = $type === 'receipt' ? "BRV-{$year}-" : "BPV-{$year}-";
 
         $lastVoucher = self::where('voucher_number', 'like', $prefix . '%')
             ->orderBy('voucher_number', 'desc')
@@ -59,6 +61,16 @@ class BankPaymentVoucher extends Model
         }
 
         return $prefix . str_pad($newNumber, 5, '0', STR_PAD_LEFT);
+    }
+    
+    public function isPayment(): bool
+    {
+        return $this->voucher_type === 'payment';
+    }
+    
+    public function isReceipt(): bool
+    {
+        return $this->voucher_type === 'receipt';
     }
 
     public function creator(): BelongsTo

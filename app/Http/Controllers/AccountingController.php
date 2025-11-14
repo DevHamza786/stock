@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\AccountTransaction;
+use App\Models\BankPaymentVoucher;
+use App\Models\CashPaymentVoucher;
+use App\Models\PurchaseVoucher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -234,5 +237,41 @@ class AccountingController extends Controller
         }
 
         return view('accounting.general-ledger', compact('accounts', 'transactions', 'accountId', 'startDate', 'endDate'));
+    }
+
+    /**
+     * Display voucher postings page with tabs for different voucher types.
+     */
+    public function voucherPostings(Request $request)
+    {
+        $activeTab = $request->get('tab', 'payment-receipt');
+
+        // Get bank payment/receipt vouchers
+        $bankVouchers = BankPaymentVoucher::with(['bankAccount', 'creator'])
+            ->orderByDesc('payment_date')
+            ->orderByDesc('created_at')
+            ->paginate(15, ['*'], 'bank_page');
+
+        // Get cash payment vouchers
+        $cashVouchers = CashPaymentVoucher::with(['cashAccount', 'creator'])
+            ->orderByDesc('payment_date')
+            ->orderByDesc('created_at')
+            ->paginate(15, ['*'], 'cash_page');
+
+        // Get purchase vouchers
+        $purchaseVouchers = PurchaseVoucher::with(['bill.account', 'stockAddition', 'creator'])
+            ->orderByDesc('created_at')
+            ->paginate(15, ['*'], 'purchase_page');
+
+        // Sales vouchers - placeholder for future implementation
+        $salesVouchers = collect();
+
+        return view('accounting.voucher-postings', compact(
+            'activeTab',
+            'bankVouchers',
+            'cashVouchers',
+            'purchaseVouchers',
+            'salesVouchers'
+        ));
     }
 }

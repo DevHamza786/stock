@@ -8,18 +8,30 @@
                     {{ __('Purchase Vouchers') }}
                 </a>
                 <span class="text-gray-400">/</span>
-                <span>{{ __('Create') }}</span>
+                <span>{{ __('Edit Draft') }}</span>
             </div>
 
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">{{ __('Create Purchase Voucher') }}</h1>
+                <h1 class="text-3xl font-bold text-gray-900">{{ __('Edit Purchase Voucher') }}</h1>
                 <p class="mt-2 text-gray-600">
-                    {{ __('Record a vendor bill into the payable ledger. The bill will be available for knock-off during payment.') }}
+                    {{ __('Update the draft purchase voucher and post it to the system.') }}
                 </p>
             </div>
 
-            <form method="POST" action="{{ route('accounting.purchase-vouchers.store') }}" class="space-y-6">
+            @if($voucher->stockAddition)
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <p class="text-sm text-blue-800">
+                        <strong>{{ __('Linked Stock Addition:') }}</strong> {{ $voucher->stockAddition->pid ?? 'N/A' }}
+                        @if($voucher->stockAddition->mineVendor)
+                            — {{ __('Vendor:') }} {{ $voucher->stockAddition->mineVendor->name }}
+                        @endif
+                    </p>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('accounting.purchase-vouchers.update', $voucher) }}" class="space-y-6">
                 @csrf
+                @method('PUT')
 
                 <div class="rounded-2xl border border-gray-200 bg-white shadow-xl">
                     <div class="border-b border-gray-200 bg-gray-50 px-6 py-5">
@@ -29,10 +41,10 @@
                                     {{ __('Voucher Number') }}
                                 </p>
                                 <p class="mt-1 text-xl font-semibold text-gray-900">
-                                    {{ $nextVoucherNumber }}
+                                    {{ $voucher->voucher_number }}
                                 </p>
                             </div>
-                            <div class="space-y-3 relative">
+                            <div class="space-y-3">
                                 <div>
                                     <label for="account_code_search"
                                            class="block text-sm font-semibold uppercase tracking-wide text-gray-700">
@@ -45,7 +57,7 @@
                                         class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         autocomplete="off"
                                     >
-                                    <input type="hidden" id="payable_account_id" name="payable_account_id" value="{{ old('payable_account_id') }}" required>
+                                    <input type="hidden" id="payable_account_id" name="payable_account_id" value="{{ old('payable_account_id', optional($voucher->bill)->chart_of_account_id) }}" required>
                                 </div>
                                 <div>
                                     <label for="account_name_search"
@@ -59,7 +71,11 @@
                                         class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         autocomplete="off"
                                     >
-                                    <div id="account_display" class="mt-2 text-sm text-gray-600"></div>
+                                    <div id="account_display" class="mt-2 text-sm text-gray-600">
+                                        @if($voucher->bill && $voucher->bill->account)
+                                            {{ $voucher->bill->account->account_code }} — {{ $voucher->bill->account->account_name }}
+                                        @endif
+                                    </div>
                                 </div>
                                 <div id="account_dropdown" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"></div>
                             </div>
@@ -76,7 +92,7 @@
                                     type="text"
                                     id="vendor_reference"
                                     name="vendor_reference"
-                                    value="{{ old('vendor_reference') }}"
+                                    value="{{ old('vendor_reference', optional($voucher->bill)->vendor_reference) }}"
                                     placeholder="{{ __('Vendor or supplier name') }}"
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
                             </div>
@@ -88,7 +104,7 @@
                                     type="text"
                                     id="bill_number"
                                     name="bill_number"
-                                    value="{{ old('bill_number') }}"
+                                    value="{{ old('bill_number', optional($voucher->bill)->bill_number) }}"
                                     placeholder="{{ __('Reference number') }}"
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
                             </div>
@@ -103,7 +119,7 @@
                                     type="date"
                                     id="bill_date"
                                     name="bill_date"
-                                    value="{{ old('bill_date', now()->format('Y-m-d')) }}"
+                                    value="{{ old('bill_date', optional($voucher->bill)->bill_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
                                     required
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
                             </div>
@@ -115,7 +131,7 @@
                                     type="date"
                                     id="due_date"
                                     name="due_date"
-                                    value="{{ old('due_date') }}"
+                                    value="{{ old('due_date', optional($voucher->bill)->due_date?->format('Y-m-d')) }}"
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
                             </div>
                         </div>
@@ -131,7 +147,7 @@
                                     min="0.01"
                                     id="total_amount"
                                     name="total_amount"
-                                    value="{{ old('total_amount') }}"
+                                    value="{{ old('total_amount', $voucher->total_amount) }}"
                                     required
                                     placeholder="0.00"
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
@@ -144,7 +160,7 @@
                                     type="text"
                                     id="bill_adjustment"
                                     name="bill_adjustment"
-                                    value="{{ old('bill_adjustment') }}"
+                                    value="{{ old('bill_adjustment', optional($voucher->bill)->bill_adjustment) }}"
                                     placeholder="{{ __('Bill adjustment details') }}"
                                     class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
                             </div>
@@ -160,7 +176,7 @@
                                 rows="3"
                                 placeholder="{{ __('Enter particulars or narrations for this bill') }}"
                                 class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            >{{ old('particulars') }}</textarea>
+                            >{{ old('particulars', optional($voucher->bill)->particulars) }}</textarea>
                         </div>
 
                         <div>
@@ -173,7 +189,7 @@
                                 rows="4"
                                 placeholder="{{ __('Optional notes about this bill') }}"
                                 class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            >{{ old('notes') }}</textarea>
+                            >{{ old('notes', $voucher->notes) }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -184,8 +200,16 @@
                         {{ __('Cancel') }}
                     </a>
                     <button type="submit"
-                            class="inline-flex items-center rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                        {{ __('Save Purchase Voucher') }}
+                            name="save"
+                            value="save"
+                            class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                        {{ __('Save Draft') }}
+                    </button>
+                    <button type="submit"
+                            name="post"
+                            value="1"
+                            class="inline-flex items-center rounded-lg bg-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        {{ __('Post Voucher') }}
                     </button>
                 </div>
             </form>
@@ -242,6 +266,12 @@
             const filtered = filterAccounts(accountCodeInput.value, this.value);
             showDropdown(filtered);
         });
+
+        // Initialize display if account is already selected
+        @if($voucher->bill && $voucher->bill->account)
+            accountCodeInput.value = '{{ $voucher->bill->account->account_code }}';
+            accountNameInput.value = '{{ $voucher->bill->account->account_name }}';
+        @endif
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(e) {

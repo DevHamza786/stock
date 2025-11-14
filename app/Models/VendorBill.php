@@ -22,6 +22,8 @@ class VendorBill extends Model
         'balance_amount',
         'status',
         'notes',
+        'particulars',
+        'bill_adjustment',
     ];
 
     protected $casts = [

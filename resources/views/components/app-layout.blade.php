@@ -536,6 +536,8 @@
                                                     <a href="{{ route('accounting.dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Accounting Dashboard</a>
                                                     <a href="{{ route('accounting.chart-of-accounts.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Chart of Accounts</a>
                                                     <a href="{{ route('accounting.journal-entries.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Journal Entries</a>
+                                                    <div class="border-t border-gray-100 my-1"></div>
+                                                    <a href="{{ route('accounting.voucher-postings.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Voucher Postings</a>
                                                     <a href="{{ route('accounting.bank-payment-vouchers.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Bank Payment Vouchers</a>
                                                     <div class="border-t border-gray-100 my-1"></div>
                                                     <a href="{{ route('accounting.trial-balance') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150">Trial Balance</a>
@@ -545,6 +547,13 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <a href="{{ route('accounting.voucher-postings.index') }}" class="inline-flex items-center px-3 py-2 border-b-2 {{ request()->routeIs('accounting.voucher-postings.*') ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} text-sm font-medium transition-colors duration-200">
+                                            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            Voucher
+                                        </a>
 
                                         <a href="{{ route('stock-management.reports') }}" class="inline-flex items-center px-3 py-2 border-b-2 {{ request()->routeIs('stock-management.reports') ? 'border-blue-500 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} text-sm font-medium transition-colors duration-200">
                                             <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

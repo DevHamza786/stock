@@ -49,9 +49,9 @@
             </div>
 
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">{{ __('Create Bank Payment Voucher') }}</h1>
+                <h1 class="text-3xl font-bold text-gray-900">{{ __('Create Bank Payment/Receipt Voucher') }}</h1>
                 <p class="mt-2 text-gray-600">
-                    {{ __('Select the bank being paid and allocate the counter ledger entries below. Payable ledgers can be knocked off against open bills.') }}
+                    {{ __('Select the voucher type, bank account, and allocate the counter ledger entries below. Payable ledgers can be knocked off against open bills.') }}
                 </p>
             </div>
 
@@ -59,10 +59,27 @@
                 @csrf
 
                 <input type="hidden" name="amount" id="totalAmountInput" value="{{ old('amount', '0.00') }}">
+                <input type="hidden" name="voucher_type" id="voucher_type" value="{{ old('voucher_type', $voucherType ?? 'payment') }}">
 
                 <div class="rounded-2xl border border-gray-200 bg-white shadow-xl">
                     <div class="border-b border-gray-200 bg-gray-50 px-6 py-5">
-                        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                            <div>
+                                <label for="voucher_type_select" class="block text-sm font-semibold uppercase tracking-wide text-gray-700">
+                                    {{ __('Voucher Type') }}
+                                </label>
+                                <select
+                                    id="voucher_type_select"
+                                    class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                                    <option value="payment" {{ old('voucher_type', $voucherType ?? 'payment') === 'payment' ? 'selected' : '' }}>
+                                        {{ __('Payment') }}
+                                    </option>
+                                    <option value="receipt" {{ old('voucher_type', $voucherType ?? 'payment') === 'receipt' ? 'selected' : '' }}>
+                                        {{ __('Receipt') }}
+                                    </option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label for="payment_date" class="block text-sm font-semibold uppercase tracking-wide text-gray-700">
                                     {{ __('Payment Date') }}
@@ -80,7 +97,7 @@
                                 <label class="block text-sm font-semibold uppercase tracking-wide text-gray-700">
                                     {{ __('Voucher No.') }}
                                 </label>
-                                <div class="mt-2 flex h-[42px] items-center rounded-lg border border-gray-300 bg-gray-100 px-3 text-base font-semibold text-gray-900 shadow-inner">
+                                <div class="mt-2 flex h-[42px] items-center rounded-lg border border-gray-300 bg-gray-100 px-3 text-base font-semibold text-gray-900 shadow-inner" id="voucher_number_display">
                                     {{ $nextVoucherNumber }}
                                 </div>
                             </div>
@@ -146,6 +163,19 @@
                                                         >
                                                             {{ $account->account_code }} — {{ $account->account_name }}
                                                         </option>
+                                                    @endforeach
+                                                    @foreach($vendors as $vendor)
+                                                        @if($vendor->chartOfAccount)
+                                                            <option
+                                                                value="{{ $vendor->chartOfAccount->id }}"
+                                                                data-name="{{ $vendor->name }}"
+                                                                data-code="{{ $vendor->chartOfAccount->account_code }}"
+                                                                data-payable="1"
+                                                                {{ (int) ($line['account_id'] ?? 0) === $vendor->chartOfAccount->id ? 'selected' : '' }}
+                                                            >
+                                                                {{ $vendor->chartOfAccount->account_code }} — {{ $vendor->name }} ({{ __('Vendor') }})
+                                                            </option>
+                                                        @endif
                                                     @endforeach
                                                 </select>
                                                 <input
@@ -694,6 +724,27 @@
         rowsContainer.querySelectorAll('.entry-row').forEach(row => attachRowListeners(row));
         renumberRows();
         recalculateTotals();
+
+        // Handle voucher type change
+        const voucherTypeSelect = document.getElementById('voucher_type_select');
+        const voucherTypeHidden = document.getElementById('voucher_type');
+        const voucherNumberDisplay = document.getElementById('voucher_number_display');
+        
+        if (voucherTypeSelect) {
+            voucherTypeSelect.addEventListener('change', function() {
+                const selectedType = this.value;
+                voucherTypeHidden.value = selectedType;
+                
+                // Update voucher number display (would need to fetch from server in real implementation)
+                // For now, just update the prefix display
+                const currentNumber = voucherNumberDisplay.textContent.trim();
+                const newPrefix = selectedType === 'receipt' ? 'BRV' : 'BPV';
+                const year = new Date().getFullYear();
+                // Extract the number part and update prefix
+                const numberPart = currentNumber.split('-').pop();
+                voucherNumberDisplay.textContent = `${newPrefix}-${year}-${numberPart}`;
+            });
+        }
 
         document.getElementById('bankVoucherForm').addEventListener('submit', (event) => {
             const totals = calculateTotals();

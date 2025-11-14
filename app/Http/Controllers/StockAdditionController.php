@@ -67,6 +67,32 @@ class StockAdditionController extends Controller
             $query->where('date', '<=', $request->get('date_to'));
         }
 
+        // Calculate totals for all filtered records (before joins/ordering)
+        $totalsQuery = clone $query;
+        $totals = [
+            'total_pieces' => (float) ($totalsQuery->sum('stock_additions.total_pieces') ?? 0),
+            'total_sqft' => (float) ($totalsQuery->sum('stock_additions.total_sqft') ?? 0),
+            'available_pieces' => (float) ($totalsQuery->sum('stock_additions.available_pieces') ?? 0),
+            'available_sqft' => (float) ($totalsQuery->sum('stock_additions.available_sqft') ?? 0),
+            'available_weight' => (float) ($totalsQuery->sum('stock_additions.available_weight') ?? 0),
+        ];
+        
+        // Calculate total weight for block products (weight * total_pieces)
+        $blockTotalsQuery = clone $query;
+        $blockProducts = $blockTotalsQuery
+            ->whereIn('stock_additions.condition_status', ['Block', 'Monuments'])
+            ->get();
+        
+        $totals['total_weight'] = 0;
+        $totals['block_weight'] = 0;
+        
+        foreach ($blockProducts as $block) {
+            if ($block->weight && $block->total_pieces) {
+                $totals['total_weight'] += (float) ($block->weight * $block->total_pieces);
+            }
+            $totals['block_weight'] += (float) ($block->available_weight ?? 0);
+        }
+
         // Sorting
         $sortBy = $request->get('sort_by', 'date');
         $sortDirection = $request->get('sort_direction', 'desc');
@@ -98,7 +124,7 @@ class StockAdditionController extends Controller
         $vendors = MineVendor::where('is_active', true)->orderBy('name')->get();
         $conditions = \App\Models\ConditionStatus::where('is_active', true)->ordered()->get();
 
-        return view('stock-management.stock-additions.index', compact('stockAdditions', 'products', 'vendors', 'conditions'));
+        return view('stock-management.stock-additions.index', compact('stockAdditions', 'products', 'vendors', 'conditions', 'totals'));
     }
 
     /**
@@ -179,8 +205,11 @@ class StockAdditionController extends Controller
             'available_pieces' => $request->total_pieces
         ]));
 
+        // Create draft purchase voucher for this stock addition
+        $this->createDraftPurchaseVoucher($stockAddition, $request);
+
         return redirect()->route('stock-management.stock-additions.index')
-            ->with('success', 'Stock addition created successfully.');
+            ->with('success', 'Stock addition created successfully. Draft purchase voucher has been created.');
     }
 
     /**
@@ -1011,5 +1040,80 @@ class StockAdditionController extends Controller
             'sqft_per_piece' => $sqft,
             'total_sqft' => $totalSqft
         ]);
+    }
+
+    /**
+     * Create a draft purchase voucher for a stock addition.
+     */
+    protected function createDraftPurchaseVoucher(StockAddition $stockAddition, Request $request): void
+    {
+        try {
+            $vendor = $stockAddition->mineVendor;
+            if (!$vendor) {
+                return;
+            }
+
+            // Get or create accounts payable account for this vendor
+            $payableAccount = $this->getOrCreatePayableAccount($vendor);
+
+            // Calculate estimated amount (you may want to adjust this based on your business logic)
+            // For now, we'll use a placeholder amount or make it nullable
+            $estimatedAmount = 0; // This should be filled when the draft is edited
+
+            // Create draft purchase voucher
+            \App\Models\PurchaseVoucher::create([
+                'voucher_number' => \App\Models\PurchaseVoucher::generateVoucherNumber(),
+                'status' => 'draft',
+                'stock_addition_id' => $stockAddition->id,
+                'total_amount' => $estimatedAmount,
+                'notes' => "Draft created automatically for stock addition: {$stockAddition->pid}",
+                'created_by' => $request->user()->id ?? null,
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the stock addition creation
+            \Log::error('Failed to create draft purchase voucher', [
+                'stock_addition_id' => $stockAddition->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get or create an accounts payable account for a vendor.
+     */
+    protected function getOrCreatePayableAccount(MineVendor $vendor): \App\Models\ChartOfAccount
+    {
+        // If vendor already has a linked account, return it
+        if ($vendor->chart_of_account_id) {
+            $account = \App\Models\ChartOfAccount::find($vendor->chart_of_account_id);
+            if ($account) {
+                return $account;
+            }
+        }
+
+        // Find or create an accounts payable account for this vendor
+        $accountCode = '2110-' . str_pad($vendor->id, 4, '0', STR_PAD_LEFT);
+        $accountName = $vendor->name . ' (Payable)';
+
+        $account = \App\Models\ChartOfAccount::firstOrCreate(
+            [
+                'account_code' => $accountCode,
+            ],
+            [
+                'account_name' => $accountName,
+                'account_type' => 'LIABILITY',
+                'account_subtype' => 'ACCOUNTS_PAYABLE',
+                'normal_balance' => 'CREDIT',
+                'is_active' => true,
+                'is_system_account' => false,
+                'level' => 4,
+            ]
+        );
+
+        // Link the account to the vendor
+        $vendor->chart_of_account_id = $account->id;
+        $vendor->save();
+
+        return $account;
     }
 }
