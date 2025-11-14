@@ -68,7 +68,12 @@ class StockAdditionController extends Controller
         }
 
         // Calculate totals for all filtered records (before joins/ordering)
+        // Use a fresh query to ensure all filters are applied correctly
         $totalsQuery = clone $query;
+        
+        // Ensure we select distinct to avoid duplicates from relationships
+        $totalsQuery->select('stock_additions.*');
+        
         $totals = [
             'total_pieces' => (float) ($totalsQuery->sum('stock_additions.total_pieces') ?? 0),
             'total_sqft' => (float) ($totalsQuery->sum('stock_additions.total_sqft') ?? 0),
@@ -78,9 +83,11 @@ class StockAdditionController extends Controller
         ];
         
         // Calculate total weight for block products (weight * total_pieces)
+        // Need to get filtered block products to calculate correctly
         $blockTotalsQuery = clone $query;
         $blockProducts = $blockTotalsQuery
             ->whereIn('stock_additions.condition_status', ['Block', 'Monuments'])
+            ->select('stock_additions.weight', 'stock_additions.total_pieces', 'stock_additions.available_weight')
             ->get();
         
         $totals['total_weight'] = 0;
