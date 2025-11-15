@@ -218,25 +218,67 @@ class AccountingController extends Controller
      */
     public function generalLedger(Request $request)
     {
-        $accountId = $request->get('account_id');
+        $accountId = $request->get('account_id') ? (int) $request->get('account_id') : null;
         $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->get('end_date', now()->endOfMonth()->toDateString());
 
         $accounts = ChartOfAccount::active()->orderBy('account_code')->get();
 
         $transactions = collect();
+        $allTransactionsSummary = collect();
+        
         if ($accountId) {
+            // Debug: Log the query parameters
+            \Log::info('General Ledger Query', [
+                'account_id' => $accountId,
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ]);
+
             $transactions = AccountTransaction::with(['journalEntry', 'account'])
                 ->where('account_id', $accountId)
                 ->whereHas('journalEntry', function($query) use ($startDate, $endDate) {
                     $query->whereBetween('entry_date', [$startDate, $endDate])
                           ->where('status', 'POSTED');
                 })
-                ->orderBy('created_at')
+                ->get();
+            
+            // Sort by journal entry date and time
+            $transactions = $transactions->sortBy(function($transaction) {
+                if (!$transaction->journalEntry) {
+                    return '9999-99-99-99-99-99';
+                }
+                return $transaction->journalEntry->entry_date->format('Y-m-d') . '-' . 
+                       ($transaction->journalEntry->created_at ? $transaction->journalEntry->created_at->format('H:i:s') : '00:00:00');
+            })->values();
+
+            // Debug: Log the results
+            \Log::info('General Ledger Results', [
+                'transaction_count' => $transactions->count(),
+                'transactions' => $transactions->map(function($t) {
+                    return [
+                        'id' => $t->id,
+                        'account_id' => $t->account_id,
+                        'journal_entry_id' => $t->journal_entry_id,
+                        'entry_date' => $t->journalEntry->entry_date->toDateString(),
+                        'status' => $t->journalEntry->status,
+                        'debit' => $t->debit_amount,
+                        'credit' => $t->credit_amount
+                    ];
+                })->toArray()
+            ]);
+        } else {
+            // Show summary of all transactions when no account is selected
+            $allTransactionsSummary = AccountTransaction::whereHas('journalEntry', function($query) use ($startDate, $endDate) {
+                    $query->whereBetween('entry_date', [$startDate, $endDate])
+                          ->where('status', 'POSTED');
+                })
+                ->select('account_id', DB::raw('SUM(debit_amount) as total_debit'), DB::raw('SUM(credit_amount) as total_credit'), DB::raw('COUNT(*) as transaction_count'))
+                ->groupBy('account_id')
                 ->get();
         }
 
-        return view('accounting.general-ledger', compact('accounts', 'transactions', 'accountId', 'startDate', 'endDate'));
+        return view('accounting.general-ledger', compact('accounts', 'transactions', 'accountId', 'startDate', 'endDate', 'allTransactionsSummary'));
     }
 
     /**

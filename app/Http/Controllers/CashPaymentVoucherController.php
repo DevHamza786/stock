@@ -220,6 +220,16 @@ class CashPaymentVoucherController extends Controller
      */
     protected function createJournalEntry(CashPaymentVoucher $voucher, ?int $userId): void
     {
+        // Check if journal entry already exists for this voucher
+        $existingTransaction = \App\Models\AccountTransaction::where('reference_type', 'cash_payment_voucher')
+            ->where('reference_id', $voucher->id)
+            ->first();
+
+        if ($existingTransaction) {
+            \Log::info("Journal entry already exists for cash payment voucher #{$voucher->id}");
+            return;
+        }
+
         $voucher->load('lines.account');
 
         // Calculate totals

@@ -60,6 +60,7 @@ class AccountTransaction extends Model
             'mine_vendor' => MineVendor::class,
             'bank_payment_voucher' => BankPaymentVoucher::class,
             'cash_payment_voucher' => CashPaymentVoucher::class,
+            'purchase_voucher' => PurchaseVoucher::class,
             default => null
         };
 

@@ -54,7 +54,11 @@ class BankPaymentVoucherController extends Controller
 
         $bankAccounts = \App\Models\ChartOfAccount::active()
             ->where('account_type', 'ASSET')
-            ->whereIn('account_subtype', ['CASH', 'BANK'])
+            ->where('account_subtype', 'CASH')
+            ->where(function($query) {
+                $query->whereRaw('LOWER(account_name) LIKE ?', ['%bank%'])
+                      ->orWhere('account_code', 'like', '15%');
+            })
             ->orderBy('account_code')
             ->get(['id', 'account_code', 'account_name']);
 
@@ -69,9 +73,17 @@ class BankPaymentVoucherController extends Controller
         $voucherType = $request->get('type', 'payment'); // payment or receipt
         $nextVoucherNumber = BankPaymentVoucher::generateVoucherNumber($voucherType);
 
+        // Get bank accounts - all accounts with CASH subtype that have "bank" in name or account_code starting with 15xx
+        // This includes accounts like "Bank", "Meezan Bank Site Branch", etc. from Chart of Accounts
         $bankAccounts = ChartOfAccount::active()
             ->where('account_type', 'ASSET')
-            ->whereIn('account_subtype', ['CASH', 'BANK'])
+            ->where('account_subtype', 'CASH')
+            ->where(function($query) {
+                // Include accounts with "bank" in the name (case insensitive)
+                $query->whereRaw('LOWER(account_name) LIKE ?', ['%bank%'])
+                      // Or accounts with account_code starting with 15xx (bank account range)
+                      ->orWhere('account_code', 'like', '15%');
+            })
             ->orderBy('account_code')
             ->get(['id', 'account_code', 'account_name', 'account_subtype']);
 
@@ -166,6 +178,13 @@ class BankPaymentVoucherController extends Controller
         }
 
         $bankAccount = ChartOfAccount::findOrFail($validated['bank_account_id']);
+        
+        // Validate that the selected account is actually a BANK account, not CASH
+        if ($bankAccount->account_subtype !== 'BANK') {
+            throw ValidationException::withMessages([
+                'bank_account_id' => __('The selected account must be a bank account. For petty cash or cash accounts, please use Cash Payment Vouchers.'),
+            ]);
+        }
         
         $voucherAmount = $voucherType === 'payment' 
             ? $totals['debitTotal'] - $totals['creditTotal']
@@ -343,6 +362,16 @@ class BankPaymentVoucherController extends Controller
      */
     protected function createJournalEntry(BankPaymentVoucher $voucher, ?int $userId): void
     {
+        // Check if journal entry already exists for this voucher
+        $existingTransaction = \App\Models\AccountTransaction::where('reference_type', 'bank_payment_voucher')
+            ->where('reference_id', $voucher->id)
+            ->first();
+
+        if ($existingTransaction) {
+            \Log::info("Journal entry already exists for bank payment voucher #{$voucher->id}");
+            return;
+        }
+
         $voucher->load('lines.account');
 
         // Calculate totals

@@ -12,6 +12,16 @@
     ];
 
     $oldLines = collect(old('lines', $defaultLines))->values();
+    
+    // Prepare accounts data for JavaScript
+    $accountsData = $accounts->map(function($account) {
+        return [
+            'id' => $account->id,
+            'code' => $account->account_code,
+            'name' => $account->account_name,
+            'payable' => $account->account_subtype === 'ACCOUNTS_PAYABLE' ? '1' : '0'
+        ];
+    })->toArray();
 
     $vendorBillOptions = $vendorBills->mapWithKeys(function ($bills, $accountId) {
         return [
@@ -85,19 +95,41 @@
                                 <label for="cash_account_id" class="block text-sm font-semibold uppercase tracking-wide text-gray-700">
                                     {{ __('Cash Account') }}
                                 </label>
-                                <select
-                                    id="cash_account_id"
-                                    name="cash_account_id"
-                                    required
-                                    class="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                >
-                                    <option value="">{{ __('Select cash account') }}</option>
-                                    @foreach($cashAccounts as $cashAccount)
-                                        <option value="{{ $cashAccount->id }}" {{ (int) old('cash_account_id') === $cashAccount->id ? 'selected' : '' }}>
-                                            {{ $cashAccount->account_code }} — {{ $cashAccount->account_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="relative mt-2" x-data="searchableSelect({
+                                    options: [
+                                        @foreach($cashAccounts as $cashAccount)
+                                        { value: '{{ $cashAccount->id }}', text: '{{ $cashAccount->account_code }} — {{ addslashes($cashAccount->account_name) }}', code: '{{ $cashAccount->account_code }}', name: '{{ addslashes($cashAccount->account_name) }}' },
+                                        @endforeach
+                                    ],
+                                    selectedValue: '{{ old('cash_account_id') ?? '' }}',
+                                    name: 'cash_account_id',
+                                    placeholder: 'Type to search cash account...'
+                                })" x-init="init()">
+                                    <input type="hidden" name="cash_account_id" :value="selectedValue" id="cash_account_id">
+                                    <input 
+                                        type="text" 
+                                        x-model="searchQuery"
+                                        @input="filterOptions()"
+                                        @focus="showDropdown = true; if(!searchQuery) searchQuery = '';"
+                                        @blur="setTimeout(() => showDropdown = false, 200)"
+                                        @keydown.escape="showDropdown = false"
+                                        placeholder="Type to search cash account..."
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    >
+                                    <div x-show="showDropdown && filteredOptions.length > 0" 
+                                         x-cloak
+                                         class="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-auto"
+                                         style="position: absolute; z-index: 9999;">
+                                        <template x-for="option in filteredOptions" :key="option.value">
+                                            <div @click="selectOption(option)"
+                                                 class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 grid grid-cols-2 gap-2"
+                                                 :class="{ 'bg-blue-100': option.value == selectedValue }">
+                                                <div class="font-medium text-gray-900" x-text="option.code"></div>
+                                                <div class="text-sm text-gray-600" x-text="option.name"></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -107,7 +139,8 @@
                             <table class="min-w-full divide-y divide-gray-200 text-sm font-medium text-gray-900">
                                 <thead class="bg-gray-100 uppercase tracking-wide text-xs text-gray-500">
                                     <tr>
-                                        <th class="px-4 py-3 text-left">{{ __('Account') }}</th>
+                                        <th class="px-4 py-3 text-left">{{ __('Account Code') }}</th>
+                                        <th class="px-4 py-3 text-left">{{ __('Account Name') }}</th>
                                         <th class="px-4 py-3 text-left hidden lg:table-cell">{{ __('Details') }}</th>
                                         <th class="px-4 py-3 text-center">{{ __('Dr/Cr') }}</th>
                                         <th class="px-4 py-3 text-right">{{ __('Amount') }}</th>
@@ -123,29 +156,51 @@
                                             $initialBillAmount = $line['bill_amount'] ?? null;
                                         @endphp
                                         <tr data-row-index="{{ $index }}" class="entry-row">
-                                            <td class="border-r border-gray-200 px-4 py-3 align-top">
-                                                <select
-                                                    name="lines[{{ $index }}][account_id]"
-                                                    data-field="account_id"
-                                                    class="account-select w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
-                                                >
-                                                    <option value="">{{ __('Select ledger') }}</option>
-                                                    @foreach($accounts as $account)
-                                                        <option
-                                                            value="{{ $account->id }}"
-                                                            data-name="{{ $account->account_name }}"
-                                                            data-code="{{ $account->account_code }}"
-                                                            data-payable="{{ $account->account_subtype === 'ACCOUNTS_PAYABLE' ? '1' : '0' }}"
-                                                            {{ (int) ($line['account_id'] ?? 0) === $account->id ? 'selected' : '' }}
-                                                        >
-                                                            {{ $account->account_code }} — {{ $account->account_name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <input type="hidden" data-field="account_name" value="{{ $line['account_name'] ?? ($selectedAccount->account_name ?? '') }}">
-                                                <div class="mt-2 text-xs text-gray-500 account-code-display">
-                                                    {{ $selectedAccount->account_code ?? '—' }}
+                                            <td class="border-r border-gray-200 px-4 py-3 align-top" style="overflow: visible !important; position: relative;">
+                                                <div class="relative account-select-wrapper" style="overflow: visible !important;" 
+                                                     x-data="voucherAccountSelect({
+                                                         accounts: @json($accountsData),
+                                                         selectedValue: '{{ $line['account_id'] ?? '' }}',
+                                                         rowIndex: {{ $index }},
+                                                         fieldName: 'lines[{{ $index }}][account_id]'
+                                                     })" 
+                                                     x-init="init()">
+                                                    <input type="hidden" name="lines[{{ $index }}][account_id]" :value="selectedValue" data-field="account_id">
+                                                    <input 
+                                                        type="text" 
+                                                        x-model="searchQuery"
+                                                        @input="filterOptions()"
+                                                        @focus="showDropdown = true"
+                                                        @blur="setTimeout(() => showDropdown = false, 200)"
+                                                        @keydown.escape="showDropdown = false"
+                                                        :placeholder="placeholder || 'Type to search account...'"
+                                                        class="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                                    >
+                                                    <div x-show="showDropdown && filteredOptions.length > 0" 
+                                                         x-cloak
+                                                         x-transition
+                                                         class="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-2xl max-h-60 overflow-auto"
+                                                         style="position: absolute !important; z-index: 99999 !important; top: 100% !important; left: 0 !important; right: 0 !important; margin-top: 0.25rem !important;">
+                                                        <template x-for="option in filteredOptions" :key="option.id">
+                                                            <div @click="selectOption(option)"
+                                                                 class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 grid grid-cols-2 gap-2"
+                                                                 :class="{ 'bg-blue-100': option.id == selectedValue }">
+                                                                <div class="font-medium text-gray-900" x-text="option.code"></div>
+                                                                <div class="text-sm text-gray-600" x-text="option.name"></div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
                                                 </div>
+                                                <input type="hidden" data-field="account_name" value="{{ $line['account_name'] ?? ($selectedAccount->account_name ?? '') }}">
+                                            </td>
+                                            <td class="border-r border-gray-200 px-4 py-3 align-top">
+                                                <input
+                                                    type="text"
+                                                    class="account-name-input w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                                                    value="{{ $line['account_name'] ?? ($selectedAccount->account_name ?? '') }}"
+                                                    placeholder="{{ __('Account name') }}"
+                                                    readonly
+                                                >
                                             </td>
                                             <td class="border-r border-gray-200 px-4 py-3 align-top hidden lg:table-cell">
                                                 <textarea
@@ -292,25 +347,50 @@
 
     <template id="cash-voucher-row-template">
         <tr class="entry-row">
-            <td class="border-r border-gray-200 px-4 py-3 align-top">
-                <select
-                    data-field="account_id"
-                    class="account-select w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
-                >
-                    <option value="">{{ __('Select ledger') }}</option>
-                    @foreach($accounts as $account)
-                        <option
-                            value="{{ $account->id }}"
-                            data-name="{{ $account->account_name }}"
-                            data-code="{{ $account->account_code }}"
-                            data-payable="{{ $account->account_subtype === 'ACCOUNTS_PAYABLE' ? '1' : '0' }}"
-                        >
-                            {{ $account->account_code }} — {{ $account->account_name }}
-                        </option>
-                    @endforeach
-                </select>
+            <td class="border-r border-gray-200 px-4 py-3 align-top" style="overflow: visible !important; position: relative;">
+                <div class="relative account-select-wrapper" style="overflow: visible !important;" 
+                     x-data="voucherAccountSelect({
+                         accounts: @json($accountsData),
+                         selectedValue: '',
+                         rowIndex: null,
+                         fieldName: ''
+                     })" 
+                     x-init="init()">
+                    <input type="hidden" data-field="account_id" :value="selectedValue">
+                    <input 
+                        type="text" 
+                        x-model="searchQuery"
+                        @input="filterOptions()"
+                        @focus="showDropdown = true"
+                        @blur="setTimeout(() => showDropdown = false, 200)"
+                        @keydown.escape="showDropdown = false"
+                        :placeholder="placeholder || 'Type to search account...'"
+                        class="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                    >
+                    <div x-show="showDropdown && filteredOptions.length > 0" 
+                         x-cloak
+                         x-transition
+                         class="absolute w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-2xl max-h-60 overflow-auto"
+                         style="position: absolute !important; z-index: 99999 !important; top: 100% !important; left: 0 !important; right: 0 !important; margin-top: 0.25rem !important;">
+                        <template x-for="option in filteredOptions" :key="option.id">
+                            <div @click="selectOption(option)"
+                                 class="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 grid grid-cols-2 gap-2"
+                                 :class="{ 'bg-blue-100': option.id == selectedValue }">
+                                <div class="font-medium text-gray-900" x-text="option.code"></div>
+                                <div class="text-sm text-gray-600" x-text="option.name"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
                 <input type="hidden" data-field="account_name">
-                <div class="mt-2 text-xs text-gray-500 account-code-display">—</div>
+            </td>
+            <td class="border-r border-gray-200 px-4 py-3 align-top">
+                <input
+                    type="text"
+                    class="account-name-input w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                    placeholder="{{ __('Account name') }}"
+                    readonly
+                >
             </td>
             <td class="border-r border-gray-200 px-4 py-3 align-top hidden lg:table-cell">
                 <textarea
@@ -495,7 +575,7 @@
         function updateAccountRow(row) {
             const accountSelect = row.querySelector('.account-select');
             const accountNameField = row.querySelector('[data-field=\"account_name\"]');
-            const accountCodeLabel = row.querySelector('.account-code-display');
+            const accountNameInput = row.querySelector('.account-name-input');
             const billSelect = row.querySelector('.bill-select');
 
             if (!accountSelect) {
@@ -511,9 +591,8 @@
             if (accountNameField) {
                 accountNameField.value = accountName || '';
             }
-
-            if (accountCodeLabel) {
-                accountCodeLabel.textContent = accountCode || '—';
+            if (accountNameInput) {
+                accountNameInput.value = accountName || '';
             }
 
             if (billSelect) {
@@ -607,10 +686,48 @@
         if (addRowButton) {
             addRowButton.addEventListener('click', () => {
                 const newRow = rowTemplate.content.cloneNode(true);
+                const rowElement = newRow.querySelector('tr');
+                const rowIndex = linesContainer.children.length;
+                
+                // Update field names for the new row
+                if (rowElement) {
+                    const accountSelectWrapper = rowElement.querySelector('.account-select-wrapper');
+                    if (accountSelectWrapper) {
+                        const hiddenInput = accountSelectWrapper.querySelector('input[type="hidden"][data-field="account_id"]');
+                        if (hiddenInput) {
+                            hiddenInput.name = `lines[${rowIndex}][account_id]`;
+                        }
+                        // Update Alpine.js data attribute - use Alpine.data format
+                        const accountsData = @json($accountsData);
+                        accountSelectWrapper.setAttribute('x-data', `voucherAccountSelect({
+                            accounts: ${JSON.stringify(accountsData)},
+                            selectedValue: '',
+                            rowIndex: ${rowIndex},
+                            fieldName: 'lines[${rowIndex}][account_id]'
+                        })`);
+                    }
+                    
+                    // Update all other field names in the row
+                    rowElement.querySelectorAll('[data-field]').forEach(field => {
+                        const fieldName = field.getAttribute('data-field');
+                        if (fieldName && fieldName !== 'account_id') {
+                            if (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA' || field.tagName === 'SELECT') {
+                                field.name = `lines[${rowIndex}][${fieldName}]`;
+                            }
+                        }
+                    });
+                }
+                
                 linesContainer.appendChild(newRow);
                 renumberRows();
                 const appendedRow = linesContainer.lastElementChild;
                 attachRowListeners(appendedRow);
+                
+                // Initialize Alpine.js for the new row
+                if (typeof Alpine !== 'undefined' && appendedRow) {
+                    Alpine.initTree(appendedRow);
+                }
+                
                 recalculateTotals();
             });
         }
@@ -634,6 +751,140 @@
                 alert('{{ __('Total debits must exceed credits to create a cash payment.') }}');
             }
         });
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    <script>
+        // Define functions immediately - Alpine will use them when processing x-data
+        function voucherAccountSelect(config) {
+            return {
+                accounts: config.accounts || [],
+                filteredOptions: config.accounts || [],
+                searchQuery: '',
+                selectedValue: config.selectedValue || '',
+                selectedText: '',
+                showDropdown: false,
+                rowIndex: config.rowIndex,
+                fieldName: config.fieldName,
+                placeholder: 'Type to search account...',
+
+                init() {
+                    // Set initial selected text
+                    if (this.selectedValue) {
+                        const selected = this.accounts.find(acc => acc.id == this.selectedValue);
+                        if (selected) {
+                            this.selectedText = selected.code + ' — ' + selected.name;
+                            this.searchQuery = this.selectedText;
+                        }
+                    }
+                    this.filteredOptions = this.accounts;
+                    
+                    // Set up name attribute for form submission
+                    if (this.fieldName) {
+                        const hiddenInput = this.$el.querySelector('input[type="hidden"][data-field="account_id"]');
+                        if (hiddenInput) {
+                            hiddenInput.name = this.fieldName;
+                        }
+                    }
+                },
+
+                filterOptions() {
+                    const query = this.searchQuery.toLowerCase().trim();
+                    if (!query) {
+                        this.filteredOptions = this.accounts;
+                        return;
+                    }
+                    
+                    this.filteredOptions = this.accounts.filter(account => {
+                        const code = (account.code || '').toLowerCase();
+                        const name = (account.name || '').toLowerCase();
+                        return code.includes(query) || name.includes(query);
+                    });
+                },
+
+                selectOption(option) {
+                    this.selectedValue = option.id;
+                    this.selectedText = option.code + ' — ' + option.name;
+                    this.searchQuery = this.selectedText;
+                    this.showDropdown = false;
+                    
+                    // Update hidden input
+                    const hiddenInput = this.$el.querySelector('input[type="hidden"][data-field="account_id"]');
+                    if (hiddenInput) {
+                        hiddenInput.value = option.id;
+                    }
+                    
+                    // Trigger account update for voucher row
+                    const row = this.$el.closest('.entry-row');
+                    if (row) {
+                        // Update account name field
+                        const accountNameInput = row.querySelector('.account-name-input');
+                        const accountNameField = row.querySelector('[data-field="account_name"]');
+                        if (accountNameInput) {
+                            accountNameInput.value = option.name;
+                        }
+                        if (accountNameField) {
+                            accountNameField.value = option.name;
+                        }
+                        
+                        // Trigger the existing updateAccountRow function if it exists
+                        if (typeof updateAccountRow === 'function') {
+                            updateAccountRow(row);
+                        }
+                    }
+                }
+            }
+        }
+        
+        function searchableSelect(config) {
+            return {
+                options: config.options || [],
+                filteredOptions: config.options || [],
+                searchQuery: '',
+                selectedValue: config.selectedValue || '',
+                selectedText: '',
+                showDropdown: false,
+
+                init() {
+                    // Set initial selected text
+                    if (this.selectedValue) {
+                        const selected = this.options.find(opt => opt.value == this.selectedValue);
+                        if (selected) {
+                            this.selectedText = selected.text;
+                            this.searchQuery = selected.text;
+                        }
+                    }
+                    this.filteredOptions = this.options;
+                },
+
+                filterOptions() {
+                    const query = this.searchQuery.toLowerCase().trim();
+                    if (!query) {
+                        this.filteredOptions = this.options;
+                        return;
+                    }
+                    
+                    this.filteredOptions = this.options.filter(option => {
+                        const code = (option.code || '').toLowerCase();
+                        const name = (option.name || '').toLowerCase();
+                        const text = (option.text || '').toLowerCase();
+                        return code.includes(query) || name.includes(query) || text.includes(query);
+                    });
+                },
+
+                selectOption(option) {
+                    this.selectedValue = option.value;
+                    this.selectedText = option.text;
+                    this.searchQuery = option.text;
+                    this.showDropdown = false;
+                    const hiddenInput = document.getElementById(config.name);
+                    if (hiddenInput) {
+                        hiddenInput.value = option.value;
+                    }
+                }
+            }
+        }
     </script>
 </x-app-layout>
 
